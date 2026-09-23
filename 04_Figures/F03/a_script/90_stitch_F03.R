@@ -9,57 +9,129 @@ DAT <- "04_Figures/F03/c_data"
 
 source("04_Figures/F03/a_script/02_supp_panels.R")
 source("04_Figures/F03/a_script/01_main_panels.R")
+source("04_Figures/F03/a_script/_supp_sig_heatmaps.R")
 
-# Build xlsx from per-contrast xlsx sheets + ring terms + supp CSVs
-DEP_XLSX <- "03_DEP/c_data/03_DEP_results.xlsx"
-CTRS <- c("Aging", "Training_Young", "Training_Old", "Interaction")
+# Build xlsx from ring terms + significance-heatmap groupings + supp CSVs.
+#
+# The four per-contrast limma tables used to be copied in here as MAIN_<ctr>.
+# They are S10 Table's Aging, Training_Young, Training_Old and Interaction
+# sheets byte for byte, so the package was shipping 8,424 rows x 15 columns
+# twice and a reader had no way to tell which copy was authoritative. S10 Table
+# is the record; this workbook carries what the figure draws.
 
-f03_specs <- lapply(CTRS, \(ctr) {
-  list(name = paste0("MAIN_", ctr),
-       df = as.data.frame(readxl::read_excel(DEP_XLSX, sheet = ctr)))
-})
+f03_specs <- list()
 for (tag in c("A", "B", "C", "D")) {
   ring_path <- file.path(DAT, paste0("panel_", tag), "ring_terms.csv")
-  if (file.exists(ring_path))
+  if (file.exists(ring_path)) {
     f03_specs <- c(f03_specs, list(list(name = paste0("RING_", tag), path = ring_path)))
+  }
+}
+# Excel sheet names cap at 31 chars; "SIGHEAT_<file_stub>_cluster_classification"
+# blows past that, so short codes stand in for the file_stub.
+sig_stub_codes <- c(
+  aging_fdr_heatmap = "AgeFDR", aging_pi_heatmap = "AgePi",
+  training_fdr_heatmap = "TrFDR", training_pi_heatmap = "TrPi"
+)
+for (p in list.files(file.path(DAT, "sig_heatmaps"), pattern = "\\.csv$", full.names = TRUE)) {
+  base <- tools::file_path_sans_ext(basename(p))
+  suffix <- if (grepl("_cluster_classification$", base)) "_cls" else "_grp"
+  stub <- sub("_(groups|cluster_classification)$", "", base)
+  f03_specs <- c(f03_specs, list(list(name = paste0(sig_stub_codes[[stub]], suffix), path = p)))
 }
 supp_csvs <- list.files(file.path(DAT, "supp"), pattern = "\\.csv$", full.names = TRUE)
-for (p in supp_csvs)
-  f03_specs <- c(f03_specs, list(list(name = paste0("SUPP_", tools::file_path_sans_ext(basename(p))),
-                                       path = p)))
+for (p in supp_csvs) {
+  f03_specs <- c(f03_specs, list(list(
+    name = paste0("SUPP_", tools::file_path_sans_ext(basename(p))),
+    path = p
+  )))
+}
+
+# Keyed by sheet name, not built positionally: the heatmap and supp sheets come
+# from globs, so their order follows the filesystem and an unlisted sheet has to
+# fail loudly rather than inherit its neighbour's description.
+f03_descriptions <- c(
+  RING_A = "Panel A: the pathway terms the aging volcano ring labels",
+  RING_B = "Panel B: pathway terms the training (younger) ring labels",
+  RING_C = "Panel C: pathway terms the training (older) ring labels",
+  RING_D = "Panel D: pathway terms the interaction ring labels",
+  AgeFDR_grp = "S4b: group assignment, aging at FDR < 0.05 (278 proteins)",
+  AgeFDR_cls = "S4b: per-protein cluster classification, aging at FDR < 0.05",
+  AgePi_grp = "S4b: group assignment, aging at \u03a0 < 0.05 (195 proteins)",
+  AgePi_cls = "S4b: per-protein cluster classification, aging at \u03a0 < 0.05",
+  TrFDR_grp = "S4b: group assignment, training (younger) at FDR < 0.05 (135)",
+  TrFDR_cls = "S4b: cluster classification, training (younger) at FDR < 0.05",
+  TrPi_grp = "S4b: group assignment, training (younger) at \u03a0 < 0.05 (99)",
+  TrPi_cls = "S4b: cluster classification, training (younger) at \u03a0 < 0.05",
+  SUPP_panel_P_Value = "S4a panel A: raw p-values, all four contrasts, as drawn",
+  SUPP_panel_pi_score = "S4a panel B: \u03a0 scores, all four contrasts",
+  SUPP_panel_adj_P_Val = "S4a panel C: BH-adjusted p-values, all four contrasts",
+  SUPP_panel_C_ma = "S4a panel D: MA-plot source, mean log2 intensity against log2 fold change"
+)
+f03_sheet_names <- vapply(f03_specs, `[[`, character(1), "name")
+missing_desc <- setdiff(f03_sheet_names, names(f03_descriptions))
+if (length(missing_desc)) {
+  stop("no F03 description for: ", paste(missing_desc, collapse = ", "))
+}
 
 build_workbook(
   file.path(DAT, "F03_supplementary.xlsx"),
-  title = "F03 \u2014 Volcano ring source data",
-  description = "Per-contrast DEP tables, ring terms, and supp diagnostics.",
-  overview_df = data.frame(Sheet = sapply(f03_specs, `[[`, "name"),
-                           Description = sapply(f03_specs, `[[`, "name")),
-  sheet_specs = f03_specs)
+  title = "S4 Table \u2014 per-contrast results and significance criteria",
+  description = "Source data for Figure 3, S4a Figure and S4b Figure: the pathway terms each volcano ring labels, the FDR and \u03a0 heatmap groupings, and the model diagnostics S4a draws. Per-contrast limma results are in S10 Table.",
+  overview_df = data.frame(
+    Sheet = f03_sheet_names,
+    Description = unname(f03_descriptions[f03_sheet_names])
+  ),
+  sheet_specs = f03_specs
+)
 cleanup_after_workbook(f03_specs,
-  extra_subdirs = c(file.path(DAT, "panel_A"), file.path(DAT, "panel_B"),
-                    file.path(DAT, "panel_C"), file.path(DAT, "panel_D"),
-                    file.path(DAT, "supp")))
+  extra_subdirs = c(
+    file.path(DAT, "panel_A"), file.path(DAT, "panel_B"),
+    file.path(DAT, "panel_C"), file.path(DAT, "panel_D"),
+    file.path(DAT, "sig_heatmaps"), file.path(DAT, "supp")
+  )
+)
 
 BOX <- Sys.getenv("YVO_BOX_DIR", unset = "")
 if (nzchar(BOX) && dir.exists(BOX)) {
   RPT <- "04_Figures/F03/b_reports"
-  box_pdf     <- file.path(BOX, "02_Figures", "pdf")
-  box_png     <- file.path(BOX, "02_Figures", "png")
+  box_pdf <- file.path(BOX, "02_Figures", "pdf")
+  box_png <- file.path(BOX, "02_Figures", "png")
   box_fig_pdf <- file.path(BOX, "03_Supplementary", "figures", "pdf")
   box_fig_png <- file.path(BOX, "03_Supplementary", "figures", "png")
-  box_tbl     <- file.path(BOX, "03_Supplementary", "tables")
-  for (d in c(box_pdf, box_png, box_fig_pdf, box_fig_png, box_tbl))
+  box_tbl <- file.path(BOX, "03_Supplementary", "tables")
+  for (d in c(box_pdf, box_png, box_fig_pdf, box_fig_png, box_tbl)) {
     dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  }
   file.copy(file.path(RPT, "main/pdf/MAIN_F03_composite.pdf"),
-            file.path(box_pdf, "MAIN_F03_composite.pdf"), overwrite = TRUE)
+    file.path(box_pdf, "MAIN_F03_composite.pdf"),
+    overwrite = TRUE
+  )
   file.copy(file.path(RPT, "main/png/MAIN_F03_composite.png"),
-            file.path(box_png, "MAIN_F03_composite.png"), overwrite = TRUE)
+    file.path(box_png, "MAIN_F03_composite.png"),
+    overwrite = TRUE
+  )
   file.copy(file.path(RPT, "supp/pdf/SUPP_F03_composite.pdf"),
-            file.path(box_fig_pdf, "S05_Figure_F03.pdf"), overwrite = TRUE)
+    file.path(box_fig_pdf, "S05_Figure_F03.pdf"),
+    overwrite = TRUE
+  )
   file.copy(file.path(RPT, "supp/png/SUPP_F03_composite.png"),
-            file.path(box_fig_png, "S05_Figure_F03.png"), overwrite = TRUE)
+    file.path(box_fig_png, "S05_Figure_F03.png"),
+    overwrite = TRUE
+  )
+  for (stub in c("aging_fdr_heatmap", "aging_pi_heatmap", "training_fdr_heatmap", "training_pi_heatmap")) {
+    file.copy(file.path(RPT, "supp/pdf", sprintf("SUPP_F03_%s.pdf", stub)),
+      file.path(box_fig_pdf, sprintf("SUPP_F03_%s.pdf", stub)),
+      overwrite = TRUE
+    )
+    file.copy(file.path(RPT, "supp/png", sprintf("SUPP_F03_%s.png", stub)),
+      file.path(box_fig_png, sprintf("SUPP_F03_%s.png", stub)),
+      overwrite = TRUE
+    )
+  }
   file.copy(file.path(DAT, "F03_supplementary.xlsx"),
-            file.path(box_tbl, "S07_Table_F03.xlsx"), overwrite = TRUE)
+    file.path(box_tbl, "S07_Table_F03.xlsx"),
+    overwrite = TRUE
+  )
   message("Copied F03 outputs to Box")
 }
 
