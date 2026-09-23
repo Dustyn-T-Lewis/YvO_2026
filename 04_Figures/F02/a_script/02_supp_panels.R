@@ -5,6 +5,11 @@ setwd(here::here())
 
 pacman::p_load(dplyr, tidyr, stringr, readr, readxl, ggplot2, ggrepel, ggbeeswarm, patchwork, cowplot)
 
+# ggrepel places labels by a stochastic search, so an unseeded render puts
+# them somewhere new each time. run_all.R runs each script in its own
+# Rscript child, which starts from a time-seeded RNG.
+set.seed(42)
+
 source("04_Figures/shared/style.R")
 
 # F02-specific overrides
@@ -52,7 +57,7 @@ dir.create(SUPP_PNG, recursive = TRUE, showWarnings = FALSE)
 dir.create(SUPP_PDF, recursive = TRUE, showWarnings = FALSE)
 
 COMP_W <- 178; COMP_H <- 115
-txt <- composite_text_sizes(COMP_H)
+txt <- composite_text_sizes(COMP_W)
 
 # pA12/pA3 from _supp_A (CV scatter), pB from _supp_B (CV violin), pC from _supp_C (imputed)
 pSA_full <- (pA12 | pA3) + plot_layout(widths = c(2, 1))

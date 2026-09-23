@@ -6,39 +6,45 @@
 # Assumes style.R sourced and packages loaded by calling script
 
 DEP_FILE <- "03_DEP/c_data/03_combined_results.csv"
-RPT_PNG  <- "04_Figures/F02/b_reports/main/png/panels"
-RPT_PDF  <- "04_Figures/F02/b_reports/main/pdf/panels"
-DAT      <- "04_Figures/F02/c_data"
+RPT_PNG <- "04_Figures/F02/b_reports/main/png/panels"
+RPT_PDF <- "04_Figures/F02/b_reports/main/pdf/panels"
+DAT <- "04_Figures/F02/c_data"
 for (d in c(RPT_PNG, RPT_PDF, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 CONTRASTS <- c("Aging", "Training_Young", "Training_Old", "Interaction")
-dep_df    <- read_csv(DEP_FILE, show_col_types = FALSE)
+dep_df <- read_csv(DEP_FILE, show_col_types = FALSE)
 pdf_device <- get_pdf_device()
 
-PC_W <- 67   # J Physiol: col 1 of 3×2 at 178mm
+PC_W <- 67 # J Physiol: col 1 of 3×2 at 178mm
 PC_H <- 55
 
-SET_LABELS <- c(Aging = "Aging", Training_Young = "Tr.(Y)",
-                Training_Old = "Tr.(O)", Interaction = "Inter.")
+SET_LABELS <- c(
+  Aging = "Aging", Training_Young = "Tr.(Y)",
+  Training_Old = "Tr.(O)", Interaction = "Inter."
+)
 
-SET_DISPLAY_COLORS <- c("Aging"  = unname(CONTRAST_COLORS["Aging"]),
-                        "Tr.(Y)" = unname(CONTRAST_COLORS["Training_Young"]),
-                        "Tr.(O)" = unname(CONTRAST_COLORS["Training_Old"]),
-                        "Inter." = unname(CONTRAST_COLORS["Interaction"]))
+SET_DISPLAY_COLORS <- c(
+  "Aging" = unname(CONTRAST_COLORS["Aging"]),
+  "Tr.(Y)" = unname(CONTRAST_COLORS["Training_Young"]),
+  "Tr.(O)" = unname(CONTRAST_COLORS["Training_Old"]),
+  "Inter." = unname(CONTRAST_COLORS["Interaction"])
+)
 
 all_genes <- unique(dep_df$gene[!is.na(dep_df$gene)])
 
 # Build Pi-score significant sets and direction maps
 # sig_pi != 0 is equivalent to pi_score < 0.05 by construction (see 03_DEP/01_run_dep.R)
 sig_sets <- list()
-dir_map  <- list()
+dir_map <- list()
 
 for (ctr in CONTRASTS) {
-  sig_pi  <- dep_df[[paste0("sig_pi_", ctr)]]
-  is_sig  <- !is.na(sig_pi) & sig_pi != 0
+  sig_pi <- dep_df[[paste0("sig_pi_", ctr)]]
+  is_sig <- !is.na(sig_pi) & sig_pi != 0
   sig_sets[[ctr]] <- dep_df$gene[is_sig]
-  dir_map[[ctr]]  <- setNames(ifelse(sig_pi[is_sig] > 0, "Up", "Down"),
-                               dep_df$gene[is_sig])
+  dir_map[[ctr]] <- setNames(
+    ifelse(sig_pi[is_sig] > 0, "Up", "Down"),
+    dep_df$gene[is_sig]
+  )
 }
 
 bin_mat <- sapply(sig_sets, function(s) as.integer(all_genes %in% s))
@@ -51,11 +57,11 @@ cs <- comb_size(cm)
 keep <- cs > 0 & comb_degree(cm) > 0
 cm_sub <- cm[keep]
 
-comb_names_vec    <- comb_name(cm_sub)
-n_comb            <- length(comb_names_vec)
+comb_names_vec <- comb_name(cm_sub)
+n_comb <- length(comb_names_vec)
 set_names_ordered <- set_name(cm_sub)
-up_counts    <- numeric(n_comb)
-down_counts  <- numeric(n_comb)
+up_counts <- numeric(n_comb)
+down_counts <- numeric(n_comb)
 mixed_counts <- numeric(n_comb)
 
 for (i in seq_len(n_comb)) {
@@ -70,8 +76,8 @@ for (i in seq_len(n_comb)) {
     dirs <- dirs[!is.na(dirs)]
     if (all(dirs == "Up")) "Up" else if (all(dirs == "Down")) "Down" else "Mixed"
   })
-  up_counts[i]    <- sum(gene_dirs == "Up")
-  down_counts[i]  <- sum(gene_dirs == "Down")
+  up_counts[i] <- sum(gene_dirs == "Up")
+  down_counts[i] <- sum(gene_dirs == "Down")
   mixed_counts[i] <- sum(gene_dirs == "Mixed")
 }
 
@@ -80,11 +86,15 @@ overlap_tests <- list()
 contrast_pairs <- combn(CONTRASTS, 2, simplify = FALSE)
 n_bg <- length(all_genes)
 for (pair in contrast_pairs) {
-  a <- sig_sets[[pair[1]]]; b <- sig_sets[[pair[2]]]
+  a <- sig_sets[[pair[1]]]
+  b <- sig_sets[[pair[2]]]
   n_both <- length(intersect(a, b))
-  n_a    <- length(a); n_b <- length(b)
-  mat <- matrix(c(n_both, n_a - n_both, n_b - n_both,
-                  n_bg - n_a - n_b + n_both), nrow = 2)
+  n_a <- length(a)
+  n_b <- length(b)
+  mat <- matrix(c(
+    n_both, n_a - n_both, n_b - n_both,
+    n_bg - n_a - n_b + n_both
+  ), nrow = 2)
   ft <- fisher.test(mat, alternative = "greater")
   overlap_tests[[paste(pair, collapse = " & ")]] <- data.frame(
     set_A = pair[1], set_B = pair[2],
@@ -98,54 +108,61 @@ overlap_df$p_bh <- p.adjust(overlap_df$p_value, method = "BH")
 n_sig_overlaps <- sum(overlap_df$p_bh < 0.05)
 write.csv(overlap_df, file.path(DAT, "panel_D_upset_overlap_enrich.csv"), row.names = FALSE)
 
-display_total <- up_counts + down_counts
-keep_display  <- display_total > 0
+display_total <- up_counts + down_counts + mixed_counts
+keep_display <- display_total > 0
 # Single-contrast bars first (in Aging, Tr.(Y), Tr.(O), Inter. order), then
 # intersections by descending size. set_name order == set_display_order, so the
 # position of a single bar's set bit gives its display rank.
 comb_deg_all <- vapply(comb_names_vec, \(cn) sum(as.integer(strsplit(cn, "")[[1]])), integer(1))
-single_pos   <- vapply(comb_names_vec, \(cn) {
+single_pos <- vapply(comb_names_vec, \(cn) {
   bits <- as.integer(strsplit(cn, "")[[1]])
   if (sum(bits) == 1) which(bits == 1L) else NA_integer_
 }, integer(1))
-kept     <- which(keep_display)
-comb_ord <- kept[order(comb_deg_all[kept] != 1,
-                       ifelse(comb_deg_all[kept] == 1, single_pos[kept], 0L),
-                       -display_total[kept])]
-up_ord   <- up_counts[comb_ord]
+kept <- which(keep_display)
+comb_ord <- kept[order(
+  comb_deg_all[kept] != 1,
+  ifelse(comb_deg_all[kept] == 1, single_pos[kept], 0L),
+  -display_total[kept]
+)]
+up_ord <- up_counts[comb_ord]
 down_ord <- down_counts[comb_ord]
+mixed_ord <- mixed_counts[comb_ord]
 
 set_display_order <- c("Aging", "Tr.(Y)", "Tr.(O)", "Inter.")
-n_int          <- length(comb_ord)
+n_int <- length(comb_ord)
 comb_names_ord <- comb_names_vec[comb_ord]
-set_order_ch   <- set_name(cm_sub)
-set_y_levels   <- rev(set_display_order)
+set_order_ch <- set_name(cm_sub)
+set_y_levels <- rev(set_display_order)
 
 comb_deg_ord <- vapply(comb_names_ord, function(cn) {
   sum(as.integer(strsplit(cn, "")[[1]]))
 }, integer(1))
 
 bar_long <- tibble(
-  x         = rep(seq_len(n_int), 2),
-  direction = factor(rep(c("Up", "Down"), each = n_int), levels = c("Down", "Up")),
-  count     = c(up_ord, down_ord),
-  is_single = rep(comb_deg_ord == 1, 2)
-)
+  x = rep(seq_len(n_int), 3),
+  direction = factor(rep(c("Up", "Down", "Mixed"), each = n_int),
+    levels = c("Down", "Up", "Mixed")
+  ),
+  count = c(up_ord, down_ord, mixed_ord),
+  is_single = rep(comb_deg_ord == 1, 3)
+) |>
+  filter(!(direction == "Mixed" & count == 0))
 
 dot_df <- expand_grid(x = seq_len(n_int), set = set_display_order)
 dot_df$active <- vapply(seq_len(nrow(dot_df)), function(r) {
   bits <- as.integer(strsplit(comb_names_ord[dot_df$x[r]], "")[[1]])
   as.logical(bits[match(dot_df$set[r], set_order_ch)])
 }, logical(1))
-dot_df$set  <- factor(dot_df$set, levels = set_y_levels)
+dot_df$set <- factor(dot_df$set, levels = set_y_levels)
 dot_df$ynum <- as.numeric(dot_df$set)
 
 seg_list <- vector("list", n_int)
 for (i in seq_len(n_int)) {
   bits <- as.logical(as.integer(strsplit(comb_names_ord[i], "")[[1]]))
   ypos <- match(set_order_ch[bits], set_y_levels)
-  if (length(ypos) > 1)
+  if (length(ypos) > 1) {
     seg_list[[i]] <- tibble(x = i, ymin = min(ypos), ymax = max(ypos))
+  }
 }
 seg_df <- bind_rows(seg_list)
 
@@ -153,21 +170,24 @@ stripe_fills <- adjustcolor(unname(SET_DISPLAY_COLORS[set_y_levels]), alpha.f = 
 
 bar_bg_list <- lapply(seq_len(n_int), function(i) {
   bits <- as.logical(as.integer(strsplit(comb_names_ord[i], "")[[1]]))
-  if (sum(bits) != 1) return(NULL)
-  tibble(xmin = i - 0.5, xmax = i + 0.5,
-         fill = unname(SET_DISPLAY_COLORS[set_order_ch[bits]]))
+  if (sum(bits) != 1) {
+    return(NULL)
+  }
+  tibble(
+    xmin = i - 0.5, xmax = i + 0.5,
+    fill = unname(SET_DISPLAY_COLORS[set_order_ch[bits]])
+  )
 })
 bar_bg <- bind_rows(compact(bar_bg_list))
 
-lbl_sz <- scale_text(BASE_COUNT, PC_W)
+lbl_sz <- FIG_AXIS_TEXT / .pt
 
 # Total unique DEPs across all exclusive partitions (for subtitle)
 n_unique_deps <- sum(comb_size(cm_sub))
 
-# Data-driven y-axis: headroom above tallest bar for labels
-y_max <- ceiling(max(c(up_ord, down_ord)) * 1.1 / 10) * 10
-# Only bars at least this tall hold a centred in-bar label; shorter bars label above
-in_bar_min <- 0.15 * y_max
+# Data-driven y-axis: headroom above the tallest bar for its label
+y_max <- ceiling(max(c(up_ord, down_ord, mixed_ord)) * 1.16 / 10) * 10
+BAR_DODGE <- 0.85
 
 # Gray vertical divider position: between bars with (up, down) counts
 # (6, 4) and (2, 4), independent of direction orientation. If neither
@@ -191,132 +211,181 @@ sig_overlaps <- overlap_df |>
   mutate(
     set_A_short = CTR_SHORT[set_A],
     set_B_short = CTR_SHORT[set_B],
-    label = sprintf("%s x %s: OR=%.1f, %s",
-                    set_A_short, set_B_short,
-                    odds_ratio, sapply(p_bh, fmt_p))
+    label = sprintf(
+      "%s x %s: OR=%.1f, %s",
+      set_A_short, set_B_short,
+      odds_ratio, sapply(p_bh, fmt_p)
+    )
   )
 
 if (nrow(sig_overlaps) > 0) {
   overlap_annotation <- paste(sig_overlaps$label, collapse = "\n")
-  top_or_txt <- sprintf("Strong %s<->%s convergence (OR=%.1f)",
-                        sig_overlaps$set_A_short[1],
-                        sig_overlaps$set_B_short[1],
-                        sig_overlaps$odds_ratio[1])
+  top_or_txt <- sprintf(
+    "Strong %s<->%s convergence (OR=%.1f)",
+    sig_overlaps$set_A_short[1],
+    sig_overlaps$set_B_short[1],
+    sig_overlaps$odds_ratio[1]
+  )
 } else {
   overlap_annotation <- "No significant pairwise overlaps"
   top_or_txt <- ""
 }
 
 pD_bars <- ggplot(bar_long, aes(x, count, fill = direction)) +
-  geom_rect(data = bar_bg,
-            aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf),
-            fill = bar_bg$fill, alpha = 0.20,
-            color = "grey70", linewidth = 0.2, inherit.aes = FALSE) +
+  geom_rect(
+    data = bar_bg,
+    aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf),
+    fill = bar_bg$fill, alpha = 0.20,
+    color = "grey70", linewidth = 0.2, inherit.aes = FALSE
+  ) +
   # Divider matches pD_bars' major-y gridline shade (grey80, linewidth 0.3);
   # only drawn in pD_bars so it stops at the x-axis and does not extend
   # into the dot matrix below.
-  {if (!is.na(divider_x))
-    geom_vline(xintercept = divider_x, color = "grey80",
-               linewidth = 0.3, inherit.aes = FALSE)} +
-  geom_col(position = position_dodge(width = 0.7), width = 0.6,
-           color = "black", linewidth = 0.3) +
-  # Single-origin bars tall enough to hold a centred in-bar label
-  geom_text(data = \(d) d |> filter(count >= in_bar_min, is_single),
-            aes(label = as.integer(count), y = count / 2),
-            position = position_dodge(width = 0.7), vjust = 0.5,
-            size = lbl_sz - 0.7, color = "white", fontface = "bold") +
-  # Above-bar labels use a manual Down-left / Up-right offset: position_dodge
-  # collapses to centre when only one direction is present at an x (e.g. the
-  # Inter. bar, up 5 / down 0).
-  geom_text(data = \(d) d |> filter(count > 0, count < in_bar_min, is_single),
-            aes(x = x + ifelse(direction == "Up", 0.2, -0.2),
-                label = as.integer(count), y = count + 2),
-            vjust = 0, size = lbl_sz - 0.7, color = "black", fontface = "bold") +
-  # Zero-count single-origin bars: show "0" above for symmetry
-  geom_text(data = \(d) d |> filter(count == 0, is_single),
-            aes(x = x + ifelse(direction == "Up", 0.2, -0.2), label = "0", y = 2),
-            vjust = 0, size = lbl_sz - 0.7, color = "black", fontface = "bold") +
-  # Multi-origin bars: above, black
-  geom_text(data = \(d) d |> filter(count > 0, !is_single),
-            aes(x = x + ifelse(direction == "Up", 0.2, -0.2),
-                label = as.integer(count), y = count + 2),
-            vjust = 0, size = lbl_sz - 0.7, color = "black", fontface = "bold",
-            check_overlap = TRUE) +
-  scale_fill_manual(values = c(Up = unname(DIR_COLORS["Up"]),
-                                Down = unname(DIR_COLORS["Down"]))) +
+  {
+    if (!is.na(divider_x)) {
+      geom_vline(
+        xintercept = divider_x, color = "grey80",
+        linewidth = 0.3, inherit.aes = FALSE
+      )
+    }
+  } +
+  geom_col(
+    position = position_dodge(width = BAR_DODGE), width = 0.8,
+    color = "black", linewidth = 0.3
+  ) +
+  # Every count sits above its own bar, sharing geom_col's dodge so a label
+  # tracks its bar whether one, two, or three directions are present at that x.
+  # Zero-count single-origin bars still show "0" for row symmetry; zero-count
+  # multi-way sub-bars are omitted.
+  geom_text(
+    aes(
+      label = ifelse(count > 0 | is_single, as.integer(count), ""),
+      y = pmax(count, 0) + y_max * 0.02
+    ),
+    position = position_dodge(width = BAR_DODGE), vjust = 0,
+    size = lbl_sz, color = "grey15", fontface = "bold"
+  ) +
+  scale_fill_manual(values = c(
+    Up = unname(DIR_COLORS["Up"]),
+    Down = unname(DIR_COLORS["Down"]),
+    Mixed = "grey55"
+  )) +
   scale_x_continuous(expand = expansion(add = 0)) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0)),
-                     breaks = scales::breaks_pretty(n = 4)) +
+  scale_y_continuous(
+    expand = expansion(mult = c(0, 0)),
+    breaks = scales::breaks_pretty(n = 4)
+  ) +
   coord_cartesian(xlim = c(0.5, n_int + 0.5), ylim = c(0, y_max)) +
-  labs(title = "Contrast Overlap (UpSet)",
-       subtitle = sprintf("%d unique \u03A0 DEPs | %d/%d sig overlaps",
-                          n_unique_deps, n_sig_overlaps, nrow(overlap_df)),
-       y = NULL) +
+  labs(
+    title = "Contrast Overlap (UpSet)",
+    subtitle = sprintf(
+      "%d unique \u03A0 DEPs | %d/%d sig overlaps",
+      n_unique_deps, n_sig_overlaps, nrow(overlap_df)
+    ),
+    y = NULL
+  ) +
   FIG_THEME +
-  theme(plot.subtitle = element_text(size = FIG_SUBTITLE_SIZE,
-                                     face = "bold.italic", color = "grey40"),
-        axis.text.x  = element_blank(), axis.ticks.x = element_blank(),
-        axis.title.x = element_blank(),
-        panel.grid.major.x = element_blank(),
-        # Darker y-grid so lines remain legible under 0.20-alpha contrast
-        # rectangles AND in the unshaded overlap columns
-        panel.grid.major.y = element_line(color = "grey80", linewidth = 0.3),
-        panel.grid.minor   = element_blank(),
-        legend.position = "none",
-        # Minimal margins — D fills column cell; wrap_elements() alignment
-        plot.margin = margin(2, 0, 0, 0))
+  theme(
+    plot.subtitle = element_text(
+      size = FIG_SUBTITLE_SIZE,
+      face = "bold.italic", color = "grey40"
+    ),
+    axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    # Darker y-grid so lines remain legible under 0.20-alpha contrast
+    # rectangles AND in the unshaded overlap columns
+    panel.grid.major.y = element_line(color = "grey80", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    legend.position = "none",
+    # Left margin reserves room for 3-digit y-axis labels -- at 0 they
+    # clip their leading digit against the device edge (100 -> "00").
+    plot.margin = margin(2, 0, 0, 5)
+  )
 
 pD_dots <- ggplot() +
   annotate("rect",
-           xmin = 0.5, xmax = n_int + 0.5,
-           ymin = seq_along(set_y_levels) - 0.45,
-           ymax = seq_along(set_y_levels) + 0.45,
-           fill = stripe_fills) +
-  {if (nrow(seg_df) > 0)
-    geom_segment(data = seg_df,
-                 aes(x = x, xend = x, y = ymin, yend = ymax),
-                 linewidth = 0.6, color = "grey25")} +
-  geom_point(data = dot_df |> filter(!active),
-             aes(x = x, y = ynum), color = "grey78", size = 1.6) +
-  geom_point(data = dot_df |> filter(active),
-             aes(x = x, y = ynum), color = "grey15", size = 1.6) +
+    xmin = 0.5, xmax = n_int + 0.5,
+    ymin = seq_along(set_y_levels) - 0.45,
+    ymax = seq_along(set_y_levels) + 0.45,
+    fill = stripe_fills
+  ) +
+  {
+    if (nrow(seg_df) > 0) {
+      geom_segment(
+        data = seg_df,
+        aes(x = x, xend = x, y = ymin, yend = ymax),
+        linewidth = 0.6, color = "grey25"
+      )
+    }
+  } +
+  geom_point(
+    data = dot_df |> filter(!active),
+    aes(x = x, y = ynum), color = "grey78", size = 1.6
+  ) +
+  geom_point(
+    data = dot_df |> filter(active),
+    aes(x = x, y = ynum), color = "grey15", size = 1.6
+  ) +
   scale_x_continuous(expand = expansion(add = 0)) +
-  scale_y_continuous(breaks = seq_along(set_y_levels), labels = set_y_levels,
-                     expand = expansion(add = 0)) +
+  scale_y_continuous(
+    breaks = seq_along(set_y_levels), labels = set_y_levels,
+    expand = expansion(add = 0)
+  ) +
   coord_cartesian(xlim = c(0.5, n_int + 0.5), ylim = c(0.50, 4.50)) +
   labs(x = NULL, y = NULL) +
   FIG_THEME +
-  theme(axis.text.x  = element_blank(), axis.ticks = element_blank(),
-        panel.grid   = element_blank(),
-        panel.border = element_rect(color = "grey70", fill = NA, linewidth = 0.3),
-        axis.text.y  = element_text(size = FIG_AXIS_TEXT - 0.5, face = "bold",
-                                     margin = margin(r = 1)),
-        # Match pD_bars — minimal margins for wrap_elements alignment
-        plot.margin  = margin(0, 0, 0, 0))
+  theme(
+    axis.text.x = element_blank(), axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    panel.border = element_rect(color = "grey70", fill = NA, linewidth = 0.3),
+    axis.text.y = element_text(
+      size = FIG_AXIS_TEXT - 0.5, face = "bold",
+      margin = margin(r = 1)
+    ),
+    # Match pD_bars — minimal margins for wrap_elements alignment
+    plot.margin = margin(0, 0, 0, 0)
+  )
 
 pD_pw_standalone <- (pD_bars / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
-  plot_annotation(theme = theme(plot.margin = margin(t = 2, r = 2, b = 4, l = 0)))
+  plot_annotation(theme = theme(plot.margin = margin(t = 2, r = 2, b = 4, l = 5)))
 
-# Build clean version (no title/subtitle) for composite export
-pD_bars_clean <- pD_bars + labs(title = NULL, subtitle = NULL)
+# Build clean version (no title/subtitle) for composite export.
+#
+# The composite copy also drops the bar plot's 5 pt left margin and trims the
+# patchwork's own left margin: together they pull the shared left edge 8.25 pt
+# out so D's panel border lines up with panel A's at ~22.3 pt. Only the
+# composite needs this -- standalone D keeps the margin that stops "100" from
+# clipping against the device edge. "Intersection size" is drawn on the
+# canvas, not the gtable, so it stays where it is; the bar plot's own y-axis
+# numbers move left to within ~2 pt of it, which is as far as this can go.
+pD_bars_clean <- pD_bars + labs(title = NULL, subtitle = NULL) +
+  theme(plot.margin = margin(2, 0, 0, 0))
 pD_pw <- (pD_bars_clean / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
-  plot_annotation(theme = theme(plot.margin = margin(t = 4, r = 2, b = 4, l = 0)))
+  plot_annotation(
+    theme = theme(plot.margin = margin(t = 4, r = 2, b = 4, l = 1.75))
+  )
 
-# Direction key — mirrors panel E's make_key_plot() style (theme_void, no background)
+# Direction key — mirrors panel E's make_key_plot() style (theme_void, no
+# background). Mixed included so its grey bars don't rely on spelling out
+# "mixed" in the bar labels to be understood.
 dir_key_df_D <- tibble(
-  label = c("Up", "Down"),
-  y     = c(0, -0.002),
-  fill  = c(unname(DIR_COLORS["Up"]), unname(DIR_COLORS["Down"]))
+  label = c("Up", "Down", "Mixed"),
+  y     = c(0, -0.002, -0.004),
+  fill  = c(unname(DIR_COLORS["Up"]), unname(DIR_COLORS["Down"]), "grey55")
 )
 
 p_key_dir_D <- ggplot(dir_key_df_D) +
-  geom_point(aes(x = 0, y = y), shape = 22, size = 1.8,
-             fill = dir_key_df_D$fill,
-             color = "grey30", stroke = 0.3) +
+  geom_point(aes(x = 0, y = y),
+    shape = 22, size = 1.8,
+    fill = dir_key_df_D$fill,
+    color = "grey30", stroke = 0.3
+  ) +
   geom_text(aes(x = 0.20, y = y, label = label),
-            size = 1.5, color = "grey20", hjust = 0) +
+    size = 1.5, color = "grey20", hjust = 0, fontface = "bold"
+  ) +
   scale_x_continuous(limits = c(-0.2, 1.2)) +
-  coord_cartesian(ylim = c(-0.006, 0.003), clip = "off") +
+  coord_cartesian(ylim = c(-0.0075, 0.003), clip = "off") +
   theme_void() +
   theme(plot.margin = margin(0, 0, 0, 0))
 
@@ -325,27 +394,39 @@ p_key_dir_D <- ggplot(dir_key_df_D) +
 # (6,4) and (2,4) bars is drawn in-plot via geom_vline instead).
 
 pD_standalone <- ggdraw(pD_pw_standalone) +
-  draw_label("Intersection size", x = 0.02, y = 0.58, angle = 90,
-             size = 5, fontface = "bold") +
-  draw_plot(p_key_dir_D, x = 0.83, y = 0.70, width = 0.14, height = 0.22)
+  draw_label("Intersection size",
+    x = 0.02, y = 0.58, angle = 90,
+    size = 5, fontface = "bold"
+  ) +
+  draw_plot(p_key_dir_D, x = 0.83, y = 0.72, width = 0.14, height = 0.28)
 
 ggsave(file.path(RPT_PNG, "MAIN_panel_D_upset.png"), pD_standalone,
-       width = PC_W, height = PC_H, units = "mm", dpi = 300)
+  width = PC_W, height = PC_H, units = "mm", dpi = 300
+)
 ggsave(file.path(RPT_PDF, "MAIN_panel_D_upset.pdf"), pD_standalone,
-       width = PC_W, height = PC_H, units = "mm", device = pdf_device)
+  width = PC_W, height = PC_H, units = "mm", device = pdf_device
+)
 
 # Clean version (no title/subtitle) for composite — title placed at composite level
 pD <- ggdraw(pD_pw) +
-  draw_label("Intersection size", x = 0.02, y = 0.58, angle = 90,
-             size = 5, fontface = "bold") +
-  draw_plot(p_key_dir_D, x = 0.87, y = 0.80, width = 0.12, height = 0.16)
+  draw_label("Intersection size",
+    x = 0.02, y = 0.58, angle = 90,
+    size = 5, fontface = "bold"
+  ) +
+  # Drawn on the whole-panel canvas, so y has to clear the dot matrix and the
+  # bar tops. 0.757 puts its first label level with panel E's two key columns:
+  # E's sit at 171.8 pt on the composite, D's at 181.6, and the bottom row is
+  # 172.77 pt tall, so 9.8 / 172.77 = 0.057 above the old 0.70.
+  draw_plot(p_key_dir_D, x = 0.87, y = 0.757, width = 0.12, height = 0.22)
 
 message("F02 Panel D (upset, Pi-score) done")
 
 # Export for composite
 # pD is a ggdraw/cowplot object — strip_for_composite() does not apply.
 # Title/subtitle exported for composite-level placement via draw_label().
-pD_title    <- "Contrast Overlap (UpSet)"
-pD_subtitle <- sprintf("%d unique \u03A0 DEPs | %d/%d sig overlaps",
-                        n_unique_deps, n_sig_overlaps, nrow(overlap_df))
-pD_legend   <- NULL
+pD_title <- "Contrast Overlap (UpSet)"
+pD_subtitle <- sprintf(
+  "%d unique \u03A0 DEPs | %d/%d sig overlaps",
+  n_unique_deps, n_sig_overlaps, nrow(overlap_df)
+)
+pD_legend <- NULL
