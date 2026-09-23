@@ -38,8 +38,8 @@ module grid before panel A, hero grid before the panel B sweep, `_supp_prepare_r
 `_supp_roc_panel`. `02_supp_panels.R` runs after, reading only rendered PNGs.
 
 `90_stitch_F06.R` ends by removing every remaining `.csv` under `c_data`. The workbook is
-the only surviving copy, and it is what `abstract_panels` reads. Verified 2026-09-22: the
-workbook rebuilds byte-identically from an empty `c_data`, so a fresh clone is sufficient.
+the only surviving copy, and it is what `abstract_panels` reads. It rebuilds from an empty
+`c_data`, so nothing here needs to be present before a run.
 
 ## Cost
 
