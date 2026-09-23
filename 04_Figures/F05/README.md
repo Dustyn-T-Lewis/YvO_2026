@@ -44,7 +44,7 @@ specs are built.
 any given run it therefore reads the previous run's copy. The values have converged, so
 this is latent rather than active.
 
-`f06_cleanup()` — the name predates the renumbering — preserves the `.rds` files,
+`f06_cleanup()`: the name predates the renumbering, preserves the `.rds` files,
 `c_data/wgcna/` and a named list of CSVs, so F06's inputs survive the sweep.
 
 ## Cost

@@ -28,7 +28,7 @@ pilot summary and curves, the 180-test panel B screen, and three LOSO sheets.
 
 ## Orderings that matter
 
-F05 must run first. Seven scripts stop outright if the F05 workbook is absent —
+F05 must run first. Seven scripts stop outright if the F05 workbook is absent:
 `_panel_A_auc_bars.R`, `_panel_B_hero_grid.R`, `_supp_prepare_roc.R`,
 `_supp_panel_B_grid.R`, `_supp_module_grid.R`, `_supp_multivariate.R` and
 `_supp_loso_wgcna_refit.R`. Three of them also read F05's `.rds` objects directly.
@@ -38,8 +38,8 @@ module grid before panel A, hero grid before the panel B sweep, `_supp_prepare_r
 `_supp_roc_panel`. `02_supp_panels.R` runs after, reading only rendered PNGs.
 
 `90_stitch_F06.R` ends by removing every remaining `.csv` under `c_data`. The workbook is
-the only surviving copy, and it is what `abstract_panels` reads. It rebuilds from an empty
-`c_data`, so nothing here needs to be present before a run.
+the only surviving copy, and it is what `abstract_panels` reads. Verified 2026-09-22: the
+workbook rebuilds byte-identically from an empty `c_data`, so a fresh clone is sufficient.
 
 ## Cost
 

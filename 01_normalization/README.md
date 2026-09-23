@@ -21,15 +21,15 @@ Rscript 01_normalization/a_script/03_fraction_composition.R
 
 ## What comes out
 
-`01_normalization.xlsx` — 9 sheets, ships as S8 Table.
+`01_normalization.xlsx`: 9 sheets, ships as S8 Table.
 
-`02_normalized.csv` — the text serialisation that stage 02 and `03_DEP/01_run_dep.R` both
+`02_normalized.csv`: the text serialisation that stage 02 and `03_DEP/01_run_dep.R` both
 read in place of the RDS, so missForest splits and the limma fit do not shift with a
 binary-double round trip.
 
-`03_DAList_normalized.rds` — read by stages 02 and 03, `03_DEP/supp/05` and 04_Figures.
+`03_DAList_normalized.rds`: read by stages 02 and 03, `03_DEP/supp/05` and 04_Figures.
 
-`00_report_intermediates.rds` — read by `02_generate_reports.R`, by
+`00_report_intermediates.rds`: read by `02_generate_reports.R`, by
 `03_DEP/a_script/02_generate_reports.R` for the 64-against-62 sensitivity table, and by
 `F00/a_script/01_supp_panels.R`.
 
