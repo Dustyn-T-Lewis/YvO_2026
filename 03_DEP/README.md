@@ -29,14 +29,27 @@ Rscript 03_DEP/supp/05_supplement_sensitivity.R
 
 ## What comes out
 
-`03_DEP_results.xlsx` — 17 sheets, ships as S10 Table, built in three passes: 6 by
+`03_DEP_results.xlsx`: 17 sheets, ships as S10 Table, built in three passes: 6 by
 `01_run_dep.R`, 1 by `02_generate_reports.R`, 4 by `supp/01`, 5 plus Overview by `supp/02`.
 
-`03_combined_results.csv` — one row per protein with `logFC_`, `P.Value_`, `adj.P.Val_`,
+`03_combined_results.csv`: one row per protein with `logFC_`, `P.Value_`, `adj.P.Val_`,
 `pi_score_` and `sig_pi_` per contrast. Read by `supp/03`, `supp/04` and most of 04_Figures.
 
-The matrix of record: 2,106 proteins, FDR 135/0/278/1, Pi 99/18/195/33, smallest
-Training_Old adjusted p 0.156 tied between HPRT1 and FSCN1.
+The matrix of record, 2,106 proteins across 62 samples. Contrast order is
+Aging / Training_Young / Training_Old / Interaction.
+
+| Quantity | Value | Written by |
+|---|---|---|
+| DEPs at FDR < 0.05 | 278 / 135 / 0 / 1 | `a_script/01_run_dep.R` |
+| DEPs at Pi < 0.05 | 195 / 99 / 18 / 33 | `a_script/01_run_dep.R` |
+| DEPs at p < 0.05 | 570 / 448 / 196 / 158 | `a_script/01_run_dep.R` |
+| Smallest adjusted p, Training_Old | 0.156, tied HPRT1 and FSCN1 | `a_script/01_run_dep.R` |
+| Within-subject correlation | 0.278 | `duplicateCorrelation` |
+| Pi union across contrasts | 294, of which Aging 174 exclusive | F02 panel D |
+| Aging and Training_Young at FDR | 19 shared, 6 same-sign | F04 panel D |
+
+Check a figure caption or a manuscript number against this table, not against
+another paragraph.
 
 ## Orderings that matter
 

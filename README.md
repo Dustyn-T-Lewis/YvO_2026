@@ -7,7 +7,7 @@ spectrometry and analysed with limma.
     Rscript setup.R      # once after cloning
     Rscript run_all.R    # 22 steps, each in its own R session
 
-The analysed matrix is **2,106 proteins × 62 samples** — 32 participants, less
+The analysed matrix is 2,106 proteins across 62 samples, from 32 participants less
 the two consensus outliers `Y_S05_Pre` and `Y_S07_Post`. Training changed 135
 proteins at FDR < 0.05 in younger adults and none in older adults. Every
 headline count, with the script that produces it, is in
@@ -32,7 +32,7 @@ reads, what it writes, and which orderings are load-bearing. Read those before
 changing anything: several stages depend on files written by an earlier step in
 the same run.
 
-Each directory follows the same shape — `a_script/` holds the code, `c_data/`
+Each directory follows one shape. `a_script/` holds the code, `c_data/`
 the tables it writes, `b_reports/` the rendered figures. `b_reports/` is not
 tracked; it regenerates from a run.
 
