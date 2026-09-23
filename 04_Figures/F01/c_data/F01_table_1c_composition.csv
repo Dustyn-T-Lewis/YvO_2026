@@ -1,0 +1,10 @@
+"Age group","Parent trial","Supplement","n"
+"Young","EAA","Essential amino acids",3
+"Young","EAA","Placebo",5
+"Young","EAA","Whey protein",6
+"Young","PPS_younger","Control",1
+"Young","PPS_younger","Peanut protein",2
+"Old","NORE","Beetroot juice",6
+"Old","NORE","Placebo",5
+"Old","PPS_older","Control",1
+"Old","PPS_older","Peanut protein",3
