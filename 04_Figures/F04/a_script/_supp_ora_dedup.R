@@ -29,8 +29,9 @@ pw_collection <- build_pathway_collection(min_size = 15, max_size = 500,
                                            include_goslim = FALSE,
                                            exclude_variants = TRUE)
 
-# Run ORA at multiple Jaccard cutoffs
-cutoffs <- c(0.3, 0.5, 0.7, 1.0)
+# Sweep the EnrichmentMap combined coefficient, the rule the analysis uses.
+# 1.0 collapses only identical sets, so it reads as the no-collapsing reference.
+cutoffs <- c(0.25, 0.375, 0.5, 1.0)
 target_quads <- c("Concordant Up", "Concordant Down")
 
 results <- list()
@@ -39,18 +40,22 @@ for (quad in target_quads) {
   if (length(genes) < 5) next
 
   for (jc in cutoffs) {
-    message(sprintf("  ORA: %s | Jaccard = %.1f", quad, jc))
+    message(sprintf("  ORA: %s | EM coefficient = %.3f", quad, jc))
     ora_res <- tryCatch({
       run_ora_deduplicated(
         genes = genes, universe = universe, pathways = pw_collection,
-        jaccard_cutoff = jc, min_size = 15, max_size = 500, padj_cutoff = 0.05
+        em_cutoff = jc, min_size = 15, max_size = 500, padj_cutoff = 0.05
       )
     }, error = function(e) { message("    error: ", e$message); tibble() })
 
-    n_sig <- if (nrow(ora_res) > 0) sum(ora_res$padj < 0.05) else 0L
+    n_sig <- if (nrow(ora_res) > 0) {
+      sum(ora_res$dedup_status == "kept", na.rm = TRUE)
+    } else {
+      0L
+    }
     results[[length(results) + 1]] <- tibble(
-      quadrant = quad, jaccard_cutoff = jc,
-      n_enriched = n_sig, n_genes = length(genes))
+      quadrant = quad, em_cutoff = jc,
+      n_representatives = n_sig, n_genes = length(genes))
   }
 }
 
@@ -59,22 +64,22 @@ write_csv(sens_df, file.path(DAT, "SUPP_ora_dedup_sensitivity.csv"))
 message("Sensitivity data:\n", paste(capture.output(print(sens_df)), collapse = "\n"))
 
 sens_df <- sens_df |>
-  mutate(cutoff_label = factor(sprintf("J = %.1f", jaccard_cutoff),
-                               levels = sprintf("J = %.1f", cutoffs)))
+  mutate(cutoff_label = factor(sprintf("%.3g", em_cutoff),
+                               levels = sprintf("%.3g", cutoffs)))
 
-pS_ora_dedup <- ggplot(sens_df, aes(x = quadrant, y = n_enriched,
+pS_ora_dedup <- ggplot(sens_df, aes(x = quadrant, y = n_representatives,
                                      fill = cutoff_label)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6,
            color = "grey30", linewidth = 0.3) +
-  geom_text(aes(label = n_enriched),
+  geom_text(aes(label = n_representatives),
             position = position_dodge(width = 0.7), vjust = -0.3,
             size = BASE_COUNT, fontface = "bold") +
-  scale_fill_manual(values = c("J = 0.3" = "grey80", "J = 0.5" = "grey60",
-                               "J = 0.7" = "grey40", "J = 1.0" = "grey20"),
-                    name = "Jaccard cutoff") +
-  labs(title = "ORA Dedup Sensitivity",
-       subtitle = "# enriched pathways (FDR < 0.05) by Jaccard dedup cutoff",
-       x = NULL, y = "Enriched pathways (FDR < 0.05)") +
+  scale_fill_manual(values = c("0.25" = "grey80", "0.375" = "grey55",
+                               "0.5" = "grey35", "1" = "grey15"),
+                    name = "EM coefficient") +
+  labs(title = "ORA Redundancy Sensitivity",
+       subtitle = "Representative pathways (FDR < 0.05) by EnrichmentMap cutoff",
+       x = NULL, y = "Representative pathways") +
   FIG_THEME +
   theme(legend.key.size = unit(1.8, "mm"))
 

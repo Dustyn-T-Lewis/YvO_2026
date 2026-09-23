@@ -34,7 +34,7 @@ assign_quad <- function(lfc_ty, lfc_to) {
 
 # Threshold sweep
 thresholds <- list(
-  "Pi < 0.05"      = function(d) d |> filter(pi_TY < 0.05 | pi_TO < 0.05),
+  "Π < 0.05"      = function(d) d |> filter(pi_TY < 0.05 | pi_TO < 0.05),
   "FDR < 0.05"     = function(d) d |> filter(fdr_TY < 0.05 | fdr_TO < 0.05),
   "FDR < 0.10"     = function(d) d |> filter(fdr_TY < 0.10 | fdr_TO < 0.10),
   "Nom. p < 0.05" = function(d) d |> filter(nom_TY < 0.05 | nom_TO < 0.05)

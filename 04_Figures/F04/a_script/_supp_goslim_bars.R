@@ -12,47 +12,28 @@ BASE <- "04_Figures/F04"
 DAT  <- file.path(BASE, "c_data", "panel_supp")
 dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
 
-xlsx_path <- file.path(BASE, "c_data", "F04_supplementary.xlsx")
-pattern_df <- tryCatch({
-  df <- read_excel(xlsx_path, sheet = "panel_B_pattern_class")
-  message("Read pattern classification from xlsx")
-  as.data.frame(df)
-}, error = function(e) {
-  message("xlsx read failed, recomputing from DEP results: ", e$message)
-  NULL
-})
+# Quadrant membership comes straight from the DEP table. It used to be read
+# from a "panel_B_pattern_class" sheet written by panel_B_pattern_heatmap.R,
+# which was retired on 2026-08-26; the read had a fallback, so it never errored,
+# it just failed silently on every run and recomputed exactly this.
+pattern_df <- read_csv(DEP_RESULTS, show_col_types = FALSE) |>
+  filter(!is.na(logFC_Training_Young), !is.na(logFC_Training_Old)) |>
+  filter(
+    pi_score_Training_Young < 0.05 | pi_score_Training_Old < 0.05 |
+      pi_score_Interaction < 0.05
+  ) |>
+  mutate(quadrant = case_when(
+    logFC_Training_Young > 0 & logFC_Training_Old > 0 ~ "Concordant Up",
+    logFC_Training_Young < 0 & logFC_Training_Old < 0 ~ "Concordant Down",
+    TRUE ~ "Discordant"
+  )) |>
+  as.data.frame()
 
-if (is.null(pattern_df)) {
-  dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv",
-                     show_col_types = FALSE)
-  pattern_df <- dep_df |>
-    filter(!is.na(logFC_Training_Young), !is.na(logFC_Training_Old)) |>
-    filter(pi_score_Training_Young < 0.05 | pi_score_Training_Old < 0.05 |
-           pi_score_Interaction < 0.05) |>
-    mutate(quadrant = case_when(
-      logFC_Training_Young > 0 & logFC_Training_Old > 0 ~ "Concordant Up",
-      logFC_Training_Young < 0 & logFC_Training_Old < 0 ~ "Concordant Down",
-      TRUE ~ "Discordant")) |>
-    as.data.frame()
-}
+fg_genes <- pattern_df$gene
 
-if (!"quadrant" %in% names(pattern_df)) {
-  pattern_df <- pattern_df |>
-    mutate(quadrant = case_when(
-      logFC_Training_Young > 0 & logFC_Training_Old > 0 ~ "Concordant Up",
-      logFC_Training_Young < 0 & logFC_Training_Old < 0 ~ "Concordant Down",
-      TRUE ~ "Discordant"))
-}
+slim_result <- assign_go_slim_consolidated(fg_genes = fg_genes, all_genes = fg_genes)
 
-# GO Slim assignment
-all_genes <- if ("gene" %in% names(pattern_df)) pattern_df$gene else pattern_df$SYMBOL
-fg_genes  <- all_genes
-
-slim_result <- assign_go_slim_consolidated(fg_genes = fg_genes,
-                                            all_genes = fg_genes)
-
-gene_col_nm <- if ("gene" %in% names(pattern_df)) "gene" else "SYMBOL"
-pattern_quad <- transmute(pattern_df, gene = .data[[gene_col_nm]], quadrant)
+pattern_quad <- transmute(pattern_df, gene, quadrant)
 slim_merged <- slim_result |>
   left_join(pattern_quad, by = "gene") |>
   filter(!is.na(quadrant), !is.na(consolidated))
