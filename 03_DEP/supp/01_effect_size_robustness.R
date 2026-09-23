@@ -1,15 +1,16 @@
 #!/usr/bin/env Rscript
-# Stage 03: Robustness analyses
+# Stage 03: Effect-size robustness
 # Blunting, bootstrap CIs, power analysis, imputation sensitivity
 # Adds sheets to 03_DEP_results.xlsx
 
 withr::local_dir(here::here())
 
 pacman::p_load(dplyr, tibble, purrr, readxl, openxlsx, boot, pwr, proteoDA)
+source("04_Figures/shared/supplement_overview.R")
 
 set.seed(42)
 
-DAT  <- "03_DEP/c_data"
+DAT <- "03_DEP/c_data"
 XLSX <- file.path(DAT, "03_DEP_results.xlsx")
 
 dal <- readRDS(file.path(DAT, "01_limma_DAList.rds"))
@@ -23,24 +24,34 @@ names(results_list) <- contrast_names
 
 # Blunting diagnostics
 
-blunt_df <- tibble(
-  gene      = results_list[["Training_Young"]]$gene,
-  abs_lfc_y = abs(results_list[["Training_Young"]]$logFC),
-  abs_lfc_o = abs(results_list[["Training_Old"]]$logFC)
-) |> filter(!is.na(abs_lfc_y) & !is.na(abs_lfc_o))
+# Join on uniprot_id, never by row position: 01_run_dep.R sorts each contrast
+# sheet by its own pi_score, so the same row holds a different protein in each.
+# Only 2 of 2106 positions happen to agree, which made every paired statistic
+# below a comparison between unrelated proteins.
+blunt_df <- results_list[["Training_Young"]] |>
+  select(uniprot_id, gene, lfc_y = logFC) |>
+  inner_join(
+    results_list[["Training_Old"]] |> select(uniprot_id, lfc_o = logFC),
+    by = join_by(uniprot_id)
+  ) |>
+  transmute(gene, abs_lfc_y = abs(lfc_y), abs_lfc_o = abs(lfc_o)) |>
+  filter(!is.na(abs_lfc_y) & !is.na(abs_lfc_o))
 
 ks_res <- ks.test(blunt_df$abs_lfc_y, blunt_df$abs_lfc_o)
 fk_res <- fligner.test(
   abs_lfc ~ contrast,
   data = data.frame(
     abs_lfc  = c(blunt_df$abs_lfc_y, blunt_df$abs_lfc_o),
-    contrast = rep(c("Young", "Old"), each = nrow(blunt_df))))
+    contrast = rep(c("Young", "Old"), each = nrow(blunt_df))
+  )
+)
 wx_res <- wilcox.test(blunt_df$abs_lfc_y, blunt_df$abs_lfc_o, paired = TRUE)
-diffs  <- blunt_df$abs_lfc_y - blunt_df$abs_lfc_o
-cliff  <- (sum(diffs > 0) - sum(diffs < 0)) / length(diffs)
+diffs <- blunt_df$abs_lfc_y - blunt_df$abs_lfc_o
+cliff <- (sum(diffs > 0) - sum(diffs < 0)) / length(diffs)
 cliff_mag <- case_when(
   abs(cliff) < 0.147 ~ "negligible", abs(cliff) < 0.33 ~ "small",
-  abs(cliff) < 0.474 ~ "medium",     TRUE ~ "large")
+  abs(cliff) < 0.474 ~ "medium",     TRUE ~ "large"
+)
 
 blunt_diag <- tibble(
   test = c("KS", "Fligner-Killeen", "Wilcoxon signed-rank", "Cliff's delta"),
@@ -50,56 +61,77 @@ blunt_diag <- tibble(
     ifelse(ks_res$p.value < 0.05, "Distributions differ", "No difference"),
     ifelse(fk_res$p.value < 0.05, "Variance differs", "No difference"),
     ifelse(wx_res$p.value < 0.05, "Paired shift significant", "No shift"),
-    sprintf("%s (d=%.3f; >0 = young responds more)",
-            stringr::str_to_title(cliff_mag), cliff)))
+    sprintf(
+      "%s (d=%.3f; >0 = young responds more)",
+      stringr::str_to_title(cliff_mag), cliff
+    )
+  )
+)
 
-message(sprintf("Blunting: KS p=%.2g, Cliff d=%.3f (%s)",
-                ks_res$p.value, cliff, cliff_mag))
+message(sprintf(
+  "Blunting: KS p=%.2g, Cliff d=%.3f (%s)",
+  ks_res$p.value, cliff, cliff_mag
+))
 
 # Bootstrap CI (median |logFC|, BCa, 10k reps)
 
 boot_df <- list_rbind(lapply(contrast_names, \(cname) {
   vals <- abs(results_list[[cname]]$logFC)
   vals <- vals[!is.na(vals)]
-  b  <- boot(vals, \(d, i) median(d[i]), R = 10000)
+  b <- boot(vals, \(d, i) median(d[i]), R = 10000)
   ci <- tryCatch(boot.ci(b, type = "bca"),
-                 error = \(e) boot.ci(b, type = "perc"))
+    error = \(e) boot.ci(b, type = "perc")
+  )
   ci_lo <- if (!is.null(ci$bca)) ci$bca[4] else ci$percent[4]
   ci_hi <- if (!is.null(ci$bca)) ci$bca[5] else ci$percent[5]
-  tibble(contrast = cname, median_absLFC = median(vals),
-         ci_lower = ci_lo, ci_upper = ci_hi,
-         boot_se = sd(b$t), n_proteins = length(vals))
+  tibble(
+    contrast = cname, median_absLFC = median(vals),
+    ci_lower = ci_lo, ci_upper = ci_hi,
+    boot_se = sd(b$t), n_proteins = length(vals)
+  )
 }))
 
 # Power analysis (min detectable logFC at 80% power)
 
 fit <- dal$eBayes_fit
 within_cor <- fit$correlation %||% dal$tags$duplicate_correlation %||% NA_real_
-sigma_res  <- sqrt(mean(fit$sigma^2, na.rm = TRUE))
-n_young    <- sum(meta$age == "Young" & meta$time == "Pre")
-n_old      <- sum(meta$age == "Old"   & meta$time == "Pre")
+sigma_res <- sqrt(mean(fit$sigma^2, na.rm = TRUE))
+n_young <- sum(meta$age == "Young" & meta$time == "Pre")
+n_old <- sum(meta$age == "Old" & meta$time == "Pre")
 
 power_df <- list_rbind(lapply(contrast_names, \(cname) {
   n_subj <- switch(cname,
-    Training_Young = n_young, Training_Old = n_old, min(n_young, n_old))
-  paired  <- cname %in% c("Training_Young", "Training_Old")
-  eff_sig <- if (paired && !is.na(within_cor))
-    sigma_res * sqrt(2 * (1 - within_cor)) else sigma_res * sqrt(2)
-  pw <- pwr.t.test(n = n_subj, d = NULL, sig.level = 0.10, power = 0.80,
-                   type = if (paired) "paired" else "two.sample")
-  tibble(contrast = cname, n_subjects = n_subj,
-         within_cor = ifelse(paired, within_cor, NA_real_),
-         effective_sigma = round(eff_sig, 4),
-         min_detectable_d = round(pw$d, 4),
-         min_detectable_logFC = round(pw$d * eff_sig, 4),
-         power = 0.80, alpha = 0.10)
+    Training_Young = n_young,
+    Training_Old = n_old,
+    min(n_young, n_old)
+  )
+  paired <- cname %in% c("Training_Young", "Training_Old")
+  eff_sig <- if (paired && !is.na(within_cor)) {
+    sigma_res * sqrt(2 * (1 - within_cor))
+  } else {
+    sigma_res * sqrt(2)
+  }
+  pw <- pwr.t.test(
+    n = n_subj, d = NULL, sig.level = 0.10, power = 0.80,
+    type = if (paired) "paired" else "two.sample"
+  )
+  tibble(
+    contrast = cname, n_subjects = n_subj,
+    within_cor = ifelse(paired, within_cor, NA_real_),
+    effective_sigma = round(eff_sig, 4),
+    min_detectable_d = round(pw$d, 4),
+    min_detectable_logFC = round(pw$d * eff_sig, 4),
+    power = 0.80, alpha = 0.10
+  )
 }))
 
 # Imputation sensitivity
 
 IMP_RDS <- "02_imputation/c_data/01_DAList_imputed.rds"
-sens_df <- tibble(contrast = character(), spearman_rho = numeric(),
-                  p_value = numeric(), n_proteins = integer())
+sens_df <- tibble(
+  contrast = character(), spearman_rho = numeric(),
+  p_value = numeric(), n_proteins = integer()
+)
 
 if (file.exists(IMP_RDS)) {
   dal_imp_raw <- readRDS(IMP_RDS)
@@ -124,21 +156,28 @@ if (file.exists(IMP_RDS)) {
     data       = imp_mat[, shared_samps],
     annotation = ann_dep,
     metadata   = meta[meta$sample_id %in% shared_samps, ],
-    tags       = list(norm_method = "cycloess_imputed"))
+    tags       = list(norm_method = "cycloess_imputed")
+  )
   dal_imp <- add_design(dal_imp, "~ 0 + group + (1 | subject)")
-  colnames(dal_imp$design$design_matrix) <- gsub("^group", "",
-    colnames(dal_imp$design$design_matrix))
+  colnames(dal_imp$design$design_matrix) <- gsub(
+    "^group", "",
+    colnames(dal_imp$design$design_matrix)
+  )
   dal_imp <- add_contrasts(dal_imp, contrasts_vector = c(
     "Training_Young = Young_Post - Young_Pre",
     "Training_Old   = Old_Post - Old_Pre",
     "Aging          = Old_Pre - Young_Pre",
-    "Interaction    = (Old_Post - Old_Pre) - (Young_Post - Young_Pre)"))
+    "Interaction    = (Old_Post - Old_Pre) - (Young_Post - Young_Pre)"
+  ))
   dal_imp <- fit_limma_model(dal_imp)
-  dal_imp <- extract_DA_results(dal_imp, pval_thresh = 0.10,
-                                 lfc_thresh = 0, adj_method = "BH")
+  dal_imp <- extract_DA_results(dal_imp,
+    pval_thresh = 0.10,
+    lfc_thresh = 0, adj_method = "BH"
+  )
 
   comb <- readr::read_csv(file.path(DAT, "03_combined_results.csv"),
-                           show_col_types = FALSE)
+    show_col_types = FALSE
+  )
 
   sens_df <- list_rbind(lapply(contrast_names, \(cname) {
     t_col <- paste0("t_", cname)
@@ -150,37 +189,40 @@ if (file.exists(IMP_RDS)) {
       select(uniprot_id, t_imp = t)
     merged <- inner_join(
       comb |> select(uniprot_id, t_nonimp = all_of(t_col)),
-      imp_t, by = join_by(uniprot_id)) |>
+      imp_t,
+      by = join_by(uniprot_id)
+    ) |>
       filter(!is.na(t_nonimp) & !is.na(t_imp))
     sp <- cor.test(merged$t_nonimp, merged$t_imp, method = "spearman")
-    tibble(contrast = cname, spearman_rho = round(sp$estimate, 4),
-           p_value = sp$p.value, n_proteins = nrow(merged))
+    tibble(
+      contrast = cname, spearman_rho = round(sp$estimate, 4),
+      p_value = sp$p.value, n_proteins = nrow(merged)
+    )
   }))
-  message("Imputation sensitivity: ", paste(sprintf("%s rho=%.3f",
-    sens_df$contrast, sens_df$spearman_rho), collapse = " | "))
+  message("Imputation sensitivity: ", paste(sprintf(
+    "%s rho=%.3f",
+    sens_df$contrast, sens_df$spearman_rho
+  ), collapse = " | "))
 } else {
   message("Imputed DAList not found — skipping sensitivity")
 }
 
 # Add robustness sheets to xlsx
 
-write_sheet <- function(wb, name, data) {
-  addWorksheet(wb, name)
-  writeData(wb, name, data,
-    headerStyle = createStyle(textDecoration = "bold", fgFill = "#DCE6F1"))
-  freezePane(wb, name, firstRow = TRUE)
-  setColWidths(wb, name, cols = seq_len(ncol(data)), widths = "auto")
-}
 
 wb <- loadWorkbook(XLSX)
 robustness_sheets <- c("blunting", "bootstrap_ci", "power_analysis", "imputation_sensitivity")
 for (s in intersect(robustness_sheets, names(wb))) removeWorksheet(wb, s)
-write_sheet(wb, "blunting",               blunt_diag)
-write_sheet(wb, "bootstrap_ci",           boot_df)
-write_sheet(wb, "power_analysis",         power_df)
+write_sheet(wb, "blunting", blunt_diag)
+write_sheet(wb, "bootstrap_ci", boot_df)
+write_sheet(wb, "power_analysis", power_df)
 if (nrow(sens_df) > 0) {
   write_sheet(wb, "imputation_sensitivity", sens_df)
 }
+# The Overview index is built by 03_DEP/supp/02_supplement_covariate.R, the
+# last script to write this workbook. Re-running this script alone leaves the
+# existing index in place with stale row counts for these four sheets; the next
+# full run refreshes them.
 saveWorkbook(wb, XLSX, overwrite = TRUE)
 
 # Box copy
