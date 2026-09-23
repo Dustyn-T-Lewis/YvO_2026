@@ -141,7 +141,8 @@ if (!is.null(out_sens) && nrow(out_sens) > 0) {
                       labels = c("Full", "Outlier-removed"), name = NULL) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.22))) +
     labs(title = "DEP retention (outlier removal)", x = NULL, y = "DEPs", tag = "e") +
-    FIG_THEME + theme(strip.text.x = element_blank(),
+    FIG_THEME + theme(strip.text.x = element_text(face = "bold",
+                                                  size = FIG_STRIP_SIZE),
                       strip.text.y = element_text(face = "bold", size = FIG_STRIP_SIZE - 1),
                       legend.position = "top", legend.key.size = unit(3, "mm"))
 } else {
@@ -157,9 +158,12 @@ dir.create(SUPP_PDF, recursive = TRUE, showWarnings = FALSE)
 dir.create(SUPP_PNG, recursive = TRUE, showWarnings = FALSE)
 
 COMP_W <- 178; COMP_H <- 225
-txt <- composite_text_sizes(COMP_H)
+txt <- composite_text_sizes(COMP_W)
+# 15 pt of head, not 9: the titles below are drawn over the panels, and each
+# panel writes its own contrast name at the top of its plotting area. At 9 pt
+# the two shared a line and "Raw p-value distribution" printed through "Aging".
 grid <- (pB | pPi) / (pFDR | pC) / pE &
-  theme(plot.margin = margin(9, 4, 4, 4))
+  theme(plot.margin = margin(15, 4, 4, 4))
 
 X_L <- 0.012; X_R <- 0.512; X_TTL <- 0.029; SUB_OFF <- 0.014
 Y_R1 <- 0.974; Y_R2 <- 0.651; Y_R3 <- 0.321
