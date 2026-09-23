@@ -7,6 +7,12 @@ withr::local_dir(here::here())
 
 pacman::p_load(ggplot2, ggrepel, patchwork, dplyr, readr, scales)
 
+# ggrepel nudges labels by a stochastic search, so without a seed every
+# render puts them somewhere new. run_all.R runs each script in its own
+# Rscript child, which starts from a time-seeded RNG.
+set.seed(42)
+source("04_Figures/shared/devices.R")
+
 DAT <- "02_imputation/c_data"
 RPT <- "02_imputation/b_reports"
 BOX <- Sys.getenv("YVO_BOX_SUPP", unset = "")
@@ -81,7 +87,7 @@ p_samp_miss <- ggplot(sample_miss, aes(reorder(sample, n_miss), n_miss,
   labs(title = "D. Per-sample missingness", x = NULL, y = "Missing proteins") +
   THM + theme(legend.position = "top", axis.text.y = element_text(size = 6))
 
-pdf(file.path(RPT, "01_missingness_report.pdf"), width = 16, height = 10)
+open_pdf(file.path(RPT, "01_missingness_report.pdf"), width = 16, height = 10)
 print(
   (p_miss_hist | p_class_bar) / (p_int_vs_miss | p_samp_miss) +
     plot_annotation(
@@ -170,7 +176,7 @@ page2 <- p_dens / (p_mnar_audit | p_effect_d) +
                        sum(!mnar_audit$imputation_reliable)),
     theme = theme(plot.title = element_text(face = "bold", size = 14)))
 
-pdf(file.path(RPT, "02_imputation_report.pdf"), width = 14, height = 10)
+open_pdf(file.path(RPT, "02_imputation_report.pdf"), width = 14, height = 10)
 print(page1)
 print(page2)
 dev.off()
