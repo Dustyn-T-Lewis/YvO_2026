@@ -1,82 +1,77 @@
+#!/usr/bin/env Rscript
+# F06 Supplementary Composite Stitch
+#
+# Reads pre-rendered PNGs from b_reports/supp/png/panels/ and composites them.
+#
+# Output 1: SUPP_F06_composite.pdf  — panels A and B above, C centred below
+# Output 2: SUPP_F06_composite.png  — the same composite
+#
+# Panel sources (all in b_reports/supp/png/panels/):
+#   A = Per-module ROC grid      (SUPP_F06_module_grid.png)
+#   B = Panel B full sweep       (SUPP_F06_panel_B_grid.png)
+#
+# Three panels were dropped: the two leave-one-subject-out sensitivity plots
+# and the multivariate classifier decomposition. Each plotted a handful of
+# AUCs that ship as loso_auc_summary, loso_wgcna_refit_summary and
+# panel_A_classifier_auc in F06_supplementary.xlsx, where they read as a
+# table. Their scripts still run, because those sheets are what they write.
+
 setwd(here::here())
 
 source("04_Figures/shared/style.R")
-source("04_Figures/shared/pathway_utils.R")
-
-BASE <- "04_Figures/F06"
-
-message("sourcing F06 supp QC panels")
-source("04_Figures/F06/a_script/_supp_qc_soft_threshold.R")
-source("04_Figures/F06/a_script/_supp_qc_dendrogram.R")
-source("04_Figures/F06/a_script/_supp_qc_compartment.R")
-source("04_Figures/F06/a_script/_supp_qc_bicor.R")
-
-message("sourcing F06 supp QC composite")
 
 pacman::p_load(patchwork, cowplot, png, grid)
 
-RPT_SRC <- file.path(BASE, "b_reports", "supp", "png", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "pdf")
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "png")
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
+BASE       <- "04_Figures/F06"
+RPT_PNG    <- file.path(BASE, "b_reports", "supp", "png")
+RPT_PDF    <- file.path(BASE, "b_reports", "supp", "pdf")
+RPT_PANELS <- file.path(RPT_PNG, "panels")
 
-read_panel <- function(file, dir = RPT_SRC) {
-  path <- file.path(dir, file)
+read_panel <- function(file) {
+  path <- file.path(RPT_PANELS, file)
   if (!file.exists(path)) stop("Missing: ", path)
-  rasterGrob(readPNG(path), interpolate = TRUE)
+  img <- readPNG(path)
+  list(grob = rasterGrob(img, interpolate = TRUE),
+       aspect = dim(img)[2] / dim(img)[1])   # width/height
 }
 
-pA <- read_panel("SUPP_soft_threshold.png")
-pB <- read_panel("SUPP_dendrogram.png")
-pC <- read_panel("SUPP_compartment_enrichment.png")
-pD <- read_panel("SUPP_bicor_sensitivity.png")
+# Page 1 panels (A + B, aspect-matched)
+pA <- read_panel("SUPP_F06_module_grid.png")
+pB <- read_panel("SUPP_F06_panel_B_grid.png")
 
-bottom_row <- wrap_elements(full = pC) + wrap_elements(full = pD) +
-  plot_layout(widths = c(1, 1))
+COMP_H <- 166   # mm tall
+wA_mm  <- COMP_H * pA$aspect
+wB_mm  <- COMP_H * pB$aspect
+COMP_W <- wA_mm + wB_mm
 
-composite <- wrap_elements(full = pA) /
-             wrap_elements(full = pB) /
-             bottom_row +
-  plot_layout(heights = c(0.30, 0.35, 0.35)) +
-  plot_annotation(
-    theme = theme(
-      plot.margin = margin(4, 6, 4, 6)
-    )
-  )
+TAG_SZ <- composite_text_sizes(COMP_W, 178)$tag
 
-TAG_SZ <- 16
+page1 <- (wrap_elements(full = pA$grob) |
+           wrap_elements(full = pB$grob)) +
+  plot_layout(widths = c(wA_mm, wB_mm)) &
+  theme(plot.margin = margin(0, 0, 0, 0))
 
-composite <- ggdraw(composite) +
-  draw_label("A", x = 0.02, y = 0.960, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("B", x = 0.02, y = 0.660, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("C", x = 0.02, y = 0.320, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("D", x = 0.52, y = 0.320, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1)
+TAG_X_A <- 5 / COMP_W
+TAG_X_B <- (wA_mm + 5) / COMP_W
+TAG_Y   <- 0.992
 
-COMP_W <- 250
-COMP_H <- 330
+page1_final <- ggdraw(page1 & theme(plot.margin = margin(2, 2, 2, 2))) +
+  draw_label("A", x = TAG_X_A, y = TAG_Y, size = TAG_SZ,
+             fontface = "bold", hjust = 0, vjust = 1) +
+  draw_label("B", x = TAG_X_B, y = TAG_Y, size = TAG_SZ,
+             fontface = "bold", hjust = 0, vjust = 1)
 
-pdf_device <- get_pdf_device()
+# Write outputs
+graphics.off()
+pdf_device <- get_raster_pdf_device()
 
-ggsave(file.path(RPT_PDF, "SUPP_F06_composite.pdf"), composite,
+ggsave(file.path(RPT_PDF, "SUPP_F06_composite.pdf"), page1_final,
        width = COMP_W, height = COMP_H, units = "mm",
        device = pdf_device, limitsize = FALSE)
-ggsave(file.path(RPT_PNG, "SUPP_F06_composite.png"), composite,
+embed_pdf_fonts(file.path(RPT_PDF, "SUPP_F06_composite.pdf"))
+
+ggsave(file.path(RPT_PNG, "SUPP_F06_composite.png"), page1_final,
        width = COMP_W, height = COMP_H, units = "mm",
        dpi = 300, limitsize = FALSE)
 
-message("F06 supp QC saved: SUPP_F06_composite.{pdf,png}")
-
-message("sourcing F06 supp module triptychs")
-source("04_Figures/F06/a_script/_supp_mod_triptych.R")
-
-message("sourcing F06 supp module hub networks")
-source("04_Figures/F06/a_script/_supp_mod_hub.R")
-
-message("sourcing F06 supp hub chord diagram")
-source("04_Figures/F06/a_script/_supp_mod_chord.R")
-
-message("sourcing F06 supp module preservation")
-source("04_Figures/F06/a_script/_supp_preservation.R")
-
-message("F06 supp panels complete")
+message(sprintf("Wrote SUPP_F06_composite (%.0f x %.0f mm)", COMP_W, COMP_H))
