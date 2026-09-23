@@ -7,6 +7,12 @@ withr::local_dir(here::here())
 
 pacman::p_load(dplyr, ggplot2, ggrepel, patchwork, cowplot)
 
+# ggrepel nudges labels by a stochastic search, so without a seed every
+# render puts them somewhere new. run_all.R runs each script in its own
+# Rscript child, which starts from a time-seeded RNG.
+set.seed(42)
+source("04_Figures/shared/devices.R")
+
 DAT <- "01_normalization/c_data"
 RPT <- "01_normalization/b_reports"
 BOX <- Sys.getenv("YVO_BOX_SUPP", unset = "")
@@ -163,7 +169,7 @@ p_eta2 <- ggplot(eta2_df, aes(eta2)) +
 
 # Assemble PDF
 
-pdf(file.path(RPT, "04_diagnostics.pdf"), width = 20, height = 10)
+open_pdf(file.path(RPT, "04_diagnostics.pdf"), width = 20, height = 10)
 
 print(
   p_filter / p_miss + plot_layout(heights = c(1, 1.2)) +
