@@ -1,167 +1,121 @@
 #!/usr/bin/env Rscript
-# F04 Main: Training Concordance (5-panel composite)
-# A: Quadrant ORA, B: Pattern heatmap, C: fry barcode,
-# D: NES scatter, E: RRHO2.
+# F04 Main: training plasticity across age (6-panel composite)
 #
-# Panel B (pattern heatmap) loads AnnotationDbi (via go_slim_categories.R);
-# the S4 select() masking is repaired inside go_slim_categories.R.
+# A  protein quadrant scatter + flanking quadrant ORA, Tr.(Y) x Tr.(O)
+# B  RRHO2 threshold-free rank overlap, same pair
+# C  response magnitude and coherence per subject
+# D  pathway NES scatter, Tr.(Y) x Tr.(O)
+# E  pathway NES scatter, Aging x Tr.(O)
+# F  this study's own FDR and Pi sets against the Training(Old) ranking
+#
+# A, B, C and D use contrast pairs sharing no group mean. E pairs Aging with
+# Training(Old), which share Old_Pre; pathway aggregation shrinks that coupling
+# because the shared per-protein noise averages down while genuine
+# between-pathway differences do not, so E is reported at pathway level only.
+# F's Aging rows are coupled at protein level and take a Pre/Post swap null.
+#
+# F05 was folded into this figure on 2026-08-24; see docs/decisions.md.
+# limma tree: 2106 proteins over 62 samples, and Training(Old) has no FDR hits,
+# so panel F's Tr.(O) rows are empty by construction rather than by filtering.
 
 setwd(here::here())
 
-pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot)
+pacman::p_load(
+  dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot, readxl
+)
+
+# ggrepel places labels by a stochastic search, so an unseeded render puts
+# them somewhere new each time. run_all.R runs each script in its own
+# Rscript child, which starts from a time-seeded RNG.
+set.seed(42)
 
 source("04_Figures/shared/style.R")
 
-BASE    <- "04_Figures/F04"
+BASE <- "04_Figures/F04"
 RPT_PDF <- file.path(BASE, "b_reports", "main", "pdf")
 RPT_PNG <- file.path(BASE, "b_reports", "main", "png")
 PNL_PNG <- file.path(RPT_PNG, "panels")
 PNL_PDF <- file.path(RPT_PDF, "panels")
-DAT     <- file.path(BASE, "c_data")
-for (d in c(RPT_PDF, RPT_PNG, PNL_PNG, PNL_PDF, DAT))
+SUPP_PNG <- file.path(BASE, "b_reports", "supp", "png", "panels")
+SUPP_PDF <- file.path(BASE, "b_reports", "supp", "pdf", "panels")
+DAT <- file.path(BASE, "c_data")
+# Shared engines reassign RPT_PNG/RPT_PDF to their panels subdir, so the
+# composite writes through names they never touch.
+OUT_PNG <- RPT_PNG
+OUT_PDF <- RPT_PDF
+for (d in c(RPT_PDF, RPT_PNG, PNL_PNG, PNL_PDF, SUPP_PNG, SUPP_PDF, DAT)) {
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
+}
 
 pdf_device <- get_pdf_device()
 
-# Source panels (A first, then D/C/E, then B last for stat-snapshot ordering)
+# Shared engines take loaded objects, not paths, so the limma tree can supply
+# the same structures from its own DAList without the engines knowing which
+# pipeline they are running under.
+# limma drops outliers upstream, so the metadata sheet carries samples the
+# imputed matrix no longer has. Subset to the intersection before anything
+# downstream builds a design from it.
+abundance <- readRDS("02_imputation/c_data/01_DAList_imputed.rds")$data
+meta <- as.data.frame(read_excel("00_input/YvO_meta.xlsx"))
+meta <- meta[meta$Col_ID %in% colnames(abundance), ]
 
-message("=== F04 Composite: sourcing panels ===")
-
-# Panel A: ORA scatter + flanking bars
-source("04_Figures/F04/a_script/_panel_A_ORA.R")
-n_total_A    <- nrow(scatter_df)
-n_sig_A      <- n_sig
-n_enrich_A   <- n_enrich
-r_spear_A    <- r_spear
-
-# Panel D — fGSEA NES scatter (config wrapper → shared engine)
-cfg <- list(
-  fig_id      = "F04",
-  contrast_x  = "Training_Young",
-  contrast_y  = "Training_Old",
-  title       = "Pathway-Level Concordance (fGSEA)",
-  axis_x_label = "Training Young",
-  axis_y_label = "Training Old",
-  subtitle_metric = "concordant",
-  subtitle_interpretation = "positive \u03c1 = shared pathway regulation across age groups",
-  ref_slope   = 1,
-  panel_w     = 146,
-  label_border_size = 0.25,
-  rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT,
-  sig_colors     = SIG_COLORS_F2,
-  sig_label_fill = SIG_LABEL_FILL_F2,
-  sig_label_text = SIG_LABEL_TEXT_F2,
-  sig_draw_order = c("Sig Old only", "Sig Young only", "Sig Both", "Interaction"),
-  quadrant_defs = list(
-    sig_both_label = "Sig Both",
-    sig_x_label    = "Sig Young only",
-    sig_y_label    = "Sig Old only",
-    bg_red_1  = c(0, Inf, 0, Inf),
-    bg_red_2  = c(-Inf, 0, -Inf, 0),
-    bg_blue_1 = c(0, Inf, -Inf, 0),
-    bg_blue_2 = c(-Inf, 0, 0, Inf),
-    label_tr = "Concordant Up",   color_tr = "#D6604D",
-    label_tl = "Discordant",      color_tl = "#4393C3",
-    label_bl = "Concordant Down", color_bl = "#D6604D",
-    label_br = "Discordant",      color_br = "#4393C3",
-    metric_count_fn = function(q1, q2, q3, q4) q1 + q3
-  ),
-  display_overrides = c(
-    "Unfolded Protein Response"         = "UPR",
-    "Ribosome Biogenesis"               = "Ribo Bio",
-    "Amino Acid Metabolism"             = "AA Metabolism",
-    "Fatty Acid Metabolism"             = "FA Metabolism",
-    "Fatty Acid Beta Oxidation"         = "FA Beta-Oxidation",
-    "Plasma Membrane Protein Loc."      = "PM Protein Loc.",
-    "Cytoplasmic Translation"           = "Cytoplasmic Transl.",
-    "Mitochondrial Organization"        = "Mito Org.",
-    "Precursor Metabolites & Energy"    = "Precursor Metab. & Energy",
-    "Mitochondrial Transport"           = "Mito Transport",
-    "Mitochondrial Protein Import"      = "Mito Protein Import",
-    "Mitochondrial Protein Degradation" = "Mito Protein Deg.",
-    "Extracellular Matrix Organization" = "ECM Org.",
-    "Protein Folding"                   = "Protein Folding",
-    "Spermatogenesis"                   = "Spermatogenesis",
-    "Adipogenesis"                      = "Adipogenesis",
-    "Heme Metabolism"                   = "Heme Metab.",
-    "Ketone Metabolism"                 = "Ketone Metab.",
-    "Detoxification"                    = "Detoxification"
+engine_cfg <- list(
+  meta = meta,
+  matrix = as.matrix(abundance[, meta$Col_ID]),
+  dep_df = read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE),
+  group_time = factor(meta$Group_Time,
+    levels = c("Young_Pre", "Young_Post", "Old_Pre", "Old_Post")
   )
 )
-source("04_Figures/shared/comparison_panels/panel_D_nes_scatter.R")
-rho_D        <- as.numeric(nes_cor_all$estimate)
-pw_conc_D    <- pw_conc_frac
 
-# Panel C — fry rotation test (config wrapper → shared engine)
-ROW_H_fry <- 0.078
-cfg <- list(
-  fig_id           = "F04",
-  contrast_source  = "Training_Young",
-  contrast_test    = "Training_Old",
-  set_prefix       = "ty",
-  expected_up      = "Up",
-  expected_down    = "Down",
-  driving_up_sign  = "pos",
-  driving_dn_sign  = "neg",
-  has_circularity  = FALSE,
-  up_title_fmt = "Tr.(Y)-Up DEPs (\u03a0 < 0.05, n = %d) \u2192 Tr.(O) ranked t",
-  dn_title_fmt = "Tr.(Y)-Down DEPs (\u03a0 < 0.05, n = %d) \u2192 Tr.(O) ranked t%s",
-  fig_color    = unname(DIR_COLORS["Up"]),
-  stat_corner_up = "topright",
-  stat_corner_dn = "bottomleft",
-  ora_flank_up_label = "Concordant (Up)",
-  ora_flank_dn_label = "Concordant (Down)",
-  ora_supp_up_label  = "Up DEPs",
-  ora_supp_dn_label  = "Down DEPs",
-  ora_supp_title     = "Leading-Edge ORA: fry Driving Proteins",
-  ora_supp_subtitle  = "Hypergeometric ORA on concordant driving proteins | top 3 per set",
-  label_map = c(
-    "Dynein Recruitment To The Kinetochore"                  = "Dynein-Kinetochore Rec.",
-    "Microtubule-Based Movement"                             = "MT-Based Movement",
-    "Regulation Of Mitotic Cell Cycle Phase Transition"       = "Reg. Mitotic Cell Cycle Trans.",
-    "Negative Regulation Of Nuclear Division"                 = "Neg. Reg. Nuclear Division",
-    "Negative Regulation Of Chromosome Organization"          = "Neg. Reg. Chromosome Organization",
-    "Integrin Cell Surface Interactions"                      = "Integrin Cell Surface Int.",
-    "Scavenging By Class A Receptors"                        = "Class A Rec. Scav.",
-    "Degradation Of The Extracellular Matrix"                = "ECM Degradation",
-    "Extracellular Matrix Organization"                      = "ECM Organization",
-    "Collagen Chain Trimerization"                           = "Collagen Trimerization",
-    "Respiratory Electron Transport"                          = "Respiratory ETC",
-    "ATP Synthesis Coupled Electron Transport"                = "ATP Synth. (ETC)",
-    "Non Integrin Membrane Ecm Interactions"                  = "Non-integrin ECM",
-    "Formation Of The Dystrophin Glycoprotein Complex Dgc"   = "Dystrophin Complex",
-    "Cargo Recognition For Clathrin Mediated Endocytosis"    = "Clathrin Cargo Rec.",
-    "Class A Receptor Scavenging"                            = "Class A Receptor Scav.",
-    "Collagen Trimerization"                                  = "Collagen Trimerization",
-    "Hcmv Early Events"                                       = "HCMV Early Events"
-  ),
-  force_inside_labels = NULL,
-  long_label_mode     = "wrap",
-  title        = "fry Gene-Set Rotation Test: Training Concordance",
-  subtitle_fmt = "Rotation-based set test (exact GSEA analogue, accounts for inter-gene correlation) | dupCor = %.3f | n = %d proteins",
-  panel_w     = 178,
-  rpt_png     = PNL_PNG, rpt_pdf = PNL_PDF,
-  rpt_sup_png = file.path(BASE, "b_reports", "supp", "png", "panels"),
-  rpt_sup_pdf = file.path(BASE, "b_reports", "supp", "pdf", "panels"),
-  dat         = DAT
+PATHWAY_LABELS <- c(
+  "Unfolded Protein Response" = "UPR",
+  "Ribosome Biogenesis" = "Ribo Bio",
+  "Amino Acid Metabolism" = "AA Metabolism",
+  "Amino Acid Metabolic Process" = "AA Metabolism",
+  "Modified Amino Acid Metabolic Process" = "Modified AA Metabolism",
+  "Sulfur Compound Metabolic Process" = "Sulfur Cmpd Metabolism",
+  "Fatty Acid Metabolism" = "FA Metabolism",
+  "Fatty Acid Beta Oxidation" = "FA Beta-Oxidation",
+  "Oxidative Phosphorylation" = "OXPHOS",
+  "Epithelial Mesenchymal Transition" = "EMT",
+  "Plasma Membrane Protein Loc." = "PM Protein Loc.",
+  "Cytoplasmic Translation" = "Cytoplasmic Transl.",
+  "Mitochondrial Organization" = "Mito Org.",
+  "Mitochondrion Organization" = "Mito Organization",
+  "Mitochondrial Gene Expression" = "Mito Gene Expression",
+  "Generation Of Precursor Metabolites And Energy" = "Precursor Metab. & Energy",
+  "Precursor Metabolites & Energy" = "Precursor Metab. & Energy",
+  "Extracellular Matrix Organization" = "ECM Organization",
+  "Microtubule-Based Movement" = "MT-Based Movement",
+  "Trna Metabolic Process" = "tRNA Metabolism",
+  "Muscle System Process" = "Muscle System",
+  "Cholesterol Homeostasis" = "Cholesterol Homeost.",
+  "Heme Metabolism" = "Heme Metab.",
+  "Ketone Metabolism" = "Ketone Metab."
 )
-source("04_Figures/shared/comparison_panels/panel_C_fry.R")
-cor_imp_C    <- cor_imp
-n_all_C      <- n_all
 
-# Panel E — RRHO2 (config wrapper → shared engine)
+message("F04 composite: sourcing panels")
+
+source("04_Figures/F04/a_script/_panel_A_ORA.R")
+panel_a <- composite
+n_total_A <- nrow(scatter_df)
+n_sig_A <- n_sig
+
 cfg <- list(
-  fig_id     = "F04",
-  t_col_1    = "t_Training_Young",
-  t_col_2    = "t_Training_Old",
+  fig_id = "F04",
+  t_col_1 = "t_Training_Young",
+  t_col_2 = "t_Training_Old",
   rrho_labels = c("Training (Young)", "Training (Old)"),
-  title       = "Threshold-Free Concordance (RRHO2)",
-  subtitle_fmt = "Stratified hypergeometric | %d shared genes | warm corners = concordant gene regulation | No MTC (Cahill et al. 2018)",
-  axis_label_1 = expression("Training (Young) rank"~(Up %->% Down)),
-  axis_label_2 = expression("Training (Old) rank"~(Up %->% Down)),
+  title = "Threshold-Free Concordance (RRHO2)",
+  subtitle_fmt = "%s | %d shared proteins | warm corners = concordant regulation",
+  axis_label_1 = expression("Training (Young) rank" ~ (Down %->% Up)),
+  axis_label_2 = expression("Training (Old) rank" ~ (Down %->% Up)),
+  # Position says which discordance is which, the way panels D and E already
+  # label both their off-diagonal corners.
   quadrant_labels = list(
     UU = "Concordant Up", DD = "Concordant Down",
-    UD = "Discordant (Y\u2191 O\u2193)", DU = "Discordant (Y\u2193 O\u2191)"
+    UD = "Discordant", DU = "Discordant"
   ),
   hotspot_export_names = list(UU = "UU", DD = "DD", UD = "UD", DU = "DU"),
   ora_min_size = 15,
@@ -171,203 +125,246 @@ cfg <- list(
   ),
   ora_grouped = list(
     file_1_quads = c("ora_UU", "ora_DD"),
-    file_2_quads = c("ora_UD", "ora_DU")
+    file_2_quads = c("ora_UD", "ora_DU"),
+    note_if_empty_2 = paste(
+      "No pathway reached FDR < 0.05 in either discordant quadrant.",
+      "The quadrants are small (18 and 7 proteins), so this is an absence of",
+      "power rather than evidence that the discordant proteins share no biology."
+    )
   ),
   ora_colors = ORA_QUAD_COLORS_F2,
   summary_quadrant_names = list(
-    UU = "Concordant_Up",       UU_slug = "concordant_up",
-    DD = "Concordant_Down",     DD_slug = "concordant_down",
-    UD = "Discordant_YoungUp_OldDown",  UD_slug = "discordant_y_up",
-    DU = "Discordant_YoungDown_OldUp",  DU_slug = "discordant_y_down"
+    UU = "Concordant_Up", UU_slug = "concordant_up",
+    DD = "Concordant_Down", DD_slug = "concordant_down",
+    UD = "Discordant_YoungUp_OldDown", UD_slug = "discordant_y_up",
+    DU = "Discordant_YoungDown_OldUp", DU_slug = "discordant_y_down"
   ),
   rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT,
+  # Quadrant ORA needs all four corners populated; the discordant pair is
+  # effectively empty here (UD = 0, DU = 1), so the supplementary block is off.
   supp = NULL
 )
 source("04_Figures/shared/comparison_panels/panel_E_rrho2.R")
-n_shared_E   <- n_shared
-n_UU_E       <- n_UU
+panel_b <- pE_heat
+n_shared_B <- n_shared
 
-# Panel B — Pattern heatmap (last: loads AnnotationDbi, clobbers select())
-ROW_H <- 0.078
-cfg <- list(
-  fig_id     = "F04",
-  contrast_x = "Training_Young",
-  contrast_y = "Training_Old",
-  title      = "Training Response Patterns",
-  col_headers = c("Tr.(Y)", "Tr.(O)"),
-  sort_col   = "logFC_Training_Young",
+cfg <- c(engine_cfg, list(
   rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT,
-  classify_fn = function(dep_df) {
-    dep_df |>
-      dplyr::filter(!is.na(logFC_Training_Young), !is.na(logFC_Training_Old)) |>
-      dplyr::filter(pi_score_Training_Young < 0.05 | pi_score_Training_Old < 0.05 |
-             pi_score_Interaction < 0.05) |>
-      dplyr::mutate(
-        quadrant = dplyr::case_when(
-          logFC_Training_Young > 0 & logFC_Training_Old > 0 ~ "Concordant Up",
-          logFC_Training_Young < 0 & logFC_Training_Old < 0 ~ "Concordant Down",
-          TRUE ~ "Discordant"
-        ),
-        sig_cat = dplyr::case_when(
-          pi_score_Training_Young < 0.05 & pi_score_Training_Old < 0.05 ~ "Both",
-          pi_score_Training_Young < 0.05 ~ "Tr.(Y)",
-          pi_score_Training_Old < 0.05   ~ "Tr.(O)",
-          pi_score_Interaction < 0.05    ~ "Inter.",
-          TRUE ~ "NS"
-        )
-      )
-  },
-  QUAD_ORDER      = c("Concordant Up", "Concordant Down", "Discordant"),
-  QUAD_COLORS     = c("Concordant Up" = "#B2182B", "Concordant Down" = "#2166AC",
-                      "Discordant" = "#1B7837"),
-  QUAD_BG         = c("Concordant Up" = "#F4D9D2", "Concordant Down" = "#D5DEEF",
-                      "Discordant" = "#C8E0CD", "Tied" = "#EEEEEE"),
-  ENDPOINT_COLORS = c("Concordant Up" = "#67001F", "Concordant Down" = "#053061",
-                      "Discordant" = "#00441B"),
-  SIG_COLORS      = c("Both" = "#2E7D32", "Tr.(Y)" = "#E05A4E",
-                      "Tr.(O)" = "#5DA5DA", "Inter." = "#7B5EA7", "NS" = "grey70"),
-  display_labels = c(
-    "Carbohydrate & Energy Metabolism" = "Carb. & Energy Metab.",
-    "Amino Acid & Cofactor Metabolism" = "AA & Cofactor\nMetab."
-  ),
-  col_header_colors = c(
-    CONTRAST_COLORS["Training_Young"],
-    CONTRAST_COLORS["Training_Old"]
-  ),
-  x_sig                = 0.27,
-  tile_w               = 0.80,
-  bar_scale            = 0.46,
-  bar_ref_width        = 14,
-  key_y_base           = ROW_H * 15.5,
-  key_dy               = ROW_H * 3.8,
-  key_x_sig            = NULL,
-  protein_count_x_mult = 7.5,
-  count_tick_y_label   = ROW_H * 2.6,
-  count_ticks_max      = 16,
-  count_tick_filter    = function(df) dplyr::filter(df, !val %in% c(15, 25)),
-  sig_cats       = c("Tr.(Y)", "Tr.(O)", "Both", "Inter."),
-  sig_cat_labels = c("Sig Young", "Sig Old", "Sig Both", "Interaction"),
-  inset_legend   = FALSE   # rendered separately below panel B in composite (see quad_legend)
+  panel_w = 102, panel_h = 140
+))
+source("04_Figures/shared/comparison_panels/panel_C_trajectory.R")
+panel_c <- pC_trajectory
+
+nes_scatter_cfg <- function(x, y, title, x_lab, y_lab, metric, interp,
+                            slope, colors, draw_order, quadrants,
+                            nudges = NULL, seed = 42) {
+  list(
+    fig_id = "F04", contrast_x = x, contrast_y = y, title = title,
+    axis_x_label = x_lab, axis_y_label = y_lab,
+    subtitle_metric = metric, subtitle_interpretation = interp,
+    ref_slope = slope, panel_w = 120,
+    rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT,
+    sig_colors = colors,
+    sig_draw_order = draw_order, quadrant_defs = quadrants,
+    display_overrides = PATHWAY_LABELS, label_nudges = nudges,
+    label_seed = seed
+  )
+}
+
+# Empty until a render proves otherwise: box geometry drove the old nudges and
+# the names are no longer boxed, so every one of them was re-derived from zero.
+NUDGE_D <- tibble::tibble(
+  pathway = character(), nudge_x = numeric(), nudge_y = numeric()
 )
-source("04_Figures/shared/comparison_panels/panel_B_pattern_heatmap.R")
 
-# Restore RPT paths (shared engines clobber RPT_PDF/RPT_PNG to panels subdir)
-RPT_PDF <- file.path(BASE, "b_reports", "main", "pdf")
-RPT_PNG <- file.path(BASE, "b_reports", "main", "png")
+NUDGE_E <- NUDGE_D
 
-# Quadrant legend (horizontal) — overlaid below panel B in the composite via draw_plot.
-# Reuses inset_quad_df assigned by the panel_B engine; each item: bg box + inner bar + label.
-nudge_idx3 <- 0.30   # shift entire 3rd item ("Discordant") right (~3.6mm physical)
-quad_legend <- ggplot(inset_quad_df) +
-  geom_rect(aes(xmin = (as.integer(quadrant) - 1) * 3.5 +
-                       (as.integer(quadrant) == 3) * nudge_idx3,
-                xmax = (as.integer(quadrant) - 1) * 3.5 + 0.7 +
-                       (as.integer(quadrant) == 3) * nudge_idx3,
-                ymin = -0.35, ymax = 0.35),
-            fill = inset_quad_df$bg_color, color = "black", linewidth = 0.5) +
-  geom_rect(aes(xmin = (as.integer(quadrant) - 1) * 3.5 + 0.10 +
-                       (as.integer(quadrant) == 3) * nudge_idx3,
-                xmax = (as.integer(quadrant) - 1) * 3.5 + 0.60 +
-                       (as.integer(quadrant) == 3) * nudge_idx3,
-                ymin = -0.15, ymax = 0.15),
-            fill = inset_quad_df$bar_color, color = "black", linewidth = 0.3) +
-  geom_text(aes(x = (as.integer(quadrant) - 1) * 3.5 + 0.85 +
-                    (as.integer(quadrant) == 3) * nudge_idx3,
-                y = 0, label = as.character(quadrant)),
-            hjust = 0, size = 3.5, fontface = "bold", color = "grey15") +
-  coord_cartesian(xlim = c(0, 10.5), ylim = c(-0.7, 0.7), clip = "off") +
-  theme_void() +
-  theme(plot.background = element_blank(),
-        panel.background = element_blank(),
-        plot.margin = margin(0, 0, 0, 0, "mm"))
+cfg <- nes_scatter_cfg(
+  "Training_Young", "Training_Old", "Pathway-Level Concordance (fGSEA)",
+  "Training Young", "Training Old", "concordant",
+  "positive ρ = shared pathway regulation across age groups", 1,
+  SIG_COLORS_F2,
+  c("Sig Old only", "Sig Young only", "Sig Both", "Interaction"),
+  list(
+    sig_both_label = "Sig Both", sig_x_label = "Sig Young only",
+    sig_y_label = "Sig Old only",
+    bg_red_1 = c(0, Inf, 0, Inf), bg_red_2 = c(-Inf, 0, -Inf, 0),
+    bg_blue_1 = c(0, Inf, -Inf, 0), bg_blue_2 = c(-Inf, 0, 0, Inf),
+    label_tr = "Concordant Up", color_tr = "#D6604D",
+    label_tl = "Discordant", color_tl = "#4393C3",
+    label_bl = "Concordant Down", color_bl = "#D6604D",
+    label_br = "Discordant", color_br = "#4393C3",
+    metric_count_fn = function(q1, q2, q3, q4) q1 + q3
+  ),
+  nudges = NUDGE_D, seed = 7
+)
+source("04_Figures/shared/comparison_panels/panel_D_nes_scatter.R")
+nes_legend <- cowplot::get_plot_component(pD, "guide-box-bottom", return_all = FALSE)
+panel_d <- pD + theme(legend.position = "none")
+rho_D <- as.numeric(nes_cor_all$estimate)
+frac_D <- pw_conc_frac
+file.rename(
+  file.path(PNL_PNG, "MAIN_panel_D_nes_scatter.png"),
+  file.path(PNL_PNG, "MAIN_panel_D_nes_concordance.png")
+)
+# The engine writes a fixed filename, so the second call would overwrite this.
+file.rename(
+  file.path(DAT, "panel_D", "nes_scatter.csv"),
+  file.path(DAT, "panel_D", "nes_concordance.csv")
+)
 
-COMP_W     <- 420
-COMP_H     <- 310
-PRINT_SCALE <- 380 / 178
-TAG_SZ     <- round(10 * PRINT_SCALE * 0.85)
-TTL_SZ     <- round(10 * PRINT_SCALE * 0.85)
-SUB_SZ     <- round(7 * PRINT_SCALE * 0.85)
+cfg <- nes_scatter_cfg(
+  "Aging", "Training_Old", "Pathway-Level Reversal (fGSEA)",
+  "Aging", "Training Old", "reversed",
+  "negative ρ = training opposes aging effects", -1,
+  SIG_COLORS_F3,
+  c("Sig Training only", "Sig Aging only", "Sig Both"),
+  list(
+    sig_both_label = "Sig Both", sig_x_label = "Sig Aging only",
+    sig_y_label = "Sig Training only",
+    bg_blue_1 = c(0, Inf, -Inf, 0), bg_blue_2 = c(-Inf, 0, 0, Inf),
+    bg_red_1 = c(0, Inf, 0, Inf), bg_red_2 = c(-Inf, 0, -Inf, 0),
+    label_tr = "Exacerbated", color_tr = "#D6604D",
+    label_tl = "Reversed", color_tl = "#4393C3",
+    label_bl = "Exacerbated", color_bl = "#D6604D",
+    label_br = "Reversed", color_br = "#4393C3",
+    metric_count_fn = function(q1, q2, q3, q4) q2 + q4
+  ),
+  nudges = NUDGE_E
+)
+source("04_Figures/shared/comparison_panels/panel_D_nes_scatter.R")
+panel_e <- pD + theme(legend.position = "none")
+rho_E <- as.numeric(nes_cor_all$estimate)
+frac_E <- pw_conc_frac
+file.rename(
+  file.path(PNL_PNG, "MAIN_panel_D_nes_scatter.png"),
+  file.path(PNL_PNG, "MAIN_panel_E_nes_reversal.png")
+)
+file.rename(
+  file.path(DAT, "panel_D", "nes_scatter.csv"),
+  file.path(DAT, "panel_D", "nes_reversal.csv")
+)
 
-ttl_A <- "Quadrant ORA (Concordance)"
-sub_A <- sprintf("N = %d | %d DEPs (\u03a0) | %d enriched (FDR) | \u03c1 = %.2f",
-                 n_total_A, n_sig_A, n_enrich_A, r_spear_A)
-ttl_B <- "Protein-to-Pathway"
-sub_B <- sprintf("%d proteins | %d pathways", n_total, n_pw)
-ttl_C <- "fry: Concordance"
-sub_C <- sprintf("n = %d | dupCor = %.3f", n_all_C, cor_imp_C)
-ttl_D <- "Pathway Concordance"
-sub_D <- sprintf("\u03c1 = %.2f | %.0f%% concordant",
-                 rho_D, pw_conc_D * 100)
-ttl_E <- "RRHO2 Concordance"
-sub_E <- sprintf("%d genes | max %d", n_shared_E, n_UU_E)
+cfg <- c(engine_cfg, list(
+  rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT,
+  panel_w = 102, panel_h = 140
+))
+source("04_Figures/shared/comparison_panels/panel_fry_barcode.R")
+panel_f <- pF_barcode
+
+COMP_W <- 460
+COMP_H <- 320
+PRINT_SCALE <- COMP_W / 178
+# The panels leave print_scale_apply.R's mutated FIG_* globals behind them, and
+# composite_text_sizes multiplies by the canvas factor itself, so the constants
+# have to be back at their style.R values or the titles scale twice. The panels
+# are finished ggplot objects by now and keep the sizes they were built with.
+source("04_Figures/shared/style.R")
+# Authored at 460 mm and shrunk to the 178 mm print width, so the type scales
+# up by the same factor to land at the shared 7 pt on the page.
+f04_txt <- composite_text_sizes(COMP_W, 178)
+TAG_SZ <- f04_txt$tag
+TTL_SZ <- f04_txt$title
+SUB_SZ <- f04_txt$subtitle
+
+ttl <- c(
+  A = "Training Concordance",
+  B = "Threshold-Free Overlap",
+  # C sits in a narrow 4-column box. At the 6 pt subtitle the title clips past
+  # roughly 18 characters and the subtitle past roughly 25.
+  C = "Blunted Response",
+  D = "Pathway Concordance",
+  E = "Pathway Reversal",
+  F = "Signature Rank"
+)
+sub <- c(
+  A = sprintf(
+    # draw_label does not wrap and the eight-column box clips past about 80
+    # characters. The fitted slopes live on the lines themselves instead.
+    "N = %d, ρ %.2f | FDR %d: %.0f%% dir, ρ %.2f | Π %d: %.0f%%, ρ %.2f",
+    n_total_A, r_spear,
+    conc_fdr$n, 100 * conc_fdr$agree, conc_fdr$rho,
+    conc_pi$n, 100 * conc_pi$agree, conc_pi$rho
+  ),
+  B = sweep_txt,
+  C = "% young magnitude lost",
+  D = sprintf("ρ = %.2f | %.0f%% concordant | no shared group mean", rho_D, frac_D * 100),
+  E = sprintf("ρ = %.2f | %.0f%% reversed | pathway level only", rho_E, frac_E * 100),
+  # draw_label does not wrap, and the six-column box runs out at about 54
+  # characters, so the age wording is the short form here.
+  F = "fry rotation test: younger sets in the older ranking"
+)
 
 layout <- paste(
-  "##############",
-  "AAAAAAAABBBBBB",
-  "AAAAAAAABBBBBB",
-  "AAAAAAAABBBBBB",
-  "AAAAAAAABBBBBB",
-  "AAAAAAAABBBBBB",
-  "AAAAAAAABBBBBB",
-  "##############",
-  "##############",
-  "CCCCCCDDDDEEEE",
-  "CCCCCCDDDDEEEE",
-  "CCCCCCDDDDEEEE",
-  "CCCCCCDDDDEEEE",
-  "CCCCCCDDDDEEEE",
-  "CCCCCCDDDDEEEE",
+  "##################",
+  strrep("AAAAAAAABBBBBBCCCC\n", 6),
+  "##################",
+  strrep("DDDDDDEEEEEEFFFFFF\n", 6),
+  "GGGGGGGGGGGGGGGGGG",
   sep = "\n"
 )
+layout <- paste(Filter(nzchar, strsplit(layout, "\n")[[1]]), collapse = "\n")
 
-composite <- composite + plot_annotation(theme = theme(plot.margin = margin(-2.5, -1, -2.5, -1, "mm")))
-pC_fry  <- pC_fry + plot_annotation(theme = theme(plot.margin = margin(3, 5, 0, 0, "mm")))
-pD      <- pD + theme(plot.margin = margin(-2.8, 5, 2.8, -5, "mm"))
-pE_heat <- pE_heat + theme(plot.margin = margin(-2.1, -0.2, 3.4, -3.5, "mm"),
-                           axis.title = element_text(face = "bold", size = 8))
-pB <- pB + coord_cartesian(xlim = c(-0.25, X_BAR_MAX + 1.75),
-                           ylim = c(BAR_YMAX + ROW_H * 6.5, -ROW_H * 0.05),
-                           expand = FALSE) +
-           theme(plot.margin = margin(1, 0, 8, -1, "mm"))   # 181mm panel width
+fig <- wrap_elements(full = panel_a) +
+  # B's tile field sat 3.6 pt above panel A's border. The nudge is applied
+  # here rather than in panel_E_rrho2.R because that engine also renders the
+  # supplementary aging RRHO2, which must not move. B fills its cell height,
+  # so a top margin lowers the top edge and shortens the square by the same
+  # amount rather than translating it.
+  wrap_elements(full = panel_b + theme(plot.margin = margin(1.27, 0, 0, 0, "mm"))) +
+  wrap_elements(full = panel_c) +
+  wrap_elements(full = panel_d) +
+  wrap_elements(full = panel_e) +
+  wrap_elements(full = panel_f) +
+  wrap_elements(full = nes_legend) +
+  plot_layout(
+    # Panel C is given 18 pt more, taken from B's columns rather than A's. B is
+    # a centred coord_fixed square in a cell 88 pt wider than the square needs,
+    # so the width spent here was rendering as nothing and B stays
+    # height-limited at the same size. Taking it from A instead would reflow
+    # its ggrepel labels and push its bar labels further past their bars.
+    design = layout, widths = c(rep(1, 8), rep(0.958, 6), rep(1.063, 4)),
+    # Bands 1 and 8 carry the title and subtitle for the row below them. They
+    # are fractions of the total, so trimming the middle band shrinks the top
+    # one too, and the top band had to grow from 7 to hold its ground. The
+    # middle band was 12, which left 26 pt of dead canvas between the D/E/F
+    # subtitles and the plots they name; at 9 that gap is about 5 pt.
+    heights = c(8, rep(13, 6), 9, rep(13, 6), 6)
+  )
 
-fig <- wrap_elements(full = composite) +
-       wrap_elements(full = pB) +
-       wrap_elements(full = pC_fry) +
-       wrap_elements(full = pD) +
-       wrap_elements(full = pE_heat) +
-       plot_layout(design = layout,
-                   widths  = rep(1, 14),
-                   heights = c(6.5, rep(10, 6), 4, 4.5, rep(12, 6)))
+# Hand-tuned to the column boundaries, with no link back to the layout, so a
+# change to widths has to be carried here by hand. C's cell left edge moved
+# 18 pt left with the widths change above; B's did not move.
+X_TAG <- c(A = 0.004, B = 0.448, C = 0.768, D = 0.004, E = 0.334, F = 0.659)
+# The top row's tags started 0.6 pt from the page edge, against the bottom
+# row's 2.1 pt below its band. Lowered to match that relationship and to put
+# a readable gap between the subtitles and the panel tops at 52.4.
+Y_TAG <- c(A = 0.987, B = 0.987, C = 0.987, D = 0.518, E = 0.518, F = 0.518)
+X_TTL <- 0.030
+SUB_OFFSET <- 0.019
 
-X_A <- 0.005;  X_B <- 0.549;  X_C <- 0.012;  X_D <- 0.406;  X_E <- 0.693
-X_TTL      <- 0.030
-TAG_DY     <- -0.002
-SUB_OFFSET <- 0.020
+composite_final <- Reduce(
+  function(p, k) {
+    p +
+      draw_label(k, x = X_TAG[[k]], y = Y_TAG[[k]], size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
+      draw_label(ttl[[k]],
+        x = X_TAG[[k]] + X_TTL, y = Y_TAG[[k]], size = TTL_SZ,
+        fontface = "bold", hjust = 0, vjust = 1
+      ) +
+      draw_label(sub[[k]],
+        x = X_TAG[[k]] + X_TTL, y = Y_TAG[[k]] - SUB_OFFSET, size = SUB_SZ,
+        fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40"
+      )
+  },
+  names(ttl),
+  init = ggdraw(fig)
+)
 
-Y_A <- 0.984;  Y_B <- 0.984
-Y_C <- 0.512;  Y_D <- 0.511;  Y_E <- 0.511
+ggsave(file.path(OUT_PDF, "MAIN_F04_composite.pdf"), composite_final,
+  width = COMP_W, height = COMP_H, units = "mm", device = pdf_device
+)
+ggsave(file.path(OUT_PNG, "MAIN_F04_composite.png"), composite_final,
+  width = COMP_W, height = COMP_H, units = "mm", dpi = 300
+)
 
-composite_final <- ggdraw(fig) +
-  draw_label("A",    x = X_A,           y = Y_A - TAG_DY,       size = TAG_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(ttl_A,  x = X_A + X_TTL,   y = Y_A,                size = TTL_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(sub_A,  x = X_A + X_TTL,   y = Y_A - SUB_OFFSET,   size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_label("B",    x = X_B,           y = Y_B - TAG_DY,       size = TAG_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(ttl_B,  x = X_B + X_TTL,   y = Y_B,                size = TTL_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(sub_B,  x = X_B + X_TTL,   y = Y_B - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_label("C",    x = X_C,           y = Y_C - TAG_DY,       size = TAG_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(ttl_C,  x = X_C + X_TTL,   y = Y_C,                size = TTL_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(sub_C,  x = X_C + X_TTL,   y = Y_C - SUB_OFFSET,   size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_label("D",    x = X_D,           y = Y_D - TAG_DY,       size = TAG_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(ttl_D,  x = X_D + X_TTL,   y = Y_D,                size = TTL_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(sub_D,  x = X_D + X_TTL,   y = Y_D - SUB_OFFSET,   size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_label("E",    x = X_E,           y = Y_E - TAG_DY,       size = TAG_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(ttl_E,  x = X_E + X_TTL,   y = Y_E,                size = TTL_SZ, fontface = "bold",        hjust = 0, vjust = 1) +
-  draw_label(sub_E,  x = X_E + X_TTL,   y = Y_E - SUB_OFFSET,   size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_plot(quad_legend, x = 0.64, y = 0.524, width = 0.30, height = 0.045)
-
-ggsave(file.path(RPT_PDF, "MAIN_F04_composite.pdf"), composite_final,
-       width = COMP_W, height = COMP_H, units = "mm", device = pdf_device)
-ggsave(file.path(RPT_PNG, "MAIN_F04_composite.png"), composite_final,
-       width = COMP_W, height = COMP_H, units = "mm", dpi = 300)
-
-message("F04 composite (5-panel, 3-column layout) saved")
+message("F04 composite (6-panel, A/B/C over D/E/F) saved")
