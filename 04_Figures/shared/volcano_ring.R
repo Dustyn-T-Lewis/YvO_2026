@@ -52,13 +52,18 @@ clean_ring_label <- function(name) {
     str_wrap(width = 15) |>
     # manual overrides post-wrap
     str_replace(fixed("Protein\nLocalization To\nPlasma Membrane"),
-                "Protein Localiz.\nto Plasma\nMem.") |>
+                "Protein Localiz.\nto Plasma Mem.") |>
     str_replace("(?s).*Maintenance.*Cell.*Polarity.*", "Maintenance\nof Polarity") |>
     str_replace("^Heme Metabolism$",    "Heme\nMetabolism") |>
-    str_replace("^tRNA Metabolism$",    "tRNA\nMetabolism") |>
+    str_replace("^Protein Folding$",    "Protein\nFolding") |>
+    str_replace("^tRNA Metabolism$",    "tRNA\nMetab.") |>
     str_replace("^Mitotic Spindle$",    "Mitotic\nSpindle") |>
-    str_replace("^MYC Targets V1$",     "MYC Targets\nV1") |>
-    str_replace("^MYC Targets\nV1$",    "MYC Targets\nV1") |>
+    str_replace("^MYC Targets V1$",     "MYC\nTargets V1") |>
+    str_replace("^MYC Targets\nV1$",    "MYC\nTargets V1") |>
+    str_replace(fixed("PI3K AKT mTOR\nSignaling"), "PI3K\nAKT\nmTOR") |>
+    str_replace(fixed("mTORC1\nSignaling"), "mTORC1") |>
+    str_replace(fixed("Mitotic Nuclear\nDivision"),
+                "Mitotic\nNuclear\nDivision") |>
     str_replace("^UV Resp\\. to Dn$",   "UV Response\nDn") |>
     str_replace("^UV Response Dn$",     "UV Response\nDn") |>
     str_trim()
@@ -170,29 +175,35 @@ build_volcano_layers <- function(de_df,
                                  count_y_mult        = 1.0,
                                  count_x_mult        = 0.5) {
 
-  logfc_col <- paste0("logFC_", contrast)
-  pval_col  <- paste0("P.Value_", contrast)
-  pi_col    <- paste0("pi_score_", contrast)
-
   vdf <- de_df |>
     transmute(
       gene       = gene,
-      logFC      = .data[[logfc_col]],
-      pvalue     = .data[[pval_col]],
-      pi_score   = .data[[pi_col]],
+      logFC      = .data[[paste0("logFC_", contrast)]],
+      pvalue     = .data[[paste0("P.Value_", contrast)]],
+      fdr        = .data[[paste0("adj.P.Val_", contrast)]],
+      pi_score   = .data[[paste0("pi_score_", contrast)]],
       neg_log10p = -log10(pvalue)
     ) |>
     filter(!is.na(logFC), !is.na(pvalue), is.finite(neg_log10p)) |>
     mutate(
+      # FDR wins ties, so a protein significant on both criteria is counted once.
+      tier = case_when(
+        fdr < p_thresh      ~ "fdr",
+        pi_score < p_thresh ~ "pi",
+        TRUE                ~ "ns"
+      ),
       direction = case_when(
-        pi_score < 0.05 & logFC > 0 ~ "Up",
-        pi_score < 0.05 & logFC < 0 ~ "Down",
-        TRUE                         ~ "NS"
+        tier == "ns" ~ "NS",
+        logFC > 0    ~ "Up",
+        TRUE         ~ "Down"
       )
     )
 
-  n_up   <- sum(vdf$direction == "Up")
-  n_down <- sum(vdf$direction == "Down")
+  n <- \(dir, t) sum(vdf$direction == dir & vdf$tier == t)
+  n_up   <- n("Up", "fdr")
+  n_down <- n("Down", "fdr")
+  n_up_pi   <- n("Up", "pi")
+  n_down_pi <- n("Down", "pi")
 
   x_data_max <- max(abs(vdf$logFC), na.rm = TRUE)
   y_data_max <- max(vdf$neg_log10p, na.rm = TRUE)
@@ -216,12 +227,15 @@ build_volcano_layers <- function(de_df,
       inherit.aes = FALSE
     ),
     sig_points = geom_point(
-      data = vdf_sig, aes(x = x_plot, y = y_plot, color = direction),
-      size = point_size * 1.4, alpha = point_alpha * 1.4, stroke = 0.3,
-      inherit.aes = FALSE
+      data = vdf_sig, aes(x = x_plot, y = y_plot, color = direction, alpha = tier),
+      size = point_size * 1.4, stroke = 0.3, inherit.aes = FALSE
     ),
     color_scale = scale_color_manual(
       values = c(Up = unname(up_color), Down = unname(down_color)),
+      guide  = "none"
+    ),
+    alpha_scale = scale_alpha_manual(
+      values = c(fdr = min(point_alpha * 1.4, 1), pi = point_alpha * 0.45),
       guide  = "none"
     ),
     x_axis_line = annotate(
@@ -284,6 +298,8 @@ build_volcano_layers <- function(de_df,
   attr(layers, "y_data_max") <- y_data_max
   attr(layers, "n_up")       <- n_up
   attr(layers, "n_down")     <- n_down
+  attr(layers, "n_up_pi")    <- n_up_pi
+  attr(layers, "n_down_pi")  <- n_down_pi
 
   layers
 }
@@ -337,6 +353,13 @@ build_ring_layers <- function(ring_data,
   layers
 }
 
+# Per-label horizontal shift, keyed on the cleaned text. The angular placement
+# is shared by every label, so a box that lands too close to its neighbour can
+# only be moved individually. PI3K/AKT/mTOR sits beside mTORC1 at the foot of
+# the training-in-young ring. The leader line is unaffected: it still ends
+# where the geometry puts it.
+LABEL_X_SHIFT <- c("PI3K\nAKT\nmTOR" = -0.35)
+
 build_label_layer <- function(ring_data,
                               label_r    = 7.0,
                               label_size = 3.0,
@@ -354,13 +377,17 @@ build_label_layer <- function(ring_data,
       label_r_term = if (!is.null(label_gap)) arc_r1_var + label_gap else label_r
     )
 
-  # nudge close labels outward
+  # Stagger a run of close labels across three radii instead of pushing each one
+  # out by the same amount -- an equal nudge leaves consecutive crowded labels at
+  # the same radius, which is how "mTORC1 Signaling" ended up under its
+  # neighbour once the EnrichmentMap dedup changed which terms reach the ring.
   if (nrow(lbl_df) >= 2) {
-    lbl_df <- lbl_df  |> arrange(mid_deg)
+    lbl_df <- lbl_df |> arrange(mid_deg)
+    run <- 0
     for (i in 2:nrow(lbl_df)) {
-      if (abs(lbl_df$mid_deg[i] - lbl_df$mid_deg[i - 1]) < min_angle_gap) {
-        lbl_df$label_r_term[i] <- lbl_df$label_r_term[i] + nudge_outward
-      }
+      close <- abs(lbl_df$mid_deg[i] - lbl_df$mid_deg[i - 1]) < min_angle_gap
+      run <- if (close) run + 1 else 0
+      lbl_df$label_r_term[i] <- lbl_df$label_r_term[i] + (run %% 3) * nudge_outward
     }
     wrap_gap <- 360 - lbl_df$mid_deg[nrow(lbl_df)] + lbl_df$mid_deg[1]
     if (wrap_gap < min_angle_gap) {
@@ -386,7 +413,7 @@ build_label_layer <- function(ring_data,
         side_x >  0.15 ~  0.6,
         side_x < -0.15 ~ -0.6,
         TRUE           ~  0
-      ),
+      ) + dplyr::coalesce(unname(LABEL_X_SHIFT[clean_label]), 0),
       legend_label = clean_label
     )
 

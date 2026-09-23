@@ -174,4 +174,3 @@ assign_go_slim_consolidated <- function(fg_genes, all_genes, min_cat_size = 2) {
     transmute(gene = SYMBOL, slim, consolidated) |>
     mutate(consolidated = factor(consolidated, levels = CONSOLIDATED_PATHWAY_ORDER))
 }
-

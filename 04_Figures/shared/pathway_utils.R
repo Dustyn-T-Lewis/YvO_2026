@@ -1,12 +1,14 @@
 # Unified pathway enrichment utilities
-# MSigDB Hallmark (H), Canonical Pathways (C2:CP), GO:BP (C5:GO:BP); Jaccard dedup per Reimand et al. 2019
+# MSigDB Hallmark (H), Canonical Pathways (C2:CP), GO:BP (C5:GO:BP)
 #
 # Exports:
 #   build_pathway_collection()      assemble GO:BP + Reactome + Hallmark + KEGG
 #   run_fgsea_deduplicated()        fgsea + collapsePathways for one contrast
 #   run_enrichment_pipeline()       fGSEA across all contrasts + databases
-#   run_ora_deduplicated()          over-representation analysis with Jaccard dedup
+#   run_ora_deduplicated()          over-representation, redundancy flagged
 #   classify_database() / classify_pathway_func()  category labels for plotting
+
+source(here::here("04_Figures", "shared", "enrichment_dedup.R"))
 
 deduplicate_enrichment_flat <- function(results, pathways, jaccard_cutoff = 0.5) {
   if (nrow(results) == 0) {
@@ -75,6 +77,10 @@ build_pathway_collection <- function(species = "Homo sapiens",
                                      include_goslim = TRUE,
                                      exclude_variants = FALSE) {
   requireNamespace("msigdbr", quietly = TRUE)
+  stopifnot(
+    "msigdbr release differs from the pinned 26.1.0; every enrichment result will move" =
+      as.character(packageVersion("msigdbr")) == "26.1.0"
+  )
 
   hallmark <- msigdbr::msigdbr(species = species, collection = "H")
   kegg <- msigdbr::msigdbr(
@@ -90,13 +96,20 @@ build_pathway_collection <- function(species = "Homo sapiens",
     subcollection = "GO:BP"
   )
 
+  # Applied to every collection, so the exclusion Methods reports holds without
+  # qualification. Pattern matches Mito.
   disease_pat <- paste0(
-    "DISEASE|CANCER|TUMOR|CARCINOMA|LEUKEMIA|LYMPHOMA|",
-    "MELANOMA|GLIOMA|HEPATITIS|HIV|INFECTION|VIRAL|",
-    "BACTERIAL|PARASIT"
+    "DISEASE|CANCER|TUMOR|CARCINOMA|LEUKEMIA|LYMPHOMA|MELANOMA|GLIOMA|",
+    "HEPATITIS|HIV|INFECTION|INFECTIOUS|VIRAL|VIRUS|INFLUENZA|SARS|HCMV|",
+    "MEASLES|DENGUE|BACTERIAL|LISTERIA|LEISHMANIA|PARASIT"
   )
-  kegg <- kegg[!grepl(disease_pat, kegg$gs_name, ignore.case = TRUE), ]
-  reactome <- reactome[!grepl(disease_pat, reactome$gs_name, ignore.case = TRUE), ]
+  drop_disease <- function(df) {
+    df[!grepl(disease_pat, df$gs_name, ignore.case = TRUE), ]
+  }
+  hallmark <- drop_disease(hallmark)
+  kegg <- drop_disease(kegg)
+  reactome <- drop_disease(reactome)
+  gobp <- drop_disease(gobp)
 
   if (exclude_variants) {
     kegg <- kegg[!grepl("_VARIANT_", kegg$gs_name), ]
@@ -114,6 +127,9 @@ build_pathway_collection <- function(species = "Homo sapiens",
     goslim_sets <- build_goslim_gene_sets(
       species = species, min_size = min_size, max_size = max_size
     )
+    goslim_sets <- goslim_sets[
+      !grepl(disease_pat, names(goslim_sets), ignore.case = TRUE)
+    ]
     pw_list <- c(pw_list, goslim_sets)
     dbs <- c(dbs, "GO Slim")
   }
@@ -130,28 +146,44 @@ build_pathway_collection <- function(species = "Homo sapiens",
 }
 
 
+# Official GO Consortium generic slim, checked in from
+# https://current.geneontology.org/ontology/subsets/goslim_generic.obo
+# (data-version go/releases/2026-07-26/subsets/goslim_generic.owl, verified
+# against the live file 2026-08-20). Every non-obsolete biological_process
+# term in that file, nothing hand-picked or trimmed.
+parse_goslim_bp_terms <- function(obo_path) {
+  stopifnot("GO Slim OBO file missing" = file.exists(obo_path))
+  lines <- readLines(obo_path)
+
+  # Stanza boundaries are any bracketed header ([Term], [Typedef], ...), not
+  # just [Term] -- otherwise the last [Term] block swallows every [Typedef]
+  # stanza appended after it.
+  stanza_start <- grep("^\\[.*\\]$", lines)
+  stanza_end <- c(stanza_start[-1] - 1, length(lines))
+  term_idx <- which(lines[stanza_start] == "[Term]")
+
+  ids <- vapply(term_idx, function(i) {
+    block <- lines[stanza_start[i]:stanza_end[i]]
+    ns <- sub("^namespace: ", "", block[startsWith(block, "namespace: ")])
+    obsolete <- any(startsWith(block, "is_obsolete: true"))
+    if (length(ns) && ns == "biological_process" && !obsolete) {
+      sub("^id: ", "", block[startsWith(block, "id: ")][1])
+    } else {
+      NA_character_
+    }
+  }, character(1))
+
+  unique(ids[!is.na(ids)])
+}
+
 build_goslim_gene_sets <- function(species = "Homo sapiens",
-                                   min_size = 10, max_size = 500) {
+                                   min_size = 10, max_size = 500,
+                                   obo_path = here::here("04_Figures", "shared", "goslim_generic.obo")) {
   requireNamespace("GO.db", quietly = TRUE)
   requireNamespace("org.Hs.eg.db", quietly = TRUE)
   requireNamespace("AnnotationDbi", quietly = TRUE)
 
-  # 62 GO Slim Generic BP terms (from go_slim_categories.R)
-  bp_slim <- c(
-    "GO:0000278", "GO:0000910", "GO:0002181", "GO:0002376", "GO:0003012",
-    "GO:0003013", "GO:0003014", "GO:0003016", "GO:0005975", "GO:0006091",
-    "GO:0006260", "GO:0006281", "GO:0006310", "GO:0006325", "GO:0006351",
-    "GO:0006355", "GO:0006399", "GO:0006457", "GO:0006520", "GO:0006629",
-    "GO:0006766", "GO:0006886", "GO:0006913", "GO:0006914", "GO:0006954",
-    "GO:0007005", "GO:0007010", "GO:0007018", "GO:0007031", "GO:0007059",
-    "GO:0007126", "GO:0007155", "GO:0007163", "GO:0007586", "GO:0009100",
-    "GO:0012501", "GO:0016071", "GO:0016192", "GO:0023052", "GO:0030154",
-    "GO:0030163", "GO:0030198", "GO:0032200", "GO:0034330", "GO:0042060",
-    "GO:0042180", "GO:0042254", "GO:0044782", "GO:0048856", "GO:0048870",
-    "GO:0050877", "GO:0051604", "GO:0055085", "GO:0055086", "GO:0061024",
-    "GO:0065003", "GO:0071941", "GO:0072659", "GO:0098542", "GO:0098754",
-    "GO:0140014", "GO:1901135"
-  )
+  bp_slim <- parse_goslim_bp_terms(obo_path)
 
   # Get all descendant GO terms for each slim term
   offspring <- as.list(GO.db::GOBPOFFSPRING)
@@ -205,10 +237,23 @@ build_goslim_gene_sets <- function(species = "Homo sapiens",
 }
 
 
-run_fgsea_deduplicated <- function(ranks, pathways, jaccard_cutoff = 0.5,
+
+# Redundancy is flagged, not dropped -- matches run_ora_deduplicated(), so a
+# count like "19 significant" and a display of "representatives only" come
+# from the same computation instead of two different redundancy rules. Uses
+# Jaccard at 0.5, within database, matching the submitted paper.
+run_fgsea_deduplicated <- function(ranks, pathways, em_cutoff = 0.5,
                                    nperm = 10000, min_size = 15,
                                    max_size = 500) {
   requireNamespace("fgsea", quietly = TRUE)
+
+  # Protein groups can share a gene symbol; fgsea needs one stat per gene.
+  # Keep the strongest signal.
+  if (anyDuplicated(names(ranks))) {
+    ranks <- ranks[order(-abs(ranks))]
+    ranks <- ranks[!duplicated(names(ranks))]
+    ranks <- sort(ranks, decreasing = TRUE)
+  }
 
   set.seed(42) # fgseaMultilevel is permutation-based; seed for reproducible NES/p
   res <- fgsea::fgseaMultilevel(
@@ -234,16 +279,18 @@ run_fgsea_deduplicated <- function(ranks, pathways, jaccard_cutoff = 0.5,
   sig <- res[!is.na(res$padj) & res$padj < 0.05, ]
   nonsig <- res[is.na(res$padj) | res$padj >= 0.05, ]
 
-  sig_dedup <- deduplicate_enrichment(sig, pathways, jaccard_cutoff)
+  sig_flagged <- em_dedup_report(sig, pathways, em_cutoff)
+  nonsig[c("dedup_status", "merged_into", "overlap_jaccard")] <-
+    list(NA_character_, NA_character_, NA_real_)
 
-  n_removed <- nrow(sig) - nrow(sig_dedup)
-  pct <- if (nrow(sig) > 0) round(100 * n_removed / nrow(sig), 1) else 0
+  n_kept <- sum(sig_flagged$dedup_status == "kept", na.rm = TRUE)
   message(sprintf(
     "fGSEA dedup: %d sig -> %d kept (removed %d, %.1f%%)",
-    nrow(sig), nrow(sig_dedup), n_removed, pct
+    nrow(sig), n_kept, nrow(sig) - n_kept,
+    if (nrow(sig) > 0) round(100 * (nrow(sig) - n_kept) / nrow(sig), 1) else 0
   ))
 
-  rbind(sig_dedup, nonsig)
+  rbind(sig_flagged, nonsig)
 }
 
 
@@ -259,6 +306,12 @@ run_enrichment_pipeline <- function(stats_list, pw_list,
   for (ctr in names(stats_list)) {
     message(sprintf("\n--- %s ---", ctr))
     ranks <- stats_list[[ctr]]
+    if (anyDuplicated(names(ranks))) {
+      # protein groups can share a gene symbol; keep the strongest stat
+      ranks <- ranks[order(-abs(ranks))]
+      ranks <- ranks[!duplicated(names(ranks))]
+      ranks <- sort(ranks, decreasing = TRUE)
+    }
 
     set.seed(42) # fgseaMultilevel is permutation-based; seed for reproducible NES/p
     res_dt <- fgsea::fgseaMultilevel(
@@ -335,11 +388,13 @@ run_enrichment_pipeline <- function(stats_list, pw_list,
 
 
 run_ora_deduplicated <- function(genes, universe, pathways,
-                                 jaccard_cutoff = 0.5,
+                                 em_cutoff = 0.5,
                                  min_size = 10, max_size = 500,
                                  padj_cutoff = 0.05) {
   requireNamespace("fgsea", quietly = TRUE)
 
+  genes <- unique(genes)
+  universe <- unique(universe)
   genes <- intersect(genes, universe)
 
   # Split pathways by database, run fora per database (per-database BH)
@@ -356,10 +411,14 @@ run_ora_deduplicated <- function(genes, universe, pathways,
       maxSize  = max_size
     )
     db_res <- as.data.frame(db_res)
+    if (nrow(db_res) == 0) next
     db_res$database <- db
     db_results[[db]] <- db_res
   }
   res <- do.call(rbind, db_results)
+  if (is.null(res) || nrow(res) == 0) {
+    return(tibble::tibble(pathway = character()))
+  }
 
   N <- length(universe)
   K <- length(genes)
@@ -373,17 +432,39 @@ run_ora_deduplicated <- function(genes, universe, pathways,
 
   res <- tibble::as_tibble(res)
 
-  sig <- res[!is.na(res$padj) & res$padj < padj_cutoff, ]
-  sig_dedup <- deduplicate_enrichment(sig, pathways, jaccard_cutoff)
+  # Redundancy is flagged, not dropped, so counts report every significant set
+  # while panels draw one representative per cluster. Same split the ranked-list
+  # cache uses; coefficient matches build_fgsea_cache.R.
+  #
+  # Collapsing runs on the FDR < 0.05 subset only. Callers that pass a looser
+  # padj_cutoff want the fuller table for plotting, and the similarity loop is
+  # quadratic, so flagging thousands of non-significant sets would be both
+  # meaningless and slow.
+  out <- as.data.frame(res[!is.na(res$padj) & res$padj < padj_cutoff, ])
+  if (nrow(out) == 0) {
+    out[c("dedup_status", "merged_into", "overlap_jaccard")] <-
+      list(character(0), character(0), numeric(0))
+    return(tibble::as_tibble(out))
+  }
+  sig <- out[out$padj < 0.05, ]
+  flagged <- em_dedup_report(sig, pathways, em_cutoff)
 
-  n_removed <- nrow(sig) - nrow(sig_dedup)
-  pct <- if (nrow(sig) > 0) round(100 * n_removed / nrow(sig), 1) else 0
+  out$dedup_status <- NA_character_
+  out$merged_into <- NA_character_
+  out$overlap_jaccard <- NA_real_
+  hit <- match(flagged$pathway, out$pathway)
+  out$dedup_status[hit] <- flagged$dedup_status
+  out$merged_into[hit] <- flagged$merged_into
+  out$overlap_jaccard[hit] <- flagged$overlap_jaccard
+
+  n_kept <- sum(out$dedup_status == "kept", na.rm = TRUE)
   message(sprintf(
-    "ORA dedup: %d sig -> %d kept (removed %d, %.1f%%)",
-    nrow(sig), nrow(sig_dedup), n_removed, pct
+    "ORA: %d sig -> %d representatives (%.1f%% redundant)",
+    nrow(sig), n_kept,
+    if (nrow(sig) > 0) 100 * (nrow(sig) - n_kept) / nrow(sig) else 0
   ))
 
-  sig_dedup
+  tibble::as_tibble(out)
 }
 
 
