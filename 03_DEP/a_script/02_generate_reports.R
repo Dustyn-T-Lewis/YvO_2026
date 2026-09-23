@@ -6,6 +6,12 @@ withr::local_dir(here::here())
 
 pacman::p_load(dplyr, tidyr, tibble, purrr, readxl, openxlsx, ggplot2, ggrepel, patchwork, gridExtra, limma)
 
+# ggrepel places labels by a stochastic search, so an unseeded render puts
+# them somewhere new each time. run_all.R runs each script in its own
+# Rscript child, which starts from a time-seeded RNG.
+set.seed(42)
+source("04_Figures/shared/devices.R")
+
 DAT <- "03_DEP/c_data"
 RPT <- "03_DEP/b_reports"
 SUM <- file.path(RPT, "03_contrast_summaries")
@@ -70,13 +76,13 @@ for (cname in contrast_names) {
   ) + ggtitle("Nominal P < 0.01")
   p2 <- make_vol(
     res, "nlog10_adj", expression(-log[10](FDR)), 10,
-    -log10(0.10)
-  ) + ggtitle("FDR < 0.10")
+    -log10(0.05)
+  ) + ggtitle("FDR < 0.05")
   p3 <- make_vol(
     res, "nlog10_pi", expression(-log[10](Pi)), 10,
     -log10(0.05)
   ) +
-    ggtitle("Pi < 0.05") + theme(legend.position = "right") + labs(color = NULL)
+    ggtitle("Π < 0.05") + theme(legend.position = "right") + labs(color = NULL)
 
   tbl_data <- res |>
     slice_min(pi_score, n = 25, with_ties = FALSE) |>
@@ -101,7 +107,7 @@ for (cname in contrast_names) {
   cdir <- file.path(SUM, cname)
   dir.create(cdir, showWarnings = FALSE)
 
-  pdf(file.path(cdir, "summary.pdf"), width = 16, height = 14)
+  open_pdf(file.path(cdir, "summary.pdf"), width = 16, height = 14)
   print((p1 | p2 | p3) + plot_annotation(
     title = cname,
     subtitle = sprintf(
@@ -126,12 +132,12 @@ sc <- list_rbind(lapply(contrast_names, \(cname) {
   res <- results_list[[cname]]
   bind_rows(
     tibble(
-      contrast = cname, criterion = "FDR < 0.10",
+      contrast = cname, criterion = "FDR < 0.05",
       up = sum(res$adj.P.Val < 0.10 & res$logFC > 0, na.rm = TRUE),
       down = sum(res$adj.P.Val < 0.10 & res$logFC < 0, na.rm = TRUE)
     ),
     tibble(
-      contrast = cname, criterion = "Pi < 0.05",
+      contrast = cname, criterion = "Π < 0.05",
       up = sum(res$sig_pi == 1), down = sum(res$sig_pi == -1)
     )
   )
@@ -245,7 +251,7 @@ p_sens <- tableGrob(sens_display,
   )
 )
 
-pdf(file.path(RPT, "02_dep_overview.pdf"), width = 14, height = 10)
+open_pdf(file.path(RPT, "02_dep_overview.pdf"), width = 14, height = 10)
 print(p_bar + plot_annotation(
   title = "YvO Differential Expression Overview",
   theme = theme(plot.title = element_text(face = "bold", size = 16))

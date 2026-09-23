@@ -1,0 +1,5 @@
+coding,columns,rank,non_estimable,verdict
+supplement pooled across trials,8,8,none,fits silently despite the confound
+supplement as recorded across all arms,9,9,none,fits silently despite the confound
+supplement with control and placebo collapsed,7,7,none,fits silently despite the confound
+supplement labelled with its trial,10,9,termPPS_older:Peanut protein,limma drops a column

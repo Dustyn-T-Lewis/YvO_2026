@@ -1,0 +1,5 @@
+estimator,controls_coupling,controls_selection,r,lo,hi,p_value,n_proteins,n_subjects,pct_opposite_sign
+limma coefficients on the FDR set (descriptive),FALSE,FALSE,-0.562,NA,NA,NA,278,NA,77
+"Group-mean axes, top-n selection, observed",FALSE,FALSE,-0.488,NA,NA,NA,278,15,NA
+Coupling-preserving null with re-selection,TRUE,TRUE,-0.267,-0.715,0.241,0.24575424575424576,278,15,NA
+"Split-half: selection and aging in half A, training in half B",TRUE,TRUE,-0.171,-0.548,0.344,NA,278,15,NA

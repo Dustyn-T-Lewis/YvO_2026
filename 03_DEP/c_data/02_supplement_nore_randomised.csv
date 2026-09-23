@@ -1,0 +1,5 @@
+contrast,n_tested,raw_p_lt_05,expected_by_chance,fdr_lt_05,min_adj_p
+Baseline_arm,1920,191,96,0,0.319
+Training_BRJ,1920,102,96,0,0.166
+Training_PLA,1920,65,96,0,0.993
+Arm_x_Training,1920,68,96,0,0.985
