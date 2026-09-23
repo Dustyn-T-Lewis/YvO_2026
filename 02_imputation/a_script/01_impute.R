@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Stage 02: Impute
-# MAR/MNAR classification (3-method consensus) → missForest imputation
+# MAR/MNAR classification (k-means on intensity x missingness) → missForest
 #
 # Outputs:
 #   c_data/02_imputation.xlsx     5-sheet supplement (+benchmark if available)
@@ -10,6 +10,8 @@
 withr::local_dir(here::here())
 
 pacman::p_load(missForest, dplyr, tibble, openxlsx)
+source("04_Figures/shared/devices.R")
+source("04_Figures/shared/supplement_overview.R")
 
 set.seed(42)
 
@@ -63,61 +65,41 @@ miss_by_group <- sapply(unique(meta$Group_Time), \(g) {
   rowSums(is.na(mat[, cols, drop = FALSE])) / length(cols) * 100
 })
 
-# MAR/MNAR classification (3-method consensus, >=2/3)
+# MAR/MNAR classification
+#
+# One rule, k-means on (mean intensity, % missing). MNAR is the cluster with
+# the lower mean intensity: a protein missing because it sits near the
+# detection limit. This replaced a "3-method consensus" on 2026-09-08 in which
+# two of the three votes were forced median splits and so labelled exactly
+# 49.96% of incomplete proteins MNAR whatever the data showed. The logistic
+# classifier fitted P(missing | intensity) with one continuous predictor and
+# thresholded at the median of its own fitted values, which is algebraically a
+# median split on intensity -- identical on all 1151 incomplete proteins. The
+# left-tail classifier thresholded at its own median too. Only this one
+# responds to structure in the data.
 
 has_na <- which(prot_miss > 0 & prot_miss < ncol(mat))
 inc_mean <- obs_means[has_na]
 inc_pct <- prot_pct[has_na]
 
-# Classifier 1: K-means on (intensity, %missing)
 set.seed(42)
 km <- kmeans(scale(cbind(inc_mean, inc_pct)), centers = 2, nstart = 25)
 km_mnar <- km$cluster == which.min(tapply(inc_mean, km$cluster, mean))
-
-# Classifier 2: Global logistic P(missing | intensity)
-lr_df <- data.frame(
-  is_miss = as.integer(is.na(as.vector(mat))),
-  intensity = rep(obs_means, ncol(mat))
-)
-lr_fit <- glm(is_miss ~ intensity, data = lr_df, family = binomial)
-lr_pred <- predict(lr_fit,
-  newdata = data.frame(intensity = inc_mean),
-  type = "response"
-)
-lr_mnar <- lr_pred > median(lr_pred)
-
-# Classifier 3: Left-tail proximity
-global_q25 <- quantile(mat, 0.25, na.rm = TRUE)
-tail_frac <- vapply(
-  has_na, \(i) mean(mat[i, !is.na(mat[i, ])] < global_q25),
-  numeric(1)
-)
-lt_mnar <- (tail_frac * inc_pct / 100) > median(tail_frac * inc_pct / 100)
-
-votes <- as.integer(km_mnar) + as.integer(lr_mnar) + as.integer(lt_mnar)
-consensus <- ifelse(votes >= 2, "MNAR", "MAR")
 
 miss_class <- tibble(
   gene           = rownames(mat),
   n_miss         = prot_miss,
   pct_miss       = prot_pct,
   mean_intensity = obs_means,
-  vote_kmeans    = NA_integer_,
-  vote_logistic  = NA_integer_,
-  vote_lefttail  = NA_integer_,
-  n_mnar_votes   = NA_integer_
+  mnar_cluster   = NA_integer_
 )
-miss_class$vote_kmeans[has_na] <- as.integer(km_mnar)
-miss_class$vote_logistic[has_na] <- as.integer(lr_mnar)
-miss_class$vote_lefttail[has_na] <- as.integer(lt_mnar)
-miss_class$n_mnar_votes[has_na] <- votes
+miss_class$mnar_cluster[has_na] <- as.integer(km_mnar)
 
 miss_class <- miss_class |>
   mutate(
     classification = case_when(
       n_miss == 0 ~ "Complete",
-      n_miss >= ncol(mat) ~ "MNAR",
-      n_mnar_votes >= 2 ~ "MNAR",
+      mnar_cluster == 1L ~ "MNAR",
       TRUE ~ "MAR"
     ),
     imputation_reliable = classification == "Complete" | pct_miss < MISS_UNRELIABLE
@@ -181,14 +163,6 @@ mnar_audit <- tibble(
 
 # Build xlsx
 
-write_sheet <- function(wb, name, data) {
-  addWorksheet(wb, name)
-  writeData(wb, name, data,
-    headerStyle = createStyle(textDecoration = "bold", fgFill = "#DCE6F1")
-  )
-  freezePane(wb, name, firstRow = TRUE)
-  setColWidths(wb, name, cols = seq_len(ncol(data)), widths = "auto")
-}
 
 imp_df <- bind_cols(ann, as_tibble(mat_imp))
 mask_df <- bind_cols(tibble(gene = rownames(was_na)), as_tibble(was_na + 0L))
@@ -217,6 +191,22 @@ if (file.exists(bm_path)) {
   write_sheet(wb, "benchmark_ranking", as.data.frame(bm))
 }
 
+add_overview(
+  wb,
+  title = "S9 Table \u2014 imputation",
+  description = paste(
+    "The imputed matrix the models were fitted on, which values were imputed,",
+    "and the benchmark that chose the method."
+  ),
+  entries = c(
+    imputed_matrix          = "The matrix after missForest imputation, one row per protein and one column per sample.",
+    mar_mnar_classification = "Whether each protein's missing values look random or abundance-dependent.",
+    imputation_mask         = "A 1 for every value that was imputed and a 0 for every value that was measured.",
+    mnar_audit              = "Checks on the abundance-dependent proteins, which imputation can bias.",
+    imputation_summary      = "How many values were imputed, and the method's out-of-bag error.",
+    benchmark_ranking       = "Sixteen imputation methods scored on reconstruction, downstream effect and stability, against an unimputed reference row."
+  )
+)
 saveWorkbook(wb, file.path(DAT, "02_imputation.xlsx"), overwrite = TRUE)
 
 # CSVs for benchmark infrastructure and downstream figures
@@ -259,7 +249,7 @@ saveRDS(list(
   n_mar_prots = n_mar, n_mnar_prots = n_mnar,
   mar_miss_vals = mar_vals, mnar_miss_vals = mnar_vals,
   total_miss_vals = total_vals, oob_error = oob,
-  classification_method = "3-method consensus (kmeans + logistic + left-tail)",
+  classification_method = "k-means on mean intensity x percent missing",
   PAL_GT = PAL_GT, PAL_MAR = PAL_MAR, PAL_CLASS = PAL_CLASS
 ), file.path(DAT, "00_report_intermediates.rds"))
 
