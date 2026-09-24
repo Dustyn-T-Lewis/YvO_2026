@@ -189,7 +189,7 @@ composite <- (lbl_A / block_A / lbl_B / block_B) +
       screen_counts),
     caption = paste0(
       "Inline stats = Pearson r per stratum (Y, O). ",
-      "Figure 6B shows the six cells with the lowest raw p: ", hero_names, "."),
+      "Figure 6C shows the six cells with the lowest raw p: ", hero_names, "."),
     theme = theme(
       plot.title    = element_text(face = "bold", size = FIG_TITLE_SIZE + 4, color = "grey10",
                                    margin = margin(t = 14, l = 52, b = 4, unit = "pt")),
