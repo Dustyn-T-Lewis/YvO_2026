@@ -14,5 +14,9 @@ Thumbs.db
 !03_DEP/b_reports/S9.*
 04_Figures/*/b_reports/panels/
 
-# Written by the opt-in imputation benchmark, 16 MB.
-02_imputation/c_data/benchmark/imputed_matrices.rds
+# Intermediate R objects and the WGCNA step's tables; every run rewrites them.
+*.rds
+04_Figures/F05/c_data/*
+!04_Figures/F05/c_data/F05_data.xlsx
+!04_Figures/F05/c_data/wgcna_string_clusters.csv
+04_Figures/shared/fgsea_tstat_all_v2.csv
