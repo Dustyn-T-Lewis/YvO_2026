@@ -1,0 +1,23 @@
+S1a Figure. Quality-control and normalization pipeline. (A) Protein filter cascade (2,837 to 2,106). (B) Per-protein missingness. (C) Pre-normalization PCA. (D) Post-normalization PCA. (E) Eta-squared variance decomposition. (F) Outlier consensus scoring. (G) Per-sample missingness.
+
+S1b Figure. Imputation diagnostics. (H) Missingness classification scatter (MAR vs MNAR). (I) Missingness classification counts. (J) 16-method imputation benchmark (OOB NRMSE = 0.108). (K) Imputation density overlay. (L) MNAR shift diagnostic. (M) Sample integrity post-imputation. (N) DEP sensitivity heatmap.
+
+S2 Figure. Phenotypic responses to resistance training by age group. (A) Deadlift one-repetition maximum. (B) Type II fiber cross-sectional area. (C) Type I fiber cross-sectional area. (D) Whole-body DXA fat mass. (E) Fat-to-lean mass ratio.
+
+S3 Figure. Proteome-level coefficient of variation by experimental group. (A) Per-protein variability (CV%). (B) Inter-individual variability (CV%). (C) Intra-individual proteomic variability across the imputed matrix.
+
+S4a Figure. Differential expression model diagnostics across contrasts. (A) P-value histograms. (B) Pi-score distributions. (C) FDR distributions. (D) MA plots. (E) DEP retention after outlier removal.
+
+S4b Figure. Per-protein abundance across the two significance thresholds. Row z-scored abundance per sample, hierarchically clustered within functional groups (GO Slim and Hallmark). (A) Aging at FDR < 0.05. (B) Aging at Π < 0.05. (C) Training-in-Young at FDR < 0.05. (D) Training-in-Young at Π < 0.05.
+
+S5a Figure. Training concordance robustness diagnostics. (A) Spearman rho bootstrap. (B) GO Slim category distribution by quadrant. (C) Sign concordance across quintiles of the smaller absolute log₂ fold change. (D) Shared-baseline coupling diagnostic for the Aging and Training-in-Old correlation.
+
+S5b Figure. Protein-level training response across age groups. Per-subject log₂ change (Post − Pre) for the proteins reaching FDR < 0.05 with training in younger adults, across the paired younger and older participants. Rows are grouped by the direction of the younger-adult response and annotated with whether the older-adult response shares that sign; grey cells are proteins not quantified in that participant. The right-hand panel gives the most enriched over-representation terms for the increased and for the decreased sets.
+
+S6 Figure. WGCNA network construction diagnostics. (A) Scale-free topology fit. (B) Protein dendrogram with module assignments. (C) Subcellular compartment enrichment. (D) Pearson vs. biweight midcorrelation module overlap.
+
+S7 Figure. Module eigengene discrimination and module–phenotype association across the full sweep. (A) Per-module ROC grid: one univariate AUC for every module × outcome combination. (B) The full module–phenotype scatter landscape underlying Figure 6C, both predictors across every module and outcome. Leave-one-subject-out sensitivity and the multivariate classifier are reported as sheets in S7 Table.
+
+S8 Figure. Protein-level detail for the four WGCNA modules carrying an association. One row per module: every assigned protein as a group-mean z-score across the four age × timepoint cells (left); the module eigengene for each subject from pre to post in both age groups (center); and the module's most enriched over-representation terms (right). (A) Turquoise, Lipid Catabolism | TCA Cycle. (B) Black, Glycolysis | Transl. Fact. (C) Yellow, Muscle Contraction | Sarcomere (D) Blue, Protein Folding | Chaperones.
+
+S9 Figure. Cohort structure and what adjusting for it costs. The four models as successive coarsenings of one partition (A), the proteins each finds per contrast (B), and the standard errors (C), fold-change agreement (D) and aging p-value distributions (E) behind those counts. Every design reaches full rank; the tables are in S10 Table.
