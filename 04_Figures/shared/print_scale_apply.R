@@ -10,7 +10,7 @@
 # (FIG_TITLE_SIZE, FIG_SUBTITLE_SIZE, FIG_STRIP_SIZE, FIG_AXIS_TEXT,
 #  FIG_LEGEND_TITLE, FIG_LEGEND_TEXT, FIG_THEME, BASE_*) and never restores
 # them. Anything sourced afterwards at a different width has to re-source
-# style.R first; 04_Figures/F04/a_script/02_supp_panels.R does exactly that.
+# style.R first; 04_Figures/F04/a_script/F04.R does exactly that.
 #
 # Source order: style.R first, this second, then the panel scripts.
 

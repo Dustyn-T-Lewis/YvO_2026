@@ -1,46 +1,32 @@
-# shared · the figure library
+# shared
 
-Palettes, helpers and two data caches that the F00-F06 scripts source. Not a pipeline
-stage; nothing here runs on its own.
+Code and two caches that the figure scripts source. It draws no figure of its own, so it has no `a_script/`, `b_reports/` or `c_data/`.
 
-```
-style.R                      palettes, FIG_THEME, composite_text_sizes(), fmt_p(),
-                             strip_for_composite(), boot_median_ci()
-  +- tree_config.R           DEP_RESULTS, FGSEA_CACHE, UPSTREAM_PREFIXES
-  +- module_palette.R        the nine WGCNA module colours
-  +- devices.R               get_pdf_device(), embed_pdf_fonts(), open_pdf()
-figure_supplement_helpers.R  build_workbook(), cleanup_after_workbook(), read_sheet_df()
-pathway_utils.R              build_pathway_collection(), run_fgsea_deduplicated()
-  +- enrichment_dedup.R      run_ora_deduplicated(), classify_database()
-supplement_overview.R        add_overview(), write_sheet()
-print_scale_apply.R  volcano_ring.R  go_slim_categories.R
-build_fgsea_cache.R          -> fgsea_tstat_all_v2.csv (1.4 MB)
-comparison_panels/           panel_C_trajectory, panel_D_nes_scatter, panel_E_rrho2,
-                             panel_fry_barcode, panel_heatmap_classified
-goslim_generic.obo
-```
+## Reads
 
-## What comes out
+- `03_DEP/c_data/03_combined_results.csv`, for `build_fgsea_cache.R`
+- `04_Figures/F05/c_data/wgcna/wgcna_module_assignments.csv` and `mod_bio_labels.csv`, for `build_string_cluster_cache.R`
 
-`style.R` is sourced by every panel script in F00-F06 and pulls in `tree_config.R`,
-`module_palette.R` and `devices.R` with it. `figure_supplement_helpers.R` is sourced by
-every `90_stitch_F0x.R`. `devices.R` and `supplement_overview.R` are also sourced outside
-04_Figures, by stages 01, 02 and 03.
+## Writes
 
-`volcano_ring.R` is F03 only; `go_slim_categories.R` and `print_scale_apply.R` F04 only.
-Of `comparison_panels/`, F04 sources four and F03 sources `panel_heatmap_classified.R`.
-Each takes a `cfg` list defined by the caller.
+- `fgsea_tstat_all_v2.csv`: fGSEA on the limma t-statistics, all four contrasts. `build_fgsea_cache.R` rebuilds it when it is older than `03_combined_results.csv`. Read by F02, F03 and F04.
+- `04_Figures/F05/c_data/wgcna_string_clusters.csv`: STRING clusters for each module. `build_string_cluster_cache.R` fetches them from the STRING API only when the module membership has changed, so a normal run needs no network.
 
-## Orderings that matter
+## Files
 
-`print_scale_apply.R` mutates `style.R`'s exported size globals in place and never restores
-them, so anything sourced after it at a different canvas width must re-source `style.R`
-first. `F04/a_script/02_supp_panels.R` does.
+- `style.R`: palettes, `FIG_THEME`, text sizes, `strip_for_composite()`, `source_panel()`, `fmt_p()`. It sources `tree_config.R`, `module_palette.R` and `devices.R`.
+- `devices.R`: `get_pdf_device()` and `open_pdf()`, which keep Greek letters in the PDFs. Also sourced by stages 01 to 03.
+- `figure_supplement_helpers.R`: `build_workbook()` and `cleanup_after_workbook()`, used by every `<DIR>_data.R`.
+- `supplement_overview.R`: the Overview sheet of the stage workbooks.
+- `pathway_utils.R`, `enrichment_dedup.R`: gene-set collections, fGSEA and ORA with redundancy removal.
+- `volcano_ring.R`: F03. `go_slim_categories.R`, `print_scale_apply.R`: F04.
+- `comparison_panels/`: plot engines configured by a `cfg` list; F03 uses `panel_heatmap_classified.R`, F04 and the abstract the rest.
+- `goslim_generic.obo`: the GO Slim definitions.
 
-`module_palette.R` is a separate file because `abstract_panels/a_script/panels/_common.R` needs
-the module colours but cannot source `style.R`, which runs `devices.R` and defines the
-globals `print_scale_apply.R` rewrites.
+## Run
 
-`build_fgsea_cache.R` rebuilds `fgsea_tstat_all_v2.csv` only when
-`03_DEP/c_data/03_combined_results.csv` is newer. Readers such as `F02/a_script/panels/E_fgsea.R`
-assert the file exists rather than computing it.
+Nothing here runs on its own except the two cache builders, which the figure scripts source.
+
+## Order
+
+`print_scale_apply.R` changes `style.R`'s size globals and never restores them. F04's panel A sources it, so `F04.R` sources `style.R` again after its panels. `module_palette.R` is separate from `style.R` so the abstract can use the module colours without those globals.

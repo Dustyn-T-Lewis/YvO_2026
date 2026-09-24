@@ -1,4 +1,4 @@
-# Shared helpers for 90_stitch_figure.R scripts: safe CSV reads, workbook assembly, cleanup.
+# Shared helpers for the <DIR>_data.R scripts: safe CSV reads, workbook assembly, cleanup.
 
 pacman::p_load(openxlsx, readr, readxl)
 
