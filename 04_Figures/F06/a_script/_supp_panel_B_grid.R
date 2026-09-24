@@ -17,8 +17,8 @@ RPT_PDF  <- file.path(BASE, "b_reports", "supp", "pdf", "panels")
 dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
 dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
 
-F05_SUPP <- "04_Figures/F05/c_data/F05_supplementary.xlsx"
-stopifnot("F05 stitcher must run first: missing F05_supplementary.xlsx" =
+F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
+stopifnot("F05 stitcher must run first: missing F05_data.xlsx" =
   file.exists(F05_SUPP))
 
 me_pre     <- read_matrix_sheet(F05_SUPP, "me_pre",   "subject_key")

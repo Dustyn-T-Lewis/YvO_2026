@@ -25,9 +25,9 @@ dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
 summ_all <- read_csv(file.path(DAT, "module_grid_summary.csv"), show_col_types = FALSE)
 curves_all <- read_csv(file.path(DAT, "module_grid_curves.csv"), show_col_types = FALSE)
 
-F05_SUPP <- "04_Figures/F05/c_data/F05_supplementary.xlsx"
+F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot(
-  "F05 stitcher must run first: missing F05_supplementary.xlsx" =
+  "F05 stitcher must run first: missing F05_data.xlsx" =
     file.exists(F05_SUPP)
 )
 mod_bio_df <- read_sheet_df(F05_SUPP, "WGCNA_mod_bio_labels")
