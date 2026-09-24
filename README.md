@@ -29,7 +29,7 @@ Git tracks the renders and workbooks the manuscript cites, and the tables each s
 
 `setup.R` calls `renv::restore()`, which installs every package at the version in `renv.lock`: CRAN, Bioconductor, and proteoDA, RRHO2 and DreamAI from GitHub.
 
-`run_all.R` runs each step as a separate `Rscript` and logs to `.runlogs/`. A full run is 39 steps and takes about 19 minutes on an Apple silicon Mac. Three steps take most of it: the leave-one-subject-out network refit in `F06_data.R` (195 s), the module preservation permutations in `F05_data.R` (166 s) and the effect-size bootstrap in `03_DEP/a_script/supp/01` (160 s).
+`run_all.R` runs each step as a separate `Rscript` and logs to `.runlogs/`. A full run takes about 22 minutes on an Apple silicon Mac. Most of that is `F05_data.R`, `F06_data.R` and the effect-size bootstrap in `03_DEP/a_script/supp/01`.
 
 ## Manuscript items
 
