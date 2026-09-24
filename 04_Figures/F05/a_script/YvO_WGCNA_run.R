@@ -24,11 +24,9 @@ DALIST_RDS <- "02_imputation/c_data/01_DAList_imputed.rds"
 # colour labels comparable between the two networks.
 REFERENCE_MODULES <- "00_input/wgcna_reference_modules.csv"
 REPORT_DIR <- "04_Figures/F05/b_reports"
-REPORT_SUPP_DIR <- "04_Figures/F05/b_reports/supp/01_QC"
 DATA_DIR <- "04_Figures/F05/c_data/wgcna"
 
 dir.create(REPORT_DIR, recursive = TRUE, showWarnings = FALSE)
-dir.create(REPORT_SUPP_DIR, recursive = TRUE, showWarnings = FALSE)
 dir.create(DATA_DIR, recursive = TRUE, showWarnings = FALSE)
 
 stopifnot(file.exists(DATA_FILE), file.exists(DALIST_RDS), file.exists(REFERENCE_MODULES))
@@ -113,25 +111,6 @@ message(sprintf(
   "  Soft power: %d (R^2 = %.3f, slope = %.2f%s)",
   soft_power, r2_values[soft_power], sft_slope, r2_note
 ))
-
-plot_sft <- function() {
-  par(mfrow = c(1, 2))
-  plot(sft$fitIndices$Power, r2_values,
-    xlab = "Soft Threshold (power)", ylab = "Scale Free Topology Model Fit (R^2)",
-    main = "Scale independence", type = "n"
-  )
-  text(sft$fitIndices$Power, r2_values, labels = powers, cex = 0.9, col = "red")
-  abline(h = 0.85, col = "red", lty = 2)
-
-  plot(sft$fitIndices$Power, sft$fitIndices$mean.k.,
-    xlab = "Soft Threshold (power)", ylab = "Mean Connectivity",
-    main = "Mean connectivity", type = "n"
-  )
-  text(sft$fitIndices$Power, sft$fitIndices$mean.k., labels = powers, cex = 0.9, col = "red")
-}
-png(file.path(REPORT_SUPP_DIR, "SUPP_soft_threshold.png"), width = 3000, height = 1500, res = 300)
-plot_sft()
-dev.off()
 
 # Pearson chosen over bicor. Bicor sensitivity in _supp_qc_bicor.R confirms concordance.
 net <- blockwiseModules(
@@ -226,34 +205,6 @@ module_trait_pval_bh <- matrix(pval_bh_vec,
 )
 rownames(module_trait_pval_bh) <- rownames(module_trait_pval)
 colnames(module_trait_pval_bh) <- colnames(module_trait_pval)
-
-star_matrix <- ifelse(module_trait_pval_bh < 0.001, "***",
-  ifelse(module_trait_pval_bh < 0.01, "**",
-    ifelse(module_trait_pval_bh < 0.05, "*", "")
-  )
-)
-text_matrix <- paste(signif(module_trait_cor, 2), star_matrix, sep = "\n")
-dim(text_matrix) <- dim(module_trait_cor)
-
-plot_trait_heatmap <- function() {
-  par(mar = c(6, 10, 3, 3))
-  labeledHeatmap(
-    Matrix = module_trait_cor,
-    xLabels = colnames(traits_mat),
-    yLabels = colnames(MEs),
-    ySymbols = colnames(MEs),
-    colorLabels = FALSE,
-    colors = blueWhiteRed(50),
-    textMatrix = text_matrix,
-    setStdMargins = FALSE,
-    cex.text = 0.5,
-    zlim = c(-1, 1),
-    main = "Module-trait correlations (* BH < 0.05)"
-  )
-}
-png(file.path(REPORT_SUPP_DIR, "SUPP_module_trait_heatmap.png"), width = 3000, height = 3000, res = 300)
-plot_trait_heatmap()
-dev.off()
 
 trait_cor_df <- as.data.frame(module_trait_cor) |>
   rownames_to_column("module")

@@ -8,7 +8,7 @@ S1 Table workbook. F00 has no numbered main figure.
 02_imputation/c_data/00_report_intermediates.rds + benchmark/04_composite_ranking.csv
 03_DEP/c_data/03_DEP_results.xlsx (DA_summary)
   01_supp_panels.R  panels A-N, both composites, the workbook
-  90_stitch_F00.R   sources the above, copies to $YVO_BOX_DIR
+  90_stitch_F00.R   sources the above
   -> b_reports/supp/{pdf,png}/SUPP_F00_normalization.*   panels A-G
   -> b_reports/supp/{pdf,png}/SUPP_F00_imputation.*      panels H-N
   -> c_data/F00_supplementary.xlsx

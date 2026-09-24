@@ -37,16 +37,13 @@ source("04_Figures/F06/a_script/_supp_panel_B_grid.R")
 # 5. SUPP prepare ROC data (writes classifier_pilot_*.csv)
 source("04_Figures/F06/a_script/_supp_prepare_roc.R")
 
-# 6. SUPP ROC panel (reads classifier_pilot_*.csv)
-source("04_Figures/F06/a_script/_supp_roc_panel.R")
-
-# 7. SUPP multivariate classifier (writes panel_A_*.csv)
+# 6. SUPP multivariate classifier (writes panel_A_*.csv)
 source("04_Figures/F06/a_script/_supp_multivariate.R")
 
-# 8. SUPP LOSO sensitivity (writes loso_auc/loso_auc_summary.csv)
+# 7. SUPP LOSO sensitivity (writes loso_auc/loso_auc_summary.csv)
 source("04_Figures/F06/a_script/_supp_loso_sensitivity.R")
 
-# 9. SUPP LOSO WGCNA refit (~13-15 min; writes loso_auc/loso_wgcna_refit_*.csv)
+# 8. SUPP LOSO WGCNA refit (~13-15 min; writes loso_auc/loso_wgcna_refit_*.csv)
 source("04_Figures/F06/a_script/_supp_loso_wgcna_refit.R")
 
 # Build main composite (pA/pB/pC via patchwork + cowplot tags)

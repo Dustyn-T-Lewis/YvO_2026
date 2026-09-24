@@ -10,7 +10,7 @@ workbook.
 00_input/YvO_meta.xlsx
   02_supp_panels.R  13 _supp_* scripts        -> c_data/panel_supp/*.csv
   01_main_panels.R  _panel_A_ORA.R plus shared comparison_panels C/D/E/F
-  90_stitch_F04.R   workbook, cleanup, Box copy
+  90_stitch_F04.R   workbook, cleanup
   -> c_data/F04_supplementary.xlsx
 ```
 

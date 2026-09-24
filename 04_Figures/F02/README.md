@@ -11,7 +11,7 @@ produces the six-panel Figure 2, the S3 Figure CV composite and the S3 Table wor
   02_supp_panels.R  _supp_A_cv_scatter, _supp_B_cv_violin, _supp_C_imputed, then SUPP composite
   01_main_panels.R  A PCA, B logFC density, C DEP counts, then _panel_D_upset,
                     _panel_E_fgsea, _panel_F_barcode
-  90_stitch_F02.R   workbook, cleanup, Box copy
+  90_stitch_F02.R   workbook, cleanup
   -> b_reports/main/{pdf,png}/MAIN_F02_composite.*
   -> c_data/F02_supplementary.xlsx
 ```

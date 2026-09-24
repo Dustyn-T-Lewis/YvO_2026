@@ -15,7 +15,6 @@ source("04_Figures/shared/devices.R")
 
 DAT <- "01_normalization/c_data"
 RPT <- "01_normalization/b_reports"
-BOX <- Sys.getenv("YVO_BOX_SUPP", unset = "")
 
 int <- readRDS(file.path(DAT, "00_report_intermediates.rds"))
 # Injects: filter_log, filter_bar_data, miss_bar_data, n_raw, n_outliers,
@@ -207,13 +206,3 @@ print(
 
 dev.off()
 message("Saved: ", file.path(RPT, "04_diagnostics.pdf"))
-
-# Box copy
-
-if (nzchar(BOX) && dir.exists(BOX)) {
-  box_tbl <- file.path(BOX, "tables")
-  dir.create(box_tbl, recursive = TRUE, showWarnings = FALSE)
-  file.copy(file.path(DAT, "01_normalization.xlsx"),
-            file.path(box_tbl, "S01_Table_Normalization.xlsx"), overwrite = TRUE)
-  message("Copied to Box: tables/S01_Table_Normalization.xlsx")
-}

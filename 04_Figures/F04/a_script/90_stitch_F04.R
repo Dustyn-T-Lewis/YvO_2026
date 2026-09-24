@@ -108,43 +108,6 @@ cleanup_after_workbook(f04_specs,
   )
 )
 
-# Copy to Box manuscript directory
-BOX <- Sys.getenv("YVO_BOX_DIR", unset = "")
-if (nzchar(BOX) && dir.exists(BOX)) {
-  RPT <- "04_Figures/F04/b_reports"
-  box_pdf <- file.path(BOX, "02_Figures", "pdf")
-  box_png <- file.path(BOX, "02_Figures", "png")
-  box_fig_pdf <- file.path(BOX, "03_Supplementary", "figures", "pdf")
-  box_fig_png <- file.path(BOX, "03_Supplementary", "figures", "png")
-  box_tbl <- file.path(BOX, "03_Supplementary", "tables")
-  for (d in c(box_pdf, box_png, box_fig_pdf, box_fig_png, box_tbl)) {
-    dir.create(d, recursive = TRUE, showWarnings = FALSE)
-  }
-  file.copy(file.path(RPT, "main/pdf/MAIN_F04_composite.pdf"),
-    file.path(box_pdf, "MAIN_F04_composite.pdf"),
-    overwrite = TRUE
-  )
-  file.copy(file.path(RPT, "main/png/MAIN_F04_composite.png"),
-    file.path(box_png, "MAIN_F04_composite.png"),
-    overwrite = TRUE
-  )
-  # S6 Figure
-  file.copy(file.path(RPT, "supp/pdf/SUPP_F04_diagnostics.pdf"),
-    file.path(box_fig_pdf, "S06_Figure_F04.pdf"),
-    overwrite = TRUE
-  )
-  file.copy(file.path(RPT, "supp/png/SUPP_F04_diagnostics.png"),
-    file.path(box_fig_png, "S06_Figure_F04.png"),
-    overwrite = TRUE
-  )
-  # S8 Table
-  file.copy(file.path(DAT, "F04_supplementary.xlsx"),
-    file.path(box_tbl, "S08_Table_F04.xlsx"),
-    overwrite = TRUE
-  )
-  message("Copied F04 outputs to Box")
-}
-
 remaining <- list.files(DAT, pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
 if (length(remaining)) {
   file.remove(remaining)

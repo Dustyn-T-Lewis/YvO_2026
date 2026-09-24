@@ -13,11 +13,7 @@ pacman::p_load(tidyverse, pROC)
 
 BASE    <- "04_Figures/F06"
 DAT_OUT <- file.path(BASE, "c_data", "loso_auc")
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "png", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "pdf", "panels")
 dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
 
 # Inputs
 F05_SUPP  <- "04_Figures/F05/c_data/F05_supplementary.xlsx"
@@ -193,48 +189,4 @@ message(sprintf("Median in-sample AUC: %.3f", median(loso_df$auc_insample)))
 message(sprintf("Median LOSO AUC:      %.3f", median(loso_df$auc_loso)))
 message(sprintf("Median drop:          %.3f", median(loso_df$drop)))
 
-# Plot: Slope-style (in-sample vs LOSO)
-plot_df <- loso_df |>
-  mutate(mod_hex = module_fill(module),
-         pair = paste(module, row, sep = " \u00b7 "),
-         pair = factor(pair, levels = pair[order(-auc_insample)]))
-
-p_slope <- ggplot(plot_df) +
-  geom_segment(aes(x = "in-sample", xend = "LOSO",
-                   y = auc_insample, yend = auc_loso, color = mod_hex),
-               linewidth = 1.1, alpha = 0.9) +
-  geom_point(aes(x = "in-sample", y = auc_insample, color = mod_hex), size = 3.5) +
-  geom_point(aes(x = "LOSO",      y = auc_loso,     color = mod_hex), size = 3.5) +
-  geom_text(aes(x = "in-sample", y = auc_insample, label = sprintf("%.2f", auc_insample)),
-            hjust = 1.2, size = 3.3, color = "grey10") +
-  geom_text(aes(x = "LOSO",      y = auc_loso, label = sprintf("%.2f", auc_loso)),
-            hjust = -0.2, size = 3.3, color = "grey10") +
-  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50") +
-  scale_color_identity() +
-  scale_y_continuous(limits = c(0.3, 1.0), breaks = seq(0.3, 1.0, 0.1)) +
-  coord_cartesian(clip = "off") +
-  facet_wrap(~ pair, ncol = 3, scales = "free_y") +
-  labs(title = "F06 Supp \u2014 LOSO sensitivity on top-12 module-outcome AUCs",
-       subtitle = paste0("Module assignments held fixed (full-sample WGCNA); ",
-                         "eigengene PC refit per LOSO fold and held-out subject ",
-                         "projected onto training PC."),
-       x = NULL, y = "AUC",
-       caption = paste0("Median drop = ",
-                        sprintf("%.3f", median(loso_df$drop)),
-                        ".  A drop >> 0 indicates optimism; a drop \u2248 0 indicates ",
-                        "the eigengene projection is stable. Module-definition ",
-                        "circularity is NOT tested by this partial LOSO \u2014 a full ",
-                        "WGCNA-refit LOSO is a separate, more expensive analysis.")) +
-  FIG_THEME +
-  theme(plot.margin = margin(14, 18, 14, 18),
-        strip.text = element_text(face = "bold", size = 9),
-        panel.spacing = unit(8, "pt"))
-
-W_in <- 12; H_in <- 10
-ggsave(file.path(RPT_PDF, "SUPP_F06_loso_sensitivity.pdf"), p_slope,
-       width = W_in, height = H_in, units = "in", device = get_pdf_device())
-ggsave(file.path(RPT_PNG, "SUPP_F06_loso_sensitivity.png"), p_slope,
-       width = W_in, height = H_in, units = "in", dpi = 300)
-
-message("Wrote: SUPP_F06_loso_sensitivity.{pdf,png}")
 message("Wrote: ", file.path(DAT_OUT, "loso_auc_summary.csv"))

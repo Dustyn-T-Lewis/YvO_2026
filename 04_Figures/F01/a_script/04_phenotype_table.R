@@ -39,8 +39,6 @@ n_old <- sum(meta$Timepoint == "Pre" & meta$Group == "Old")
 
 fmt_p <- function(p) if (p < 0.001) "<0.001" else sprintf("%.3f", p)
 dec1 <- function(x) sprintf("%.1f ± %.1f", mean(x), sd(x))
-dec2 <- function(x) sprintf("%.2f ± %.2f", mean(x), sd(x))
-dec0 <- function(x) sprintf("%.0f ± %.0f", mean(x), sd(x))
 
 # 1A — one measurement per participant.
 single <- function(var, label, fmt = dec1, scale = 1, tp = "Pre") {

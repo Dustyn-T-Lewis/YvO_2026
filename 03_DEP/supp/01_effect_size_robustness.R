@@ -209,7 +209,6 @@ if (file.exists(IMP_RDS)) {
 
 # Add robustness sheets to xlsx
 
-
 wb <- loadWorkbook(XLSX)
 robustness_sheets <- c("blunting", "bootstrap_ci", "power_analysis", "imputation_sensitivity")
 for (s in intersect(robustness_sheets, names(wb))) removeWorksheet(wb, s)
@@ -224,15 +223,5 @@ if (nrow(sens_df) > 0) {
 # existing index in place with stale row counts for these four sheets; the next
 # full run refreshes them.
 saveWorkbook(wb, XLSX, overwrite = TRUE)
-
-# Box copy
-
-BOX <- Sys.getenv("YVO_BOX_SUPP", unset = "")
-if (nzchar(BOX) && dir.exists(BOX)) {
-  box_tbl <- file.path(BOX, "tables")
-  dir.create(box_tbl, recursive = TRUE, showWarnings = FALSE)
-  file.copy(XLSX, file.path(box_tbl, "S03_Table_DEP.xlsx"), overwrite = TRUE)
-  message("Copied to Box: tables/S03_Table_DEP.xlsx")
-}
 
 message("Done: robustness analyses added to ", basename(XLSX))

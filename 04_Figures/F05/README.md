@@ -11,7 +11,7 @@ heatmap, the module NES scatters and the network QC plate. Was F06 until 2026-09
   01_main_panels.R  _panel_A_module_heatmap, _panel_B_nes_scatters, _module_labels,
                     then triptych / hub / preservation
   02_supp_panels.R  soft threshold, dendrogram, compartment, bicor
-  90_stitch_F05.R   workbook, cleanup, Box copy
+  90_stitch_F05.R   workbook, cleanup
   -> c_data/F05_supplementary.xlsx
 ```
 
