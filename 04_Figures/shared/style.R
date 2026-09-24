@@ -132,6 +132,9 @@ strip_for_composite <- function(p) {
   p + labs(title = NULL, subtitle = NULL, tag = NULL) +
     theme(legend.position = "none")
 }
+
+# Runs a panel script in its own environment and returns the plot it ends on.
+source_panel <- function(path) source(path, local = new.env())$value
 # text hierarchy — J Physiol spec
 FIG_TITLE_SIZE <- 7
 FIG_SUBTITLE_SIZE <- 6

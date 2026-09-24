@@ -39,7 +39,9 @@ steps <- c(
   "03_DEP/supp/04_discordant_ora.R",
   "03_DEP/supp/05_supplement_sensitivity.R",
   "04_Figures/F05/a_script/YvO_WGCNA_run.R",
-  figure_scripts(c("F05", "F01", "F02", "F03", "F04", "F06", "F00")),
+  figure_scripts(c("F05", "F01", "F02")),
+  file.path("04_Figures/F03/a_script", c("F03.R", "S4a.R", "S4b.R", "F03_data.R")),
+  figure_scripts(c("F04", "F06", "F00")),
   # The abstract plate ships as Figure_abstract.pdf but sat outside this list,
   # so nothing regenerated it and verify_refactor compared it against itself
   # forever.
