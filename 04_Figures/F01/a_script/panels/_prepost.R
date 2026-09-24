@@ -1,7 +1,7 @@
-# F01 pre/post panel template — sourced by scripts that define a `cfg` list.
+# Pre/post panel shared by Figure 1B-C and S2 Figure A-E. Panel scripts define
+# a `cfg` list and source this with local = TRUE; it leaves the plot in p_combo.
 #
-# Required cfg: dv_col, y_label, delta_label, title, output_prefix,
-#   file_tag, audit_file, rpt_png, rpt_pdf, dat, file_prefix
+# Required cfg: dv_col, y_label, delta_label, title, name, audit_file, dat
 # Optional cfg: y_breaks, y_labels, coerce_cols, filter_complete,
 #   left_margin, right_margin, left_x_expand,
 #   derive (function applied to meta before plotting, for computed variables)
@@ -22,7 +22,8 @@ if (is.null(cfg$left_x_expand)) cfg$left_x_expand <- expansion(add = 0.3)
 
 PW <- 170
 PH <- 80
-for (d in c(cfg$rpt_png, cfg$rpt_pdf, cfg$dat)) {
+RPT <- "04_Figures/F01/b_reports/panels"
+for (d in c(RPT, cfg$dat)) {
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
 }
 
@@ -224,28 +225,21 @@ if (!is.null(cfg$y_breaks)) {
 }
 
 p_combo <- (p_left | p_right) + plot_layout(widths = c(0.65, 0.35))
-ggsave(file.path(cfg$rpt_png, paste0(cfg$file_prefix, "_", cfg$file_tag, ".png")),
+ggsave(file.path(RPT, paste0(cfg$name, ".png")),
   p_combo,
   width = PW, height = PH, units = "mm", dpi = 300
 )
-ggsave(file.path(cfg$rpt_pdf, paste0(cfg$file_prefix, "_", cfg$file_tag, ".pdf")),
+ggsave(file.path(RPT, paste0(cfg$name, ".pdf")),
   p_combo,
   width = PW, height = PH, units = "mm", device = get_pdf_device()
 )
 message(sprintf("F01 %s done", cfg$title))
 
-pfx <- cfg$output_prefix
-assign(paste0(pfx, "_title"), cfg$title, envir = .GlobalEnv)
 # Plotmath, so the composite can bold the significant terms and leave the
 # rest plain. The plain-string form used to be an option here, and every
 # caller that took it printed a p = 0.52 in the same weight as a p < 0.001.
-assign(paste0(pfx, "_subtitle"),
-  fmt_anova_sub(
-    anova_tbl$p[anova_tbl$Effect == "Group"],
-    anova_tbl$p[anova_tbl$Effect == "Timepoint"],
-    anova_tbl$p[anova_tbl$Effect == "Group:Timepoint"]
-  ),
-  envir = .GlobalEnv
+attr(p_combo, "subtitle_expr") <- fmt_anova_sub(
+  anova_tbl$p[anova_tbl$Effect == "Group"],
+  anova_tbl$p[anova_tbl$Effect == "Timepoint"],
+  anova_tbl$p[anova_tbl$Effect == "Group:Timepoint"]
 )
-assign(paste0(pfx, "_left"), strip_for_composite(p_left), envir = .GlobalEnv)
-assign(paste0(pfx, "_right"), strip_for_composite(p_right), envir = .GlobalEnv)

@@ -5,7 +5,7 @@ Draws the cards behind the graphical abstract, in the 2 x 4 grid the published a
 ## Reads
 
 - `03_DEP/c_data/03_combined_results.csv`
-- `04_Figures/F01/c_data/F01_supplementary.xlsx`, sheet `Per_participant`
+- `04_Figures/F01/c_data/F01_data.xlsx`, sheet `Per_participant`
 - `04_Figures/F04/c_data/F04_supplementary.xlsx`, sheet `panel_C_trajectory`
 - `04_Figures/F06/c_data/F06_supplementary.xlsx`, sheet `module_grid_summary`
 - `04_Figures/shared/style.R` and `shared/comparison_panels/panel_E_rrho2.R`, read as text for the palettes and the RRHO colour ramp
