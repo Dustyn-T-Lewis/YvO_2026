@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
-# F02 — Proteome + DEP Overview: Master Orchestrator
+# S3 Table: folds the CSVs that F02.R and S3.R leave in c_data into one
+# workbook, then deletes them. Run after those two.
 
 setwd(here::here())
 
@@ -7,12 +8,10 @@ source("04_Figures/shared/figure_supplement_helpers.R")
 
 DAT <- "04_Figures/F02/c_data"
 
-# Supp panels first (CSVs needed for xlsx)
-source("04_Figures/F02/a_script/02_supp_panels.R")
-
-source("04_Figures/F02/a_script/01_main_panels.R")
-
 audit_csvs <- list.files(DAT, pattern = "^(audit_|panel_|SUPP_panel_)", full.names = TRUE)
+if (!length(audit_csvs)) {
+  stop("no panel CSVs in ", DAT, "; run F02.R and S3.R first")
+}
 specs <- lapply(audit_csvs, \(p) list(name = tools::file_path_sans_ext(basename(p)),
                                        path = p))
 
@@ -40,7 +39,7 @@ if (length(missing_desc)) {
   stop("no F02 description for: ", paste(missing_desc, collapse = ", "))
 }
 build_workbook(
-  file.path(DAT, "F02_supplementary.xlsx"),
+  file.path(DAT, "F02_data.xlsx"),
   title = "S3 Table \u2014 proteome overview and differential expression",
   description = "Source data for Figure 2 and S3 Figure: principal components, effect-size distributions, contrast overlaps, pathway counts and coefficient-of-variation diagnostics.",
   overview_df = data.frame(Sheet = sheet_names,

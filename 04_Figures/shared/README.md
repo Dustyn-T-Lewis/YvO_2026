@@ -42,5 +42,5 @@ the module colours but cannot source `style.R`, which runs `devices.R` and defin
 globals `print_scale_apply.R` rewrites.
 
 `build_fgsea_cache.R` rebuilds `fgsea_tstat_all_v2.csv` only when
-`03_DEP/c_data/03_combined_results.csv` is newer. Readers such as `F02/_panel_E_fgsea.R`
+`03_DEP/c_data/03_combined_results.csv` is newer. Readers such as `F02/a_script/panels/E_fgsea.R`
 assert the file exists rather than computing it.

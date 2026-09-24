@@ -1,13 +1,15 @@
-# F02 — Panel D: DEP Contrast Overlap (UpSet Plot)
+#!/usr/bin/env Rscript
+# Figure 2D: DEP contrast overlap (UpSet plot).
 # Custom ggplot2 upset (dual bar + dot matrix) using ComplexHeatmap::make_comb_mat
 # Pi-score significant DEPs across 4 contrasts, split by Up/Down direction
-# Outputs: pD (ggdraw object), MAIN_panel_D_upset.{pdf,png}
+# The composite builds its own copy from the bar plot, dot matrix and key,
+# which ride on the returned plot as attributes.
 
-# Assumes style.R sourced and packages loaded by calling script
-
+setwd(here::here())
+source("04_Figures/F02/a_script/panels/_main.R", local = TRUE)
 DEP_FILE <- "03_DEP/c_data/03_combined_results.csv"
-RPT_PNG <- "04_Figures/F02/b_reports/main/png/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/main/pdf/panels"
+RPT_PNG <- "04_Figures/F02/b_reports/panels"
+RPT_PDF <- "04_Figures/F02/b_reports/panels"
 DAT <- "04_Figures/F02/c_data"
 for (d in c(RPT_PNG, RPT_PDF, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
@@ -350,22 +352,6 @@ pD_dots <- ggplot() +
 pD_pw_standalone <- (pD_bars / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
   plot_annotation(theme = theme(plot.margin = margin(t = 2, r = 2, b = 4, l = 5)))
 
-# Build clean version (no title/subtitle) for composite export.
-#
-# The composite copy also drops the bar plot's 5 pt left margin and trims the
-# patchwork's own left margin: together they pull the shared left edge 8.25 pt
-# out so D's panel border lines up with panel A's at ~22.3 pt. Only the
-# composite needs this -- standalone D keeps the margin that stops "100" from
-# clipping against the device edge. "Intersection size" is drawn on the
-# canvas, not the gtable, so it stays where it is; the bar plot's own y-axis
-# numbers move left to within ~2 pt of it, which is as far as this can go.
-pD_bars_clean <- pD_bars + labs(title = NULL, subtitle = NULL) +
-  theme(plot.margin = margin(2, 0, 0, 0))
-pD_pw <- (pD_bars_clean / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
-  plot_annotation(
-    theme = theme(plot.margin = margin(t = 4, r = 2, b = 4, l = 1.75))
-  )
-
 # Direction key — mirrors panel E's make_key_plot() style (theme_void, no
 # background). Mixed included so its grey bars don't rely on spelling out
 # "mixed" in the bar labels to be understood.
@@ -400,33 +386,16 @@ pD_standalone <- ggdraw(pD_pw_standalone) +
   ) +
   draw_plot(p_key_dir_D, x = 0.83, y = 0.72, width = 0.14, height = 0.28)
 
-ggsave(file.path(RPT_PNG, "MAIN_panel_D_upset.png"), pD_standalone,
+ggsave(file.path(RPT_PNG, "D_upset.png"), pD_standalone,
   width = PC_W, height = PC_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "MAIN_panel_D_upset.pdf"), pD_standalone,
+ggsave(file.path(RPT_PDF, "D_upset.pdf"), pD_standalone,
   width = PC_W, height = PC_H, units = "mm", device = pdf_device
 )
 
-# Clean version (no title/subtitle) for composite — title placed at composite level
-pD <- ggdraw(pD_pw) +
-  draw_label("Intersection size",
-    x = 0.02, y = 0.58, angle = 90,
-    size = 5, fontface = "bold"
-  ) +
-  # Drawn on the whole-panel canvas, so y has to clear the dot matrix and the
-  # bar tops. 0.757 puts its first label level with panel E's two key columns:
-  # E's sit at 171.8 pt on the composite, D's at 181.6, and the bottom row is
-  # 172.77 pt tall, so 9.8 / 172.77 = 0.057 above the old 0.70.
-  draw_plot(p_key_dir_D, x = 0.87, y = 0.757, width = 0.12, height = 0.22)
-
 message("F02 Panel D (upset, Pi-score) done")
 
-# Export for composite
-# pD is a ggdraw/cowplot object — strip_for_composite() does not apply.
-# Title/subtitle exported for composite-level placement via draw_label().
-pD_title <- "Contrast Overlap (UpSet)"
-pD_subtitle <- sprintf(
-  "%d unique \u03A0 DEPs | %d/%d sig overlaps",
-  n_unique_deps, n_sig_overlaps, nrow(overlap_df)
-)
-pD_legend <- NULL
+attr(pD_standalone, "bars") <- pD_bars
+attr(pD_standalone, "dots") <- pD_dots
+attr(pD_standalone, "key") <- p_key_dir_D
+invisible(pD_standalone)

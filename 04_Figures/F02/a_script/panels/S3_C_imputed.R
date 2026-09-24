@@ -1,14 +1,13 @@
-# F02 Supp Panel C: Intra-Individual Proteomic Variability (Imputed)
-# One boxplot per subject, faceted by Young/Old, ordered by median log2FC.
-# Annotated with per-subject imputation fractions.
-# Outputs: pC (ggplot object), SUPP_panel_C_imputed.{pdf,png}
+#!/usr/bin/env Rscript
+# S3 Figure C: intra-individual variability per subject, with the imputed
+# fraction.
 
-# Assumes style.R sourced, packages loaded by parent
-
+setwd(here::here())
+source("04_Figures/F02/a_script/panels/_supp.R", local = TRUE)
 PE_W <- 110
 PE_H <- 55
-RPT_PNG <- "04_Figures/F02/b_reports/supp/png/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/supp/pdf/panels"
+RPT_PNG <- "04_Figures/F02/b_reports/panels"
+RPT_PDF <- "04_Figures/F02/b_reports/panels"
 DAT_DIR <- "04_Figures/F02/c_data"
 
 IMP_XLSX <- "02_imputation/c_data/02_imputation.xlsx"
@@ -186,17 +185,11 @@ write.csv(group_summary,
   row.names = FALSE
 )
 
-ggsave(file.path(RPT_PNG, "SUPP_panel_C_imputed.png"), pC,
+ggsave(file.path(RPT_PNG, "S3_C_imputed.png"), pC,
   width = PE_W, height = PE_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "SUPP_panel_C_imputed.pdf"), pC,
+ggsave(file.path(RPT_PDF, "S3_C_imputed.pdf"), pC,
   width = PE_W, height = PE_H, units = "mm", device = pdf_device
 )
 
-# Export for composite
-pSC_title <- "Intra-Individual Proteomic Variability"
-pSC_subtitle <- subtitle_text
-pSC_legend <- NULL
-pC <- strip_for_composite(pC)
-
-message("F02 Supp Panel C done")
+invisible(pC)
