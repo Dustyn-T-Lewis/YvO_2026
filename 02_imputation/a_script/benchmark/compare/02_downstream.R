@@ -1,4 +1,4 @@
-# compare/02_downstream.R — FC correlation, NES coherence, DEP counts
+# compare/02_downstream.R: FC correlation, NES coherence, DEP counts
 # Reads imp_list from parent environment (or CACHE_RDS)
 # Writes: 02_imputation/c_data/benchmark/02_downstream.csv
 
@@ -95,7 +95,7 @@ if (!ref_name %in% names(results)) {
 ref_tt <- results[[ref_name]]$tt
 ref_logfc <- setNames(ref_tt$logFC, ref_tt$gene)
 
-# Reference NES — filter out non-finite rank stats
+# Reference NES, with non-finite rank stats filtered out
 ref_ranks <- setNames(-log10(ref_tt$P.Value) * sign(ref_tt$logFC), ref_tt$gene)
 ref_ranks <- ref_ranks[is.finite(ref_ranks)]
 ref_fgsea <- fgsea(pathways = gene_sets, stats = ref_ranks, minSize = 15, maxSize = 500)
@@ -111,7 +111,7 @@ for (mname in names(results)) {
   shared <- intersect(names(ref_logfc), names(method_logfc))
   fc_rho <- cor(ref_logfc[shared], method_logfc[shared], method = "spearman", use = "complete.obs")
 
-  # NES rho — filter out non-finite rank stats
+  # NES rho, with non-finite rank stats filtered out
   method_ranks <- setNames(-log10(tt$P.Value) * sign(tt$logFC), tt$gene)
   method_ranks <- method_ranks[is.finite(method_ranks)]
   method_fgsea <- fgsea(pathways = gene_sets, stats = method_ranks, minSize = 15, maxSize = 500)

@@ -1,4 +1,4 @@
-# compare/01_reconstruct.R — NRMSE + Procrustes (artificial masking)
+# compare/01_reconstruct.R: NRMSE + Procrustes (artificial masking)
 # Reads imp_list from parent environment (or CACHE_RDS)
 # Writes: 02_imputation/c_data/benchmark/01_reconstruction.csv
 
@@ -20,7 +20,7 @@ nrmse <- function(true_vals, imp_vals) {
   sqrt(mean((true_vals - imp_vals)^2)) / sd(true_vals)
 }
 
-# Methods to evaluate (exclude Non_imputed — can't reconstruct without a method)
+# Methods to evaluate. Non_imputed is excluded: it cannot reconstruct anything.
 eval_methods <- setdiff(names(imp_list), "Non_imputed")
 
 # Pre-compute observed indices and Q1 threshold for MNAR masking

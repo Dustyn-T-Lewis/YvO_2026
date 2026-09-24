@@ -345,14 +345,14 @@ pD_dots <- ggplot() +
       size = FIG_AXIS_TEXT - 0.5, face = "bold",
       margin = margin(r = 1)
     ),
-    # Match pD_bars — minimal margins for wrap_elements alignment
+    # Minimal margins, as in pD_bars, so wrap_elements aligns
     plot.margin = margin(0, 0, 0, 0)
   )
 
 pD_pw_standalone <- (pD_bars / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
   plot_annotation(theme = theme(plot.margin = margin(t = 2, r = 2, b = 4, l = 5)))
 
-# Direction key — mirrors panel E's make_key_plot() style (theme_void, no
+# Direction key in the style of panel E's make_key_plot() (theme_void, no
 # background). Mixed included so its grey bars don't rely on spelling out
 # "mixed" in the bar labels to be understood.
 dir_key_df_D <- tibble(

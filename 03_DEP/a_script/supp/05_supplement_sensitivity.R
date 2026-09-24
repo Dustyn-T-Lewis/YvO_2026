@@ -1,4 +1,4 @@
-# 05_supplement_sensitivity — how much proteome variance sits on the
+# 05_supplement_sensitivity: how much proteome variance sits on the
 # supplementation stratum, and does adjusting for it move the older adults'
 # training response? Companion to 02_supplement_covariate.R, which asks
 # whether supplement can enter the design at all; this one measures the

@@ -1,7 +1,7 @@
 # Runs the pipeline end to end. Each script runs in its own R session so a
 # stage cannot inherit objects, masked functions or a stale working directory
-# from the one before it. Every script is also runnable on its own — each sets
-# its own working directory and loads its own packages — so this file is a
+# from the one before it. Every script also runs on its own: each sets
+# its own working directory and loads its own packages, so this file is a
 # convenience, not a dependency.
 #
 # Not --vanilla: that implies --no-init-file, which skips .Rprofile and so

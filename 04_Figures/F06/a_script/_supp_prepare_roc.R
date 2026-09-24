@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
-# ROC pilot — screen 7 candidate classifiers using panel A's framework
+# ROC pilot: screen 7 candidate classifiers using panel A's framework
 # (LOOCV + top-k feature selection + logistic regression + permutation test).
 # Output: classifier_pilot_summary.csv + classifier_pilot_curves.csv
 #
-# Sourced by F06_data.R — expects figure_supplement_helpers.R already loaded.
+# Sourced by F06_data.R after figure_supplement_helpers.R.
 
 pacman::p_load(tidyverse, pROC)
 source("04_Figures/F06/a_script/_loocv.R")

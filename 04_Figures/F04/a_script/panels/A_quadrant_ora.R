@@ -458,7 +458,7 @@ p_scatter <- ggplot(mapping = aes(x = logFC_TY, y = logFC_TO)) +
   # Gene labels retired: the panel's claim is distributional -- corner counts,
   # concordance, quadrant ORA -- and named extremes support none of it. The
   # flanking bars carry the biology at pathway level, where it has power.
-  # Quadrant labels — stacked: title + counts, corner-aligned
+  # Quadrant labels: title over counts, aligned to the corner
   annotate("label",
     x = xlim_range[2], y = ylim_range[2],
     label = sprintf("Concordant Up\n%s/%s", q_sig["Q1"], q_counts["Q1"]),

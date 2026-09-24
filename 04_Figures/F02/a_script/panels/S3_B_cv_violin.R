@@ -48,7 +48,7 @@ cv_df$time <- factor(ifelse(grepl("Pre", cv_df$group), "Pre", "Post"),
 set.seed(42)
 # boot_median_ci() defined in shared/style.R
 
-# Pairwise Wilcoxon tests, BH corrected (audit only — not on figure)
+# Pairwise Wilcoxon tests, BH corrected; checked, not drawn
 bracket_comps <- list(
   c("Young_Pre", "Young_Post"), c("Old_Pre", "Old_Post"),
   c("Young_Pre", "Old_Pre"), c("Young_Post", "Old_Post")

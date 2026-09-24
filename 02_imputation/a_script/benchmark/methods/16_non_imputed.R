@@ -1,5 +1,5 @@
 # methods/16_non_imputed.R
-# Non-imputed — reference method (identity)
+# Non-imputed: reference method (identity)
 # Returns matrix with NAs intact; limma handles per-row
 # Karpievitch et al. 2012
 

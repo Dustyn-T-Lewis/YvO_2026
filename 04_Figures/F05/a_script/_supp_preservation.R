@@ -1,4 +1,4 @@
-# Sourced by F05_data.R — expects style.R already loaded.
+# Sourced by F05_data.R after style.R.
 
 pacman::p_load(dplyr, readr, WGCNA)
 

@@ -1,5 +1,5 @@
 # methods/14_half_minimum.R
-# Half-minimum — naive MNAR baseline
+# Half-minimum: naive MNAR baseline
 # Replace NAs with 0.5 * per-protein minimum observed value
 # Negative control
 

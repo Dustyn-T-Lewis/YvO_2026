@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # S5 Table, sheet SUPP_threshold_sens: Threshold Sensitivity
-# Diagnostic for main Panel B — shows concordance pattern is stable across
+# Diagnostic for main Panel B: shows concordance pattern is stable across
 # significance thresholds (Pi < 0.05, FDR < 0.05, FDR < 0.10, nominal p < 0.05).
 
 setwd(here::here())

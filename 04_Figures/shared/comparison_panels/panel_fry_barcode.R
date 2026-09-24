@@ -1,4 +1,4 @@
-# Shared Panel F — Training(Young) signature positions in the Training(Old)
+# Shared Panel F: Training(Young) signature positions in the Training(Old)
 # ranking, as a barcode with enrichment worms.
 #
 # This is limma's barcodeplot idiom (Wu & Smyth 2012, NAR 40:e133) drawn in

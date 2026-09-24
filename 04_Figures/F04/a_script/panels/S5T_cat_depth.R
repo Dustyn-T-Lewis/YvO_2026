@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # S5 Table, sheet SUPP_cat_depth: corner enrichment against list depth (CAT curve)
-# Diagnostic for main Panel B — the corner hypergeometric reads one point off
+# Diagnostic for main Panel B: the corner hypergeometric reads one point off
 # this curve, at TOP_FRAC = 0.10 in shared/comparison_panels/panel_E_rrho2.R.
 # Drawing every depth shows what that one number cannot: the enrichment halves
 # between the top 10% and the top 25%, and is gone by half the proteome, where

@@ -1,4 +1,4 @@
-# Shared Panel C — how much of the young training response survives in old,
+# Shared Panel C: how much of the young training response survives in old,
 # across every reasonable definition of a young responder.
 #
 # Training(Young) and Training(Old) share no group mean, the only such pairing

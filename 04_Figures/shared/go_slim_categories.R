@@ -1,4 +1,4 @@
-# GO Slim pathway assignment — shared by F2/panel_F.R and F3/panel_F.R
+# GO Slim pathway assignment: shared by F2/panel_F.R and F3/panel_F.R
 # Maps genes to 15 consolidated pathways via GO Slim Generic BP + GOBPANCESTOR traversal.
 
 requireNamespace("GO.db",       quietly = TRUE)
@@ -22,7 +22,7 @@ bp_slim <- c(
   "GO:0140014", "GO:1901135"
 )
 
-# signaling + nervous system excluded — too broad / irrelevant for muscle
+# Signaling and nervous system are excluded: too broad or irrelevant for muscle
 
 SLIM_CONSOLIDATED <- c(
   "GO:0003012" = "Muscle & Contractile",

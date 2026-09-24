@@ -27,7 +27,7 @@ pC_right <- strip_for_composite(pC[[2]])
 
 RPT <- "04_Figures/F01/b_reports"
 
-# Single-column layout (85 × 125 mm) — for journal column width
+# Single-column layout, 85 × 125 mm, for the journal column width
 sc_cfg <- list(
   w = 85, h = 125,
   tag_x = 0.02,
@@ -36,7 +36,7 @@ sc_cfg <- list(
   y = c(A = 0.979, B = 0.614, C = 0.314) # panel top positions (normalized)
 )
 
-# Double-column layout (178 × 75 mm) — for full-width display
+# Double-column layout, 178 × 75 mm, for full-width display
 dc_cfg <- list(
   w = 178, h = 75,
   tag_sz = BASE_TAG,

@@ -1,4 +1,4 @@
-# 03_reversal_aging_fdr — does training in older adults push the age-affected
+# 03_reversal_aging_fdr: does training in older adults push the age-affected
 # proteome back toward young, asked on the FDR-defined Aging set. Runs against
 # this pipeline's own combined results and imputed matrix; group-mean axes
 # need a complete matrix and the non-imputed DAList carries 12.1% missing.

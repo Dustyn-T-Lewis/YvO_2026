@@ -140,7 +140,7 @@ if (file.exists(IMP_RDS)) {
   # Align imp_mat rows to the DEP annotation row order. The imputed RDS row
   # order (gene_order alphabetical) differs from the DEP DAList annotation
   # order (normalization order). DAList() silently re-labels rownames(data)
-  # to match annotation while leaving values in place — without this match()
+  # to match annotation while leaving values in place. Without this match()
   # protein labels detach from intensities.
   ann_dep <- as.data.frame(dal$annotation)
   ord <- match(ann_dep$uniprot_id, rownames(imp_mat))
