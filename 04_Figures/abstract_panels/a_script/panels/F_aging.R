@@ -1,4 +1,8 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# Graphical abstract card F: the aging volcano. Drawn only in the concise row.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R", local = TRUE)
 
 WIDTH <- 1.45
 
@@ -61,3 +65,6 @@ plots <- list(glyph)
 panel_data <- v |>
   filter(call != "ns") |>
   select(gene, logFC_aging = lfc, p = p, fdr = fdr, direction = call)
+
+save_card(plots, "F_aging", WIDTH)
+invisible(plots)

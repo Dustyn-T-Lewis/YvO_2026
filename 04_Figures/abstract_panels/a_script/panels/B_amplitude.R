@@ -1,4 +1,8 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# Graphical abstract card B: protein change magnitude, younger against older.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R", local = TRUE)
 
 WIDTH <- 2.20
 XLIM <- c(0.45, 5.72)
@@ -75,3 +79,6 @@ panel_data <- select(
   sets, set, n, median_young = Young, median_old = Old,
   retained, retained_lo, retained_hi, pct
 )
+
+save_card(plots, "B_amplitude", WIDTH)
+invisible(plots)

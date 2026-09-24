@@ -1,8 +1,13 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# The graphical abstract as one row of six cards, A C B F D E. A backup
+# layout; the published abstract was built from abstract.R.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R")
 
 assert_style()
 
-# A backup layout: the same results as GRID_abstract on one row. Each card
+# A backup layout: the same results as abstract.R on one row. Each card
 # takes one plot from a script the two-row grid already sources, so nothing
 # here can drift from the main figure except the widths, which are set below
 # rather than read from each script -- a script's WIDTH is tuned for its
@@ -26,7 +31,12 @@ CARDS <- tribble(
 
 built <- map(CARDS$script, function(script) {
   e <- new.env(parent = globalenv())
-  sys.source(file.path(SCRIPT_DIR, script), envir = e)
+  # The workbook keeps the panel_ names it was published with; the scripts
+  # dropped the prefix when they moved to panels/.
+  sys.source(
+    file.path(SCRIPT_DIR, "panels", sub("^panel_", "", script)),
+    envir = e
+  )
   list(plots = e$plots, data = e$panel_data)
 })
 
@@ -73,7 +83,7 @@ draw_row <- function() {
   })
 }
 
-save_grid(draw_row, "GRID_abstract_concise", total_w, total_h)
+save_grid(draw_row, "abstract_concise", total_w, total_h)
 
 sheets <- c(
   list(Overview = select(CARDS, card = stem, script, plot = which, basis)),
@@ -81,7 +91,7 @@ sheets <- c(
 )
 
 write.xlsx(
-  sheets, file.path(DATA_DIR, "abstract_panels_concise.xlsx"), overwrite = TRUE
+  sheets, file.path(DATA_DIR, "abstract_concise_data.xlsx"), overwrite = TRUE
 )
 
 message(sprintf(

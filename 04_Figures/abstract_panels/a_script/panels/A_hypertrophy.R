@@ -1,4 +1,8 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# Graphical abstract card A: change in VL thickness, younger against older.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R", local = TRUE)
 
 WIDTH <- 2.20
 # The bars, their values and the bracket all finish by CHART_MAX; the rest of
@@ -76,3 +80,6 @@ glyph <- ggplot(vl, aes(delta, age, fill = age)) +
 
 plots <- list(glyph)
 panel_data <- select(vl, age, n, delta)
+
+save_card(plots, "A_hypertrophy", WIDTH)
+invisible(plots)

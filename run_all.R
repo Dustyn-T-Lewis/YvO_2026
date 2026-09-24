@@ -42,11 +42,8 @@ steps <- c(
   figure_scripts(c("F05", "F01", "F02")),
   file.path("04_Figures/F03/a_script", c("F03.R", "S4a.R", "S4b.R", "F03_data.R")),
   figure_scripts(c("F04", "F06", "F00")),
-  # The abstract plate ships as Figure_abstract.pdf but sat outside this list,
-  # so nothing regenerated it and verify_refactor compared it against itself
-  # forever.
-  "04_Figures/abstract_panels/a_script/99_assemble.R",
-  "04_Figures/abstract_panels/a_script/99_assemble_concise.R"
+  "04_Figures/abstract_panels/a_script/abstract.R",
+  "04_Figures/abstract_panels/a_script/abstract_concise.R"
 )
 
 missing <- steps[!file.exists(steps)]
