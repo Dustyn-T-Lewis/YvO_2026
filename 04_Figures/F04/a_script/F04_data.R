@@ -9,7 +9,7 @@ source("04_Figures/shared/figure_supplement_helpers.R")
 source("04_Figures/shared/style.R")
 
 DAT <- "04_Figures/F04/c_data"
-PANELS <- "04_Figures/F04/a_script/panels"
+PANELS <- "04_Figures/F04/a_script/supp/panels"
 if (!dir.exists(file.path(DAT, "panel_A"))) {
   stop("no panel CSVs in ", DAT, "; run F04.R, S5a.R and S5b.R first")
 }

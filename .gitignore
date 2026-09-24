@@ -11,8 +11,8 @@ Thumbs.db
 01_normalization/b_reports/
 02_imputation/b_reports/
 03_DEP/b_reports/*
-!03_DEP/b_reports/S9.*
-04_Figures/*/b_reports/panels/
+!03_DEP/b_reports/supp/
+04_Figures/*/b_reports/*/panels/
 
 # Intermediate R objects and the WGCNA step's tables; every run rewrites them.
 *.rds

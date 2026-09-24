@@ -34,15 +34,15 @@ steps <- c(
   "03_DEP/a_script/supp/03_reversal_aging_fdr.R",
   "03_DEP/a_script/supp/04_discordant_ora.R",
   "03_DEP/a_script/supp/05_supplement_sensitivity.R",
-  file.path("04_Figures/F05/a_script", c("YvO_WGCNA_run.R", "F05.R", "S6.R", "S8.R", "F05_data.R")),
-  file.path("04_Figures/F01/a_script", c("S2.R", "F01.R", "F01_data.R")),
-  file.path("04_Figures/F02/a_script", c("F02.R", "S3.R", "F02_data.R")),
-  file.path("04_Figures/F03/a_script", c("F03.R", "S4a.R", "S4b.R", "F03_data.R")),
-  file.path("04_Figures/F04/a_script", c("F04.R", "S5a.R", "S5b.R", "F04_data.R")),
-  file.path("04_Figures/F06/a_script", c("F06.R", "S7.R", "F06_data.R")),
-  file.path("04_Figures/F00/a_script", c("S1a.R", "S1b.R", "F00_data.R")),
-  "04_Figures/abstract_panels/a_script/abstract.R",
-  "04_Figures/abstract_panels/a_script/abstract_concise.R"
+  file.path("04_Figures/F05/a_script", c("YvO_WGCNA_run.R", "main/F05.R", "supp/S6.R", "supp/S8.R", "F05_data.R")),
+  file.path("04_Figures/F01/a_script", c("supp/S2.R", "main/F01.R", "F01_data.R")),
+  file.path("04_Figures/F02/a_script", c("main/F02.R", "supp/S3.R", "F02_data.R")),
+  file.path("04_Figures/F03/a_script", c("main/F03.R", "supp/S4a.R", "supp/S4b.R", "F03_data.R")),
+  file.path("04_Figures/F04/a_script", c("main/F04.R", "supp/S5a.R", "supp/S5b.R", "F04_data.R")),
+  file.path("04_Figures/F06/a_script", c("main/F06.R", "supp/S7.R", "F06_data.R")),
+  file.path("04_Figures/F00/a_script", c("supp/S1a.R", "supp/S1b.R", "F00_data.R")),
+  "04_Figures/abstract_panels/a_script/main/abstract.R",
+  "04_Figures/abstract_panels/a_script/main/abstract_concise.R"
 )
 
 missing <- steps[!file.exists(steps)]
