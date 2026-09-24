@@ -1,43 +1,58 @@
-# F00 · Pipeline QC, supplementary S1a and S1b
+# F00
 
-Reads the stage 01-03 intermediates and produces two supplementary composites plus the
-S1 Table workbook. F00 has no numbered main figure.
+Draws the pipeline QC figures S1a and S1b and writes S1 Table. F00 has no main figure.
 
-```
-01_normalization/c_data/00_report_intermediates.rds
-02_imputation/c_data/00_report_intermediates.rds + benchmark/04_composite_ranking.csv
-03_DEP/c_data/03_DEP_results.xlsx (DA_summary)
-  01_supp_panels.R  panels A-N, both composites, the workbook
-  90_stitch_F00.R   sources the above
-  -> b_reports/supp/{pdf,png}/SUPP_F00_normalization.*   panels A-G
-  -> b_reports/supp/{pdf,png}/SUPP_F00_imputation.*      panels H-N
-  -> c_data/F00_supplementary.xlsx
-```
+## Reads
+
+- `01_normalization/c_data/00_report_intermediates.rds`
+- `02_imputation/c_data/00_report_intermediates.rds`
+- `02_imputation/c_data/benchmark/04_composite_ranking.csv`, written by the opt-in `02_imputation/a_script/benchmark/_run_all.R`
+- `03_DEP/c_data/03_DEP_results.xlsx`, sheet `DA_summary`
+
+## Writes
+
+- `b_reports/S1a.pdf`, `S1a.png`: S1a Figure
+- `b_reports/S1b.pdf`, `S1b.png`: S1b Figure
+- `b_reports/panels/`: each panel on its own, named after its script
+- `c_data/F00_data.xlsx`: S1 Table
+
+## Run
 
 ```sh
-Rscript 04_Figures/F00/a_script/90_stitch_F00.R
+Rscript 04_Figures/F00/a_script/S1a.R
+Rscript 04_Figures/F00/a_script/S1b.R
+Rscript 04_Figures/F00/a_script/F00_data.R
 ```
 
-## What comes out
+Each panel script in `a_script/panels/` also runs on its own. `_inputs.R` loads the stage 01 and 02 intermediates for every panel and is only sourced.
 
-Two 178 x 245 mm composites. A-G covers the filter cascade, per-protein missingness, PCA
-before and after cyclic loess, eta-squared retention, outlier consensus and per-sample
-missing counts. H-N covers MAR/MNAR classification, the imputation benchmark,
-observed-against-imputed density, the MNAR shift audit, sample integrity and DEP counts.
+## Order
 
-`F00_supplementary.xlsx` is 15 sheets: Overview plus `panel_A` to `panel_N`.
+Stages 01 to 03 run first. `F00_data.R` runs last: it folds the data frames the panels leave in `c_data/sheets/` into the workbook and deletes them.
 
-## Orderings that matter
+Panel S1b J stops if the benchmark ranking is missing. That file comes from an opt-in script.
 
-`run_all.R` runs F00 last of the seven figures. It summarises stages 01-03 and reads their
-finished intermediates.
+Panel S1a F jitters its points. `set.seed(42)` sits before the plot, and ggplot2 draws a new jitter seed from the RNG at every render. The panel seeds again before its PDF so that S1a.R renders the composite from the same RNG state as before the split. The S1a PDF and PNG therefore draw different jitter, as they always have.
 
-`01_supp_panels.R` asserts `02_imputation/c_data/benchmark/04_composite_ranking.csv` before
-drawing anything. That file comes from an opt-in script, so panel J would otherwise fail
-deep into the run.
+## Outputs and manuscript items
 
-`set.seed(42)` is set immediately before panel F, whose `geom_jitter()` draws from the RNG.
-
-## Cost
-
-4.9 s. Nothing is fitted here; every number is read from an upstream artifact.
+| File | Manuscript item |
+|---|---|
+| `b_reports/S1a.pdf` | S1a Figure |
+| `b_reports/panels/S1a_A_filter_cascade.pdf` | S1a Figure A |
+| `b_reports/panels/S1a_B_protein_missingness.pdf` | S1a Figure B |
+| `b_reports/panels/S1a_C_pca_pre.pdf` | S1a Figure C |
+| `b_reports/panels/S1a_D_pca_post.pdf` | S1a Figure D |
+| `b_reports/panels/S1a_E_eta_squared.pdf` | S1a Figure E |
+| `b_reports/panels/S1a_F_outlier_consensus.pdf` | S1a Figure F |
+| `b_reports/panels/S1a_G_sample_missingness.pdf` | S1a Figure G |
+| `b_reports/S1b.pdf` | S1b Figure |
+| `b_reports/panels/S1b_H_miss_class_scatter.pdf` | S1b Figure H |
+| `b_reports/panels/S1b_I_miss_class_bar.pdf` | S1b Figure I |
+| `b_reports/panels/S1b_J_benchmark.pdf` | S1b Figure J |
+| `b_reports/panels/S1b_K_imputation_density.pdf` | S1b Figure K |
+| `b_reports/panels/S1b_L_mnar_shift.pdf` | S1b Figure L |
+| `b_reports/panels/S1b_M_sample_integrity.pdf` | S1b Figure M |
+| `b_reports/panels/S1b_N_dep_heatmap.pdf` | S1b Figure N |
+| `c_data/F00_data.xlsx`, sheets `panel_A` to `panel_G` | S1 Table, S1a source data |
+| `c_data/F00_data.xlsx`, sheets `panel_H` to `panel_N` | S1 Table, S1b source data |

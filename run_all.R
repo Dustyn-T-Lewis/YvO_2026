@@ -41,7 +41,8 @@ steps <- c(
   "04_Figures/F05/a_script/YvO_WGCNA_run.R",
   figure_scripts(c("F05", "F01", "F02")),
   file.path("04_Figures/F03/a_script", c("F03.R", "S4a.R", "S4b.R", "F03_data.R")),
-  figure_scripts(c("F04", "F06", "F00")),
+  figure_scripts(c("F04", "F06")),
+  file.path("04_Figures/F00/a_script", c("S1a.R", "S1b.R", "F00_data.R")),
   "04_Figures/abstract_panels/a_script/abstract.R",
   "04_Figures/abstract_panels/a_script/abstract_concise.R"
 )
