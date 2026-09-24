@@ -183,7 +183,7 @@ stopifnot(
   "no blank cells in 1C" = !any(is.na(table_1c))
 )
 
-# The workbook is assembled by 90_stitch_F01.R, which sources this script and
+# The workbook is assembled by F01_data.R, which sources this script and
 # combines these tables with the panel source data into one supplementary file.
 write.csv(table_1a, file.path(DAT, "F01_table_1a_characteristics.csv"), row.names = FALSE)
 write.csv(table_1b, file.path(DAT, "F01_table_1b_pre_post.csv"), row.names = FALSE)

@@ -1,34 +1,33 @@
 #!/usr/bin/env Rscript
-# F01 Supp composite — the five phenotype pre/post pairs in one figure.
+# S2 Figure: the five phenotype pre/post pairs in one figure.
 #
 # Strength/CSA and body composition used to render as two figures on two
 # canvases, 88 mm over three rows against 110 mm over two, so the same panel
 # was drawn half again as tall depending on which file it landed in. One
 # canvas at the tighter row height ends that.
 
-withr::local_dir(here::here())
+setwd(here::here())
 
 pacman::p_load(withr, patchwork, cowplot)
 
 source("04_Figures/shared/style.R")
 
-source("04_Figures/F01/a_script/02_supp_panels.R")
-source("04_Figures/F01/a_script/03_body_comp_panels.R")
-
-RPT_PNG <- "04_Figures/F01/b_reports/supp/png"
-RPT_PDF <- "04_Figures/F01/b_reports/supp/pdf"
-
-# Tag to panel prefix, in reading order. The two panel scripts publish their
-# plots under these prefixes, so get() here is the other half of the assign()
-# the template ends on.
-ROW_PREFIX <- c(A = "pSA", B = "pSB", C = "pSC", D = "pFA", E = "pFB")
-rows <- lapply(ROW_PREFIX, \(pfx) {
-  parts <- c(
-    left = "_left", right = "_right",
-    title = "_title", subtitle = "_subtitle"
+# Tag to panel script, in reading order. A and D set the seed; B, C and E
+# draw their jitter from the stream the panel before them leaves.
+PANELS <- "04_Figures/F01/a_script/panels"
+ROW_SCRIPT <- c(
+  A = "S2_A_deadlift_1rm.R", B = "S2_B_type_II_fcsa.R",
+  C = "S2_C_type_I_fcsa.R", D = "S2_D_dxa_fat_mass.R", E = "S2_E_fat_to_lean.R"
+)
+rows <- lapply(ROW_SCRIPT, \(f) {
+  p <- source_panel(file.path(PANELS, f))
+  list(
+    left = strip_for_composite(p[[1]]), right = strip_for_composite(p[[2]]),
+    title = p[[1]]$labels$title, subtitle = attr(p, "subtitle_expr")
   )
-  lapply(parts, \(suffix) get(paste0(pfx, suffix)))
 })
+
+RPT <- "04_Figures/F01/b_reports"
 
 N_ROWS <- length(rows)
 COMP_W <- 85
@@ -89,11 +88,11 @@ for (i in seq_along(rows)) {
     )
 }
 
-ggsave(file.path(RPT_PDF, "SUPP_F01_phenotypes.pdf"), composite,
+ggsave(file.path(RPT, "S2.pdf"), composite,
   width = COMP_W, height = COMP_H, units = "mm", device = get_pdf_device()
 )
-ggsave(file.path(RPT_PNG, "SUPP_F01_phenotypes.png"), composite,
+ggsave(file.path(RPT, "S2.png"), composite,
   width = COMP_W, height = COMP_H, units = "mm", dpi = 300
 )
 
-message("F01 supp composite done")
+message("S2 done")

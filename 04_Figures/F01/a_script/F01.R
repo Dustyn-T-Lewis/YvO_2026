@@ -1,120 +1,31 @@
 #!/usr/bin/env Rscript
-# F01 Main — Training Volume (A) + DXA LBM (B) + VL Thickness (C)
-# Produces single-column + double-column composites + xlsx
+# Figure 1: training volume, DXA lean body mass and VL thickness, laid out at
+# double-column width (F01) and at single-column width (F01_single_col).
 
-withr::local_dir(here::here())
+setwd(here::here())
 
-pacman::p_load(withr, readxl, dplyr, ggplot2, ggsignif, patchwork, cowplot)
+pacman::p_load(ggplot2, patchwork, cowplot)
 
 source("04_Figures/shared/style.R")
-source("04_Figures/shared/figure_supplement_helpers.R")
 
-set.seed(42)
+PANELS <- "04_Figures/F01/a_script/panels"
+pA <- source_panel(file.path(PANELS, "A_training_volume.R"))
+pB <- source_panel(file.path(PANELS, "B_dxa_lbm.R"))
+pC <- source_panel(file.path(PANELS, "C_vl_thickness.R"))
 
-BASE <- "04_Figures/F01"
-RPT_PNG <- file.path(BASE, "b_reports", "main", "png")
-RPT_PDF <- file.path(BASE, "b_reports", "main", "pdf")
-PNL_PNG <- file.path(RPT_PNG, "panels")
-PNL_PDF <- file.path(RPT_PDF, "panels")
-DAT <- file.path(BASE, "c_data")
-for (d in c(PNL_PNG, PNL_PDF, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
-
-TMPL <- "04_Figures/F01/a_script/_prepost_template.R"
-
-# Panel A: Training Volume (standalone — different layout from B/C)
-
-meta <- read_excel("00_input/YvO_meta.xlsx")
-for (col in c(
-  "BMI", "Type_I_fCSA", "Type_II_fCSA",
-  "deadlift_1rm_kg", "Total_Training_Volume_kg"
-)) {
-  if (col %in% names(meta) && is.character(meta[[col]])) {
-    meta[[col]] <- suppressWarnings(as.numeric(meta[[col]]))
-  }
-}
-
-meta <- meta |>
-  mutate(
-    subject_key = sub("_(Pre|Post)$", "", Col_ID),
-    Group = factor(Group, levels = c("Young", "Old")),
-    Timepoint = factor(Timepoint, levels = c("Pre", "Post"))
-  )
-
-tv_df <- meta |>
-  filter(Timepoint == "Post") |>
-  select(subject_key, Group, tv = Total_Training_Volume_kg) |>
-  filter(!is.na(tv))
-
-stats_A <- t.test(tv ~ Group, data = tv_df)
-norm_sub <- sprintf("Welch t %s", fmt_p(stats_A$p.value))
-
-audit_A <- tv_df |>
-  summarise(
-    n = n(), mean = mean(tv), sd = sd(tv), sem = sd / sqrt(n),
-    shapiro_p = shapiro.test(tv)$p.value, .by = Group
-  ) |>
-  mutate(t_test_p = stats_A$p.value)
-write.csv(audit_A, file.path(DAT, "panel_A_training_volume.csv"), row.names = FALSE)
-
-tv_df$tv_scaled <- tv_df$tv / 1e5
-bar_colors <- c(
-  Young = unname(GROUP_FILL["Young_Post"]),
-  Old = unname(GROUP_FILL["Old_Post"])
-)
-
-pA <- ggplot(tv_df, aes(Group, tv_scaled, fill = Group)) +
-  annotate("rect",
-    xmin = 0.5, xmax = 1.5, ymin = -Inf, ymax = Inf,
-    fill = AGE_COLORS["Young"], alpha = 0.20, color = "grey85", linewidth = 0.15
-  ) +
-  annotate("rect",
-    xmin = 1.5, xmax = 2.5, ymin = -Inf, ymax = Inf,
-    fill = AGE_COLORS["Old"], alpha = 0.20, color = "grey85", linewidth = 0.15
-  ) +
-  geom_bar(stat = "summary", fun = mean, width = 0.6, color = "grey30", linewidth = 0.3) +
-  geom_errorbar(stat = "summary", fun.data = mean_se, width = 0.2, linewidth = 0.4) +
-  geom_jitter(width = 0.15, size = 1, alpha = 0.35, shape = 16, color = "grey30") +
-  geom_signif(
-    comparisons = list(c("Young", "Old")),
-    annotations = fmt_p_plot(stats_A$p.value),
-    parse = TRUE, textsize = 1.3, size = 0.3, tip_length = 0.02,
-    y_position = max(tv_df$tv_scaled) * 1.15
-  ) +
-  scale_fill_manual(values = bar_colors) +
-  scale_x_discrete(expand = expansion(add = 0.3)) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(
-    title = "Training Volume", subtitle = norm_sub,
-    y = expression(bold("Volume (×10"^5 * " kg)")), x = NULL
-  ) +
-  FIG_THEME +
-  theme(legend.position = "none")
-
-ggsave(file.path(PNL_PNG, "MAIN_panel_A_training_volume.png"), pA,
-  width = 90, height = 150, units = "mm", dpi = 300
-)
-pA_title <- "Training Volume"
-pA_subtitle <- paste0('italic("', norm_sub, '")')
+pA_title <- pA$labels$title
+pA_subtitle <- paste0('italic("', pA$labels$subtitle, '")')
 pA <- strip_for_composite(pA)
+pB_title <- pB[[1]]$labels$title
+pB_subtitle <- attr(pB, "subtitle_expr")
+pB_left <- strip_for_composite(pB[[1]])
+pB_right <- strip_for_composite(pB[[2]])
+pC_title <- pC[[1]]$labels$title
+pC_subtitle <- attr(pC, "subtitle_expr")
+pC_left <- strip_for_composite(pC[[1]])
+pC_right <- strip_for_composite(pC[[2]])
 
-cfg <- list(
-  dv_col = "DXA_LBM_kg", y_label = "DXA LBM (kg)",
-  delta_label = expression(bold("Δ DXA LBM (kg)")),
-  title = "DXA Lean Body Mass", output_prefix = "pB",
-  file_tag = "panel_B_dxa_lbm", audit_file = "panel_B_dxa_lbm.csv",
-  file_prefix = "MAIN", rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT
-)
-source(TMPL)
-
-cfg <- list(
-  dv_col = "VL_thick_cm", y_label = "VL thickness (cm)",
-  delta_label = expression(bold("Δ VL thickness (cm)")),
-  title = "VL Thickness", output_prefix = "pC",
-  file_tag = "panel_C_vl_thickness", audit_file = "panel_C_vl_thickness.csv",
-  file_prefix = "MAIN", rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT,
-  y_breaks = c(0, 0.5, 1.0), y_labels = c("0", ".5", "1")
-)
-source(TMPL)
+RPT <- "04_Figures/F01/b_reports"
 
 # Single-column layout (85 × 125 mm) — for journal column width
 sc_cfg <- list(
@@ -171,10 +82,10 @@ sc <- ggdraw(sc) +
     parse = TRUE, hjust = 0, vjust = 1, size = txt$subtitle / .pt, colour = "grey30"
   )
 
-ggsave(file.path(RPT_PDF, "MAIN_F01_composite_single_col.pdf"), sc,
+ggsave(file.path(RPT, "F01_single_col.pdf"), sc,
   width = sc_cfg$w, height = sc_cfg$h, units = "mm", device = get_pdf_device()
 )
-ggsave(file.path(RPT_PNG, "MAIN_F01_composite_single_col.png"), sc,
+ggsave(file.path(RPT, "F01_single_col.png"), sc,
   width = sc_cfg$w, height = sc_cfg$h, units = "mm", dpi = 300
 )
 
@@ -227,10 +138,10 @@ dc <- ggdraw(dc) +
     parse = TRUE, hjust = 0, vjust = 1, size = dc_cfg$sub_sz / .pt, colour = "grey30"
   )
 
-ggsave(file.path(RPT_PDF, "MAIN_F01_composite.pdf"), dc,
+ggsave(file.path(RPT, "F01.pdf"), dc,
   width = dc_cfg$w, height = dc_cfg$h, units = "mm", device = get_pdf_device()
 )
-ggsave(file.path(RPT_PNG, "MAIN_F01_composite.png"), dc,
+ggsave(file.path(RPT, "F01.png"), dc,
   width = dc_cfg$w, height = dc_cfg$h, units = "mm", dpi = 300
 )
 

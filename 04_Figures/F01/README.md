@@ -1,48 +1,55 @@
-# F01 · Figure 1, participants and training response
+# F01
 
-Reads `00_input/YvO_meta.xlsx` and produces Figure 1, the S2 Figure phenotype stack,
-Table 1 and the S2 Table workbook.
+Draws Figure 1, the training volume and hypertrophy panels, and S2 Figure, and writes Table 1 and S2 Table.
 
-```
-00_input/YvO_meta.xlsx + parent_meta/*.xlsx
-  _prepost_template.R    sourced once per measure with a cfg list
-  01_main_panels.R       A training volume, B DXA lean mass, C VL thickness
-  02_supp_panels.R       deadlift 1RM, type II fCSA, type I fCSA
-  03_body_comp_panels.R  DXA fat mass, fat-to-lean ratio
-  05_supp_composite.R    sources 02 + 03, stacks the five rows
-  04_phenotype_table.R   Table 1A / 1B / 1C
-  90_stitch_F01.R        workbook, cleanup
-  -> b_reports/main/{pdf,png}/MAIN_F01_composite{,_single_col}.*
-  -> c_data/F01_supplementary.xlsx
-```
+## Reads
+
+- `00_input/YvO_meta.xlsx`
+
+## Writes
+
+- `b_reports/F01.pdf`, `F01.png`: Figure 1, double-column width
+- `b_reports/F01_single_col.pdf`, `F01_single_col.png`: Figure 1 at single-column width, from the same panels
+- `b_reports/S2.pdf`, `S2.png`: S2 Figure
+- `b_reports/panels/`: each panel on its own, named after its script
+- `c_data/F01_table_1a_characteristics.csv`, `F01_table_1b_pre_post.csv`, `F01_table_1c_composition.csv`: Table 1
+- `c_data/F01_data.xlsx`: S2 Table
+
+## Run
 
 ```sh
-Rscript 04_Figures/F01/a_script/90_stitch_F01.R
+Rscript 04_Figures/F01/a_script/S2.R
+Rscript 04_Figures/F01/a_script/F01.R
+Rscript 04_Figures/F01/a_script/F01_data.R
 ```
 
-## What comes out
+Each panel script in `a_script/panels/` also runs on its own. `_prepost.R` holds the pre/post panel and its 2 x 2 mixed ANOVA, shared by every panel except A, and is only sourced. `04_phenotype_table.R` builds Table 1; `F01_data.R` sources it.
 
-Figure 1 in two widths from the same panels, a five-row 85 x 160 mm supplementary stack,
-and the three Table 1 blocks as CSV. `F01_supplementary.xlsx` is 14 sheets.
+## Order
 
-Each pre/post panel is drawn by `_prepost_template.R`, which fits the 2 x 2 mixed ANOVA
-with `rstatix::anova_test()`, writes a source CSV and a summary CSV, then assigns
-`<prefix>_left`, `_right`, `_title` and `_subtitle` into the global environment for the
-composites to retrieve.
+`F01_data.R` runs last. Table 1B is assembled from the summary CSVs the panels leave in `c_data/`, so a table cell and a figure p-value come from one calculation, and the script stops on any missing summary. It then folds the tables and panel CSVs into the workbook and deletes the panel CSVs.
 
-## Orderings that matter
+The panels jitter their points. Panels A, S2 A and S2 D set the seed. The others draw from the stream the panel before them leaves, so they match the composites only when run through `F01.R` and `S2.R`, in the order those scripts source them.
 
-`90_stitch_F01.R` sources `05_supp_composite.R` first, which itself sources
-`02_supp_panels.R` and `03_body_comp_panels.R`. The two panel scripts are therefore not
-listed in the stitcher.
+## Outputs and manuscript items
 
-`04_phenotype_table.R` runs after every panel script, because Table 1B is assembled from
-the summary CSVs they write rather than refitted. A table cell and a figure p-value come
-from one calculation. It stops on any missing summary.
-
-`cleanup_after_workbook()` deletes the panel and summary CSVs, so it runs after
-`build_workbook()`.
-
-## Cost
-
-8.0 s.
+| File | Manuscript item |
+|---|---|
+| `b_reports/F01.pdf` | Figure 1 |
+| `b_reports/F01_single_col.pdf` | Figure 1, single-column layout |
+| `b_reports/panels/A_training_volume.pdf` | Figure 1A |
+| `b_reports/panels/B_dxa_lbm.pdf` | Figure 1B |
+| `b_reports/panels/C_vl_thickness.pdf` | Figure 1C |
+| `b_reports/S2.pdf` | S2 Figure |
+| `b_reports/panels/S2_A_deadlift_1rm.pdf` | S2 Figure A |
+| `b_reports/panels/S2_B_type_II_fcsa.pdf` | S2 Figure B |
+| `b_reports/panels/S2_C_type_I_fcsa.pdf` | S2 Figure C |
+| `b_reports/panels/S2_D_dxa_fat_mass.pdf` | S2 Figure D |
+| `b_reports/panels/S2_E_fat_to_lean.pdf` | S2 Figure E |
+| `c_data/F01_table_1a_characteristics.csv` | Table 1, baseline characteristics |
+| `c_data/F01_table_1b_pre_post.csv` | Table 1, pre and post training |
+| `c_data/F01_table_1c_composition.csv` | Table 1, cohort composition |
+| `c_data/F01_data.xlsx`, sheets `Table_1A_characteristics` to `Table_1C_composition` | S2 Table, Table 1 as printed |
+| `c_data/F01_data.xlsx`, sheets `Per_participant` and `Notes` | S2 Table, per-participant values and measure notes |
+| `c_data/F01_data.xlsx`, sheets `panel_A_train_volume` to `panel_C_vl_thickness` | S2 Table, Figure 1 source data |
+| `c_data/F01_data.xlsx`, sheets `supp_*` | S2 Table, S2 Figure source data |

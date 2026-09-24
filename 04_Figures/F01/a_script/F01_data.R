@@ -1,21 +1,17 @@
 #!/usr/bin/env Rscript
-# F01 — Phenotype Figure: Master Orchestrator
-# One pass: panels -> per-panel stats -> manuscript tables -> composites -> workbook.
+# Table 1 and S2 Table: runs 04_phenotype_table.R, which writes the three
+# Table 1 CSVs, then folds those tables and the CSVs that S2.R and F01.R leave
+# in c_data into one workbook and deletes the panel CSVs. Run after those two.
+#
+# Each panel writes its own source data and a _summary.csv. The table script
+# assembles Table 1B from those summaries rather than refitting, so the figure
+# and the table cannot disagree.
 
-withr::local_dir(here::here())
+setwd(here::here())
 
 source("04_Figures/shared/figure_supplement_helpers.R")
-
-# Panels first: each writes its own source data and a _summary.csv. The table
-# script then assembles Table 1B from those summaries rather than refitting,
-# so the figure and the table cannot disagree. The supp composite sources the
-# two panel scripts it stacks, so they are not listed again here.
-source("04_Figures/F01/a_script/05_supp_composite.R")
-source("04_Figures/F01/a_script/01_main_panels.R")
 source("04_Figures/F01/a_script/04_phenotype_table.R")
 
-# Set after sourcing: each panel script assigns its own DAT, so a value
-# defined above would be whatever the last one happened to leave behind.
 DAT <- "04_Figures/F01/c_data"
 
 panel_specs <- list(
@@ -46,7 +42,7 @@ f01_specs <- c(
 )
 
 build_workbook(
-  file.path(DAT, "F01_supplementary.xlsx"),
+  file.path(DAT, "F01_data.xlsx"),
   title = "S2 Table \u2014 participants and training outcomes",
   description = paste(
     "Table 1 as printed, the per-participant values behind it, and the source",
