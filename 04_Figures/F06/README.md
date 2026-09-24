@@ -8,10 +8,10 @@ supplementary sweep plate and a 13-sheet workbook. Was F07 until 2026-09-22.
                                              + me_pre.rds + me_post.rds
 02_imputation/c_data/01_imputed.csv, 03_DEP/c_data/03_combined_results.csv
   01_main_panels.R  _supp_module_grid -> _panel_A_auc_bars -> _panel_B_hero_grid
-                    -> _supp_panel_B_grid -> _supp_prepare_roc -> _supp_roc_panel
-                    -> _supp_multivariate -> _supp_loso_sensitivity -> _supp_loso_wgcna_refit
+                    -> _supp_panel_B_grid -> _supp_prepare_roc -> _supp_multivariate
+                    -> _supp_loso_sensitivity -> _supp_loso_wgcna_refit
   02_supp_panels.R  composites the pre-rendered supp PNGs
-  90_stitch_F06.R   sources both, sweeps CSVs, copies to Box
+  90_stitch_F06.R   sources both, sweeps CSVs
   -> c_data/F06_supplementary.xlsx
 ```
 
@@ -34,8 +34,8 @@ F05 must run first. Seven scripts stop outright if the F05 workbook is absent:
 `_supp_loso_wgcna_refit.R`. Three of them also read F05's `.rds` objects directly.
 
 `01_main_panels.R` fixes the internal order, each step consuming the previous step's CSVs:
-module grid before panel A, hero grid before the panel B sweep, `_supp_prepare_roc` before
-`_supp_roc_panel`. `02_supp_panels.R` runs after, reading only rendered PNGs.
+module grid before panel A, hero grid before the panel B sweep. `02_supp_panels.R` runs
+after, reading only rendered PNGs.
 
 `90_stitch_F06.R` ends by removing every remaining `.csv` under `c_data`. The workbook is
 the only surviving copy, and it is what `abstract_panels` reads. Verified 2026-09-22: the

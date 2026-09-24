@@ -6,6 +6,7 @@
 # Sourced by 01_main_panels.R — expects figure_supplement_helpers.R already loaded.
 
 pacman::p_load(tidyverse, pROC)
+source("04_Figures/F06/a_script/_loocv.R")
 
 OUT <- "04_Figures/F06/c_data"
 dir.create(OUT, recursive = TRUE, showWarnings = FALSE)
@@ -28,55 +29,6 @@ imp <- read_csv("02_imputation/c_data/01_imputed.csv",   show_col_types = FALSE)
 # Labels
 true_age <- ifelse(subj_age$age[match(common_subj, subj_age$subject_key)] == "Old", 1, 0)
 n_subj   <- length(common_subj)
-
-# Core LOOCV engine (same as panel A)
-run_topk_loocv <- function(labels, X, k_range = 2:5) {
-  X <- as.matrix(X); n <- length(labels); probs <- numeric(n); ks <- integer(n)
-  for (i in seq_len(n)) {
-    tr_x <- X[-i,,drop=FALSE]; te_x <- X[i,,drop=FALSE]; tr_y <- labels[-i]
-    r <- abs(cor(tr_x, tr_y)); r[is.na(r)] <- 0
-    ranked <- names(sort(r[,1], decreasing = TRUE))
-    # inner LOOCV
-    inner <- setNames(numeric(length(k_range)), as.character(k_range))
-    for (k in k_range) {
-      ku <- min(k, length(ranked)); feats <- ranked[seq_len(ku)]
-      dev <- 0
-      for (j in seq_along(tr_y)) {
-        fit <- tryCatch(suppressWarnings(glm(y~., binomial,
-                 data = cbind(y=tr_y[-j], as.data.frame(tr_x[-j, feats, drop=FALSE])))),
-                 error=function(e) NULL)
-        if (is.null(fit)) { dev <- dev + log(2); next }
-        p <- predict(fit, type="response", newdata=as.data.frame(tr_x[j,feats,drop=FALSE]))
-        p <- pmin(pmax(p,1e-6),1-1e-6)
-        dev <- dev - (tr_y[j]*log(p) + (1-tr_y[j])*log(1-p))
-      }
-      inner[as.character(k)] <- dev
-    }
-    best_k <- as.integer(names(which.min(inner))); ks[i] <- best_k
-    feats <- ranked[seq_len(best_k)]
-    fit <- tryCatch(suppressWarnings(glm(y~., binomial,
-             data=cbind(y=tr_y, as.data.frame(tr_x[,feats,drop=FALSE])))),
-             error=function(e) NULL)
-    probs[i] <- if (!is.null(fit))
-      predict(fit, type="response", newdata=as.data.frame(te_x[,feats,drop=FALSE])) else 0.5
-  }
-  list(probs=probs, ks=ks)
-}
-
-fast_loocv_auc <- function(labels, X, k) {
-  X <- as.matrix(X); n <- length(labels); probs <- numeric(n)
-  for (i in seq_len(n)) {
-    tr_x <- X[-i,,drop=FALSE]; te_x <- X[i,,drop=FALSE]; tr_y <- labels[-i]
-    r <- abs(cor(tr_x, tr_y)); r[is.na(r)] <- 0
-    feats <- names(sort(r[,1], decreasing=TRUE))[seq_len(min(k, ncol(X)))]
-    fit <- tryCatch(suppressWarnings(glm(y~., binomial,
-             data=cbind(y=tr_y, as.data.frame(tr_x[,feats,drop=FALSE])))),
-             error=function(e) NULL)
-    probs[i] <- if (!is.null(fit))
-      predict(fit, type="response", newdata=as.data.frame(te_x[,feats,drop=FALSE])) else 0.5
-  }
-  tryCatch(as.numeric(auc(roc(labels, probs, quiet=TRUE))), error=function(e) 0.5)
-}
 
 eval_clf <- function(name, labels, X, k_range, n_perm = 200) {
   message(sprintf("  [%s] n_feat=%d, n_obs=%d", name, ncol(X), nrow(X)))

@@ -11,7 +11,7 @@ Table 1 and the S2 Table workbook.
   03_body_comp_panels.R  DXA fat mass, fat-to-lean ratio
   05_supp_composite.R    sources 02 + 03, stacks the five rows
   04_phenotype_table.R   Table 1A / 1B / 1C
-  90_stitch_F01.R        workbook, cleanup, Box copy
+  90_stitch_F01.R        workbook, cleanup
   -> b_reports/main/{pdf,png}/MAIN_F01_composite{,_single_col}.*
   -> c_data/F01_supplementary.xlsx
 ```

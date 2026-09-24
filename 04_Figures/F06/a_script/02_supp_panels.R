@@ -14,7 +14,7 @@
 # and the multivariate classifier decomposition. Each plotted a handful of
 # AUCs that ship as loso_auc_summary, loso_wgcna_refit_summary and
 # panel_A_classifier_auc in F06_supplementary.xlsx, where they read as a
-# table. Their scripts still run, because those sheets are what they write.
+# table. Their scripts now compute those sheets and draw nothing.
 
 setwd(here::here())
 

@@ -15,7 +15,6 @@ source("04_Figures/shared/devices.R")
 
 DAT <- "02_imputation/c_data"
 RPT <- "02_imputation/b_reports"
-BOX <- Sys.getenv("YVO_BOX_SUPP", unset = "")
 
 dir.create(RPT, showWarnings = FALSE, recursive = TRUE)
 
@@ -181,13 +180,3 @@ print(page1)
 print(page2)
 dev.off()
 message("Saved: ", file.path(RPT, "02_imputation_report.pdf"))
-
-# Box copy
-
-if (nzchar(BOX) && dir.exists(BOX)) {
-  box_tbl <- file.path(BOX, "tables")
-  dir.create(box_tbl, recursive = TRUE, showWarnings = FALSE)
-  file.copy(file.path(DAT, "02_imputation.xlsx"),
-            file.path(box_tbl, "S02_Table_Imputation.xlsx"), overwrite = TRUE)
-  message("Copied to Box: tables/S02_Table_Imputation.xlsx")
-}

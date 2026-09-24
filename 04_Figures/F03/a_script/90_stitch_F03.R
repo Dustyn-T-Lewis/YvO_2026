@@ -91,48 +91,4 @@ cleanup_after_workbook(f03_specs,
   )
 )
 
-BOX <- Sys.getenv("YVO_BOX_DIR", unset = "")
-if (nzchar(BOX) && dir.exists(BOX)) {
-  RPT <- "04_Figures/F03/b_reports"
-  box_pdf <- file.path(BOX, "02_Figures", "pdf")
-  box_png <- file.path(BOX, "02_Figures", "png")
-  box_fig_pdf <- file.path(BOX, "03_Supplementary", "figures", "pdf")
-  box_fig_png <- file.path(BOX, "03_Supplementary", "figures", "png")
-  box_tbl <- file.path(BOX, "03_Supplementary", "tables")
-  for (d in c(box_pdf, box_png, box_fig_pdf, box_fig_png, box_tbl)) {
-    dir.create(d, recursive = TRUE, showWarnings = FALSE)
-  }
-  file.copy(file.path(RPT, "main/pdf/MAIN_F03_composite.pdf"),
-    file.path(box_pdf, "MAIN_F03_composite.pdf"),
-    overwrite = TRUE
-  )
-  file.copy(file.path(RPT, "main/png/MAIN_F03_composite.png"),
-    file.path(box_png, "MAIN_F03_composite.png"),
-    overwrite = TRUE
-  )
-  file.copy(file.path(RPT, "supp/pdf/SUPP_F03_composite.pdf"),
-    file.path(box_fig_pdf, "S05_Figure_F03.pdf"),
-    overwrite = TRUE
-  )
-  file.copy(file.path(RPT, "supp/png/SUPP_F03_composite.png"),
-    file.path(box_fig_png, "S05_Figure_F03.png"),
-    overwrite = TRUE
-  )
-  for (stub in c("aging_fdr_heatmap", "aging_pi_heatmap", "training_fdr_heatmap", "training_pi_heatmap")) {
-    file.copy(file.path(RPT, "supp/pdf", sprintf("SUPP_F03_%s.pdf", stub)),
-      file.path(box_fig_pdf, sprintf("SUPP_F03_%s.pdf", stub)),
-      overwrite = TRUE
-    )
-    file.copy(file.path(RPT, "supp/png", sprintf("SUPP_F03_%s.png", stub)),
-      file.path(box_fig_png, sprintf("SUPP_F03_%s.png", stub)),
-      overwrite = TRUE
-    )
-  }
-  file.copy(file.path(DAT, "F03_supplementary.xlsx"),
-    file.path(box_tbl, "S07_Table_F03.xlsx"),
-    overwrite = TRUE
-  )
-  message("Copied F03 outputs to Box")
-}
-
 message("F03 complete")

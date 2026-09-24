@@ -182,15 +182,14 @@ lbl_B <- block_label("Predictor: Baseline ME")
 composite <- (lbl_A / block_A / lbl_B / block_B) +
   plot_layout(heights = c(0.04, 1, 0.04, 1)) +
   plot_annotation(
-    title = "F06 Supplementary \u2014 Panel B full sweep: module eigengenes vs \u0394phenotype, age-stratified",
+    title = "Full sweep: module eigengenes vs \u0394phenotype, age-stratified",
     subtitle = paste0(
       "Each cell = per-age Pearson r (Young solid / Old dashed OLS).\n",
       "Border: solid black = BH q<0.05; dashed = nominal p<0.05 in Young; grey = ns.  ",
       screen_counts),
     caption = paste0(
       "Inline stats = Pearson r per stratum (Y, O). ",
-      "Data: 04_Figures/F06/c_data/panel_B_full_screen_bh.csv. ",
-      "MAIN Panel B shows the six cells with the lowest raw p: ", hero_names, "."),
+      "Figure 6B shows the six cells with the lowest raw p: ", hero_names, "."),
     theme = theme(
       plot.title    = element_text(face = "bold", size = FIG_TITLE_SIZE + 4, color = "grey10",
                                    margin = margin(t = 14, l = 52, b = 4, unit = "pt")),

@@ -22,11 +22,7 @@ on.exit(assign("cor", cor_orig, envir = .GlobalEnv), add = TRUE)
 
 BASE    <- "04_Figures/F06"
 DAT_OUT <- file.path(BASE, "c_data", "loso_auc")
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "png", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "pdf", "panels")
 dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
 
 # Inputs
 F05_SUPP  <- "04_Figures/F05/c_data/F05_supplementary.xlsx"
@@ -251,46 +247,5 @@ message(sprintf("Median drop: %.3f", median(loso_refit$drop)))
 message("Module stability (Jaccard of training vs full-sample assignments)")
 print(stab_df)
 
-# Plot
-plot_df <- loso_refit |>
-  mutate(mod_hex = module_fill(module),
-         pair = paste(module, row, sep = " | "),
-         pair = factor(pair, levels = pair[order(-auc_insample)]))
-
-p <- ggplot(plot_df) +
-  geom_segment(aes(x = "in-sample", xend = "LOSO+refit",
-                   y = auc_insample, yend = auc_loso_refit, color = mod_hex),
-               linewidth = 1.2) +
-  geom_point(aes(x = "in-sample", y = auc_insample, color = mod_hex), size = 3.5) +
-  geom_point(aes(x = "LOSO+refit", y = auc_loso_refit, color = mod_hex), size = 3.5) +
-  geom_text(aes(x = "in-sample",   y = auc_insample,    label = sprintf("%.2f", auc_insample)),
-            hjust = 1.2, size = 3.3) +
-  geom_text(aes(x = "LOSO+refit", y = auc_loso_refit, label = sprintf("%.2f", auc_loso_refit)),
-            hjust = -0.2, size = 3.3) +
-  geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50") +
-  scale_color_identity() +
-  scale_y_continuous(limits = c(0.3, 1.0), breaks = seq(0.3, 1.0, 0.1)) +
-  coord_cartesian(clip = "off") +
-  facet_wrap(~ pair, ncol = 3, scales = "free_y") +
-  labs(title = "F06 Supp \u2014 Full WGCNA-refit LOSO sensitivity",
-       subtitle = paste0("Network refit on n-1 subjects per fold (power=12, same parameters as full-sample). ",
-                         "Training modules matched to full-sample modules by Jaccard overlap of ",
-                         "protein assignments; held-out subject's MEs computed via projection onto ",
-                         "training module PC1."),
-       x = NULL, y = "AUC",
-       caption = sprintf("Top-12 (row, module) pairs by in-sample perm_p. Median drop = %.3f.",
-                         median(loso_refit$drop))) +
-  FIG_THEME +
-  theme(plot.margin = margin(14, 18, 14, 18),
-        strip.text = element_text(face = "bold", size = 9),
-        panel.spacing = unit(8, "pt"))
-
-W_in <- 12; H_in <- 10
-ggsave(file.path(RPT_PDF, "SUPP_F06_loso_wgcna_refit.pdf"), p,
-       width = W_in, height = H_in, units = "in", device = get_pdf_device())
-ggsave(file.path(RPT_PNG, "SUPP_F06_loso_wgcna_refit.png"), p,
-       width = W_in, height = H_in, units = "in", dpi = 300)
-
-message("\nWrote: SUPP_F06_loso_wgcna_refit.{pdf,png}")
 message("Wrote: ", file.path(DAT_OUT, "loso_wgcna_refit_summary.csv"))
 message("Wrote: ", file.path(DAT_OUT, "loso_wgcna_refit_module_stability.csv"))

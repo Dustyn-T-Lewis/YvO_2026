@@ -291,7 +291,7 @@ composite <- wrap_plots(all_cells, nrow = 9, ncol = 7,
 
 composite <- composite +
   plot_annotation(
-    title = "F06 Supplementary \u2014 Per-module ROC grid: signal decomposition across outcomes",
+    title = "Per-module ROC grid: signal decomposition across outcomes",
     subtitle = paste0(
       "Each cell = univariate AUC from one module eigengene.\n",
       "Border: solid black = BH q<0.05; dashed = nominal p<0.05; grey = ns.  1000 permutations (Phipson\u2013Smyth adjusted); paired within subject for Pre vs Post rows."),
@@ -301,7 +301,7 @@ composite <- composite +
       "Rows 4-5 (age-specific Pre vs Post): paired within subject; Young n=15 \u00d7 2, Old n=15 \u00d7 2.  ",
       "Row 6 (LBM): median-split of age-residualized baseline LBM, predictor = Pre ME.  ",
       "Row 3 (Pre vs Post): raw ME values stacked across 30 subjects \u00d7 2 timepoints = 60 obs, paired permutation.  ",
-      "AUC shown centered inside each ROC. Data: 04_Figures/F06/c_data/module_grid/."),
+      "AUC shown centered inside each ROC."),
     theme = theme(
       plot.title    = element_text(face = "bold", size = FIG_TITLE_SIZE + 4, color = "grey10",
                                    margin = margin(t = 14, l = 52, b = 4, unit = "pt")),

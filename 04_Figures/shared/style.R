@@ -223,20 +223,6 @@ fmt_anova_sub <- function(age_p, time_p, int_p, threshold = 0.05) {
   )
 }
 
-classify_proteins_f2 <- function(pi_Y, pi_O, pi_int, threshold = 0.05) {
-  dplyr::case_when(
-    pi_int < threshold ~ "Interaction",
-    pi_Y < threshold & pi_O < threshold ~ "Sig Both",
-    pi_Y < threshold ~ "Sig Young only",
-    pi_O < threshold ~ "Sig Old only",
-    TRUE ~ "NS"
-  ) |>
-    factor(levels = c(
-      "Interaction", "Sig Both",
-      "Sig Young only", "Sig Old only", "NS"
-    ))
-}
-
 # Bonett & Wright 2000 — Fisher z CI for r (k = number of covariates)
 fisher_z_ci <- function(r, n, k = 0, level = 0.95) {
   n_eff <- n - k
@@ -297,20 +283,6 @@ clean_pathway_name <- function(name) {
     out <- stringr::str_replace(out, names(.SCI_CAPS)[i], .SCI_CAPS[i])
   }
   out
-}
-
-make_sigmoid_ribbon <- function(x0, x1, y0_top, y0_bot, y1_top, y1_bot,
-                                n_pts = 50, ribbon_id) {
-  t <- seq(0, 1, length.out = n_pts)
-  blend <- (1 - cos(pi * t)) / 2
-  tibble::tibble(
-    x = c(x0 + (x1 - x0) * t, rev(x0 + (x1 - x0) * t)),
-    y = c(
-      y0_top + (y1_top - y0_top) * blend,
-      rev(y0_bot + (y1_bot - y0_bot) * blend)
-    ),
-    ribbon_id = ribbon_id
-  )
 }
 
 CTR_SHORT <- c(
