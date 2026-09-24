@@ -24,7 +24,7 @@ Rscript 02_imputation/a_script/02_generate_reports.R
 when `benchmark/04_composite_ranking.csv` exists, and the Overview index.
 
 `01_DAList_imputed.rds`: the DAList with `miss_classification` and `imputation_reliable`
-merged into `$annotation`. Read by `03_DEP/supp/01,03,05` and by F02, F04, F05, F06.
+merged into `$annotation`. Read by `03_DEP/a_script/supp/01,03,05` and by F02, F04, F05, F06.
 
 `02_mar_mnar_classification.csv`: the `km` classifier that `benchmark/_common.R` reads
 back as `CLASSIFIERS$km`.

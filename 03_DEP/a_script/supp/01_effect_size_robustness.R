@@ -218,7 +218,7 @@ write_sheet(wb, "power_analysis", power_df)
 if (nrow(sens_df) > 0) {
   write_sheet(wb, "imputation_sensitivity", sens_df)
 }
-# The Overview index is built by 03_DEP/supp/02_supplement_covariate.R, the
+# The Overview index is built by 03_DEP/a_script/supp/02_supplement_covariate.R, the
 # last script to write this workbook. Re-running this script alone leaves the
 # existing index in place with stale row counts for these four sheets; the next
 # full run refreshes them.

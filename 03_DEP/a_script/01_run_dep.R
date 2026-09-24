@@ -45,8 +45,8 @@ if (file.exists(XLSX) && !nzchar(Sys.getenv("YVO_PIPELINE_RUN"))) {
     stop(
       "rebuilding ", XLSX, " would drop: ", paste(doomed, collapse = ", "),
       "\nRun 03_DEP/a_script/02_generate_reports.R, ",
-      "03_DEP/supp/01_effect_size_robustness.R and ",
-      "03_DEP/supp/02_supplement_covariate.R after this script, or set ",
+      "03_DEP/a_script/supp/01_effect_size_robustness.R and ",
+      "03_DEP/a_script/supp/02_supplement_covariate.R after this script, or set ",
       "YVO_PIPELINE_RUN=1 to rebuild deliberately."
     )
   }
@@ -98,7 +98,7 @@ dal <- DAList(
 # beetroot juice in older adults and EAA's is a different placebo in younger
 # men, with no participant shared. The model therefore fits at full rank while
 # still being confounded, and forcing it in cuts Aging from 278 to 84 proteins.
-# See 03_DEP/supp/02_supplement_covariate.R, which measures this rather than asserting it.
+# See 03_DEP/a_script/supp/02_supplement_covariate.R, which measures this rather than asserting it.
 
 dal <- add_design(dal, "~ 0 + group + (1 | subject)")
 

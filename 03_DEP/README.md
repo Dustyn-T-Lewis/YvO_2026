@@ -20,11 +20,11 @@ The normalized matrix to four limma contrasts, and the supplement layer built on
 ```sh
 YVO_PIPELINE_RUN=1 Rscript 03_DEP/a_script/01_run_dep.R
 Rscript 03_DEP/a_script/02_generate_reports.R
-Rscript 03_DEP/supp/01_effect_size_robustness.R
-Rscript 03_DEP/supp/02_supplement_covariate.R
-Rscript 03_DEP/supp/03_reversal_aging_fdr.R
-Rscript 03_DEP/supp/04_discordant_ora.R
-Rscript 03_DEP/supp/05_supplement_sensitivity.R
+Rscript 03_DEP/a_script/supp/01_effect_size_robustness.R
+Rscript 03_DEP/a_script/supp/02_supplement_covariate.R
+Rscript 03_DEP/a_script/supp/03_reversal_aging_fdr.R
+Rscript 03_DEP/a_script/supp/04_discordant_ora.R
+Rscript 03_DEP/a_script/supp/05_supplement_sensitivity.R
 ```
 
 ## What comes out
