@@ -2,6 +2,8 @@
 # Reads imp_list from parent environment (or CACHE_RDS)
 # Writes: 02_imputation/c_data/benchmark/02_downstream.csv
 
+setwd(here::here())
+
 if (!exists("imp_list")) {
   source("02_imputation/a_script/benchmark/_common.R")
   imp_list <- readRDS(CACHE_RDS)

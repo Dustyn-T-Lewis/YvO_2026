@@ -2,6 +2,8 @@
 # Reads: 01_reconstruction.csv, 02_downstream.csv, 03_stability.csv
 # Writes: 04_composite_ranking.csv, 04_full_report.txt
 
+setwd(here::here())
+
 if (!exists("BENCH_DIR")) {
   source("02_imputation/a_script/benchmark/_common.R")
 }
