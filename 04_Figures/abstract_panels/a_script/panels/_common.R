@@ -54,7 +54,7 @@ MUTED <- "grey30"
 # C; F04 already carries both palettes in one figure, panel A on DIR_COLORS
 # and panel C on CONTRAST_COLORS. style.R is read, not sourced: it executes
 # devices.R and defines size globals that print_scale_apply.R mutates in
-# place, and these cards must not inherit that. 99_assemble.R asserts the two
+# place, and these cards must not inherit that. abstract.R asserts the two
 # stay in step.
 AGE_PAL <- c(Young = "#E05A4E", Old = "#5DA5DA")
 # The direction pair sits at the dark end of the same RdBu ramp style.R draws
@@ -337,4 +337,23 @@ module_grid <- function() {
         sig == "q<.05" ~ "**", sig == "p<.05" ~ "*", .default = ""
       )
     )
+}
+
+# Each card on its own, at the grid's panel height, with a two-plot card
+# stacked as it sits in its column. Widened to its title where that is wider.
+save_card <- function(plots, stem, width) {
+  dir.create(file.path(REPORT_DIR, "panels"), showWarnings = FALSE)
+  pdf(NULL)
+  gs <- map(plots, ggplotGrob) |>
+    map(set_panel_h, h = PANEL_H) |>
+    fit_width()
+  hs <- map_dbl(gs, \(g) in_h(sum(g$heights)))
+  width <- max(width, map_dbl(gs, title_w) + TITLE_PAD)
+  invisible(dev.off())
+  tops <- cumsum(c(0, head(hs, -1) + ROW_GAP))
+  draw <- function() {
+    grid.newpage()
+    walk2(gs, tops, \(g, top) grid.draw(grobTree(g, vp = cell_vp(g, top))))
+  }
+  save_grid(draw, file.path("panels", stem), width, max(tops + hs))
 }

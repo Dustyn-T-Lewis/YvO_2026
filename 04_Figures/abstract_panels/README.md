@@ -1,46 +1,52 @@
-# abstract_panels · graphical abstract
+# abstract_panels
 
-Reads finished figure workbooks and the combined DEP table; writes two graphical-abstract
-layouts and their source-data workbooks.
+Draws the cards behind the graphical abstract, in the 2 x 4 grid the published abstract was built from and in a one-row backup layout.
 
-```
-04_Figures/F01/c_data/F01_supplementary.xlsx  (Per_participant)
-04_Figures/F04/c_data/F04_supplementary.xlsx  (panel_C_trajectory)
-04_Figures/F06/c_data/F06_supplementary.xlsx  (module_grid_summary)
-03_DEP/c_data/03_combined_results.csv
-  panel_A_hypertrophy / _B_amplitude / _C_remodelling / _D_direction / _E_modules / _F_aging
-  _common.R              shared theme, palette, accessors
-  99_assemble.R          2 x 4 grid, panels A B C D E -> GRID_abstract.{pdf,png}
-  99_assemble_concise.R  single row, A C B F D E      -> GRID_abstract_concise.{pdf,png}
-```
+## Reads
+
+- `03_DEP/c_data/03_combined_results.csv`
+- `04_Figures/F01/c_data/F01_supplementary.xlsx`, sheet `Per_participant`
+- `04_Figures/F04/c_data/F04_supplementary.xlsx`, sheet `panel_C_trajectory`
+- `04_Figures/F06/c_data/F06_supplementary.xlsx`, sheet `module_grid_summary`
+- `04_Figures/shared/style.R` and `shared/comparison_panels/panel_E_rrho2.R`, read as text for the palettes and the RRHO colour ramp
+
+## Writes
+
+- `b_reports/abstract.pdf`, `abstract.png`: graphical abstract, cards A to E
+- `b_reports/abstract_concise.pdf`, `abstract_concise.png`: the backup one-row layout, cards A C B F D E; not in the manuscript
+- `b_reports/panels/`: each card on its own, named after its script
+- `c_data/abstract_data.xlsx`: source data for the graphical abstract
+- `c_data/abstract_concise_data.xlsx`: source data for the backup layout
+
+## Run
 
 ```sh
-Rscript 04_Figures/abstract_panels/a_script/99_assemble.R
-Rscript 04_Figures/abstract_panels/a_script/99_assemble_concise.R
+Rscript 04_Figures/abstract_panels/a_script/abstract.R
+Rscript 04_Figures/abstract_panels/a_script/abstract_concise.R
 ```
 
-## What comes out
+Each card script in `a_script/panels/` also runs on its own. `_common.R` holds the theme, palettes, layout helpers and data accessors all cards share, and is only sourced. It reads `shared/style.R` as text and does not source it, because sourcing runs `devices.R` and defines size globals that `print_scale_apply.R` changes in place. `assert_style()` checks the local palette against `style.R` at the top of each composite.
 
-Two plates with `c_data/abstract_panels.xlsx` and `c_data/abstract_panels_concise.xlsx`.
-Each workbook carries an Overview naming the script and the counting basis behind each
-panel, plus one data sheet per panel. PDFs are drawn on a transparent ground through a
-device chosen once at load.
+## Order
 
-## Orderings that matter
+F01, F04 and F06 run first, because the cards read their workbooks. The two composites can run in either order. Each writes its own workbook, so there is no separate data script.
 
-Both assemblers run after the F01, F04 and F06 stitchers, because the panels read those
-workbooks. `run_all.R` places them last. F06 deletes its own intermediates, so
-`module_grid_summary` is only available from `F06_supplementary.xlsx`.
+## Outputs and manuscript items
 
-Each assembler sources its panel scripts into a fresh environment with `sys.source()` and
-takes `plots`, `WIDTH` and `panel_data` back out, so no panel inherits another's objects.
+`Figure_abstract.pdf` in the manuscript package was finished by hand in BioRender from `abstract.pdf`. Card F appears only in the backup layout.
 
-`_common.R` reads `shared/style.R` as text rather than sourcing it, because sourcing
-executes `devices.R` and defines the size globals `print_scale_apply.R` mutates.
-`assert_style()` checks the local palette against `style.R` at the top of each assembler.
+| File | Manuscript item |
+|---|---|
+| `b_reports/abstract.pdf` | Graphical abstract, Key Results row |
+| `b_reports/panels/A_hypertrophy.pdf` | Graphical abstract, VL thickness card |
+| `b_reports/panels/B_amplitude.pdf` | Graphical abstract, protein change magnitude card |
+| `b_reports/panels/C_remodelling.pdf` | Graphical abstract, proteins altered at FDR and Π cards |
+| `b_reports/panels/D_direction.pdf` | Graphical abstract, RRHO map and FDR scatter cards |
+| `b_reports/panels/E_modules.pdf` | Graphical abstract, module AUC cards |
+| `b_reports/panels/F_aging.pdf` | none; backup layout only |
+| `b_reports/abstract_concise.pdf` | none; backup layout |
+| `c_data/abstract_data.xlsx`, sheet `Overview` | Graphical abstract, the counting basis of each card |
+| `c_data/abstract_data.xlsx`, sheets `panel_A_hypertrophy` to `panel_E_modules` | Graphical abstract, source data for each card |
+| `c_data/abstract_concise_data.xlsx` | none; backup layout source data |
 
-The two layouts do not draw the same set: `panel_F_aging` appears only in the concise row.
-
-## Cost
-
-3.8 s and 3.7 s.
+The workbooks keep the sheet names and the `script` column they were first written with, so they name the cards `panel_A_hypertrophy` and so on.

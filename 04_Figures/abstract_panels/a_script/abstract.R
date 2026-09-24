@@ -1,4 +1,9 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# The graphical abstract: cards A to E on a 2 x 4 grid. Figure_abstract.pdf
+# was finished by hand in BioRender from this render.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R")
 
 assert_style()
 
@@ -23,7 +28,12 @@ PANELS <- tribble(
 
 built <- map(PANELS$script, function(script) {
   e <- new.env(parent = globalenv())
-  sys.source(file.path(SCRIPT_DIR, script), envir = e)
+  # The workbook keeps the panel_ names it was published with; the scripts
+  # dropped the prefix when they moved to panels/.
+  sys.source(
+    file.path(SCRIPT_DIR, "panels", sub("^panel_", "", script)),
+    envir = e
+  )
   list(plots = e$plots, width = e$WIDTH, data = e$panel_data)
 })
 
@@ -79,7 +89,7 @@ draw_grid <- function() {
   })
 }
 
-save_grid(draw_grid, "GRID_abstract", total_w, total_h)
+save_grid(draw_grid, "abstract", total_w, total_h)
 
 sheets <- c(
   list(Overview = select(PANELS, panel = stem, script, basis)),
@@ -87,7 +97,7 @@ sheets <- c(
 )
 
 write.xlsx(
-  sheets, file.path(DATA_DIR, "abstract_panels.xlsx"), overwrite = TRUE
+  sheets, file.path(DATA_DIR, "abstract_data.xlsx"), overwrite = TRUE
 )
 
 message(sprintf(

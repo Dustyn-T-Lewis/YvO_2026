@@ -1,4 +1,8 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# Graphical abstract card E: module AUCs for age and for training.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R", local = TRUE)
 
 WIDTH <- 3.00
 XLIM <- c(0, 1.28)
@@ -86,3 +90,6 @@ train_plot <- auc_base(
 
 plots <- list(age_plot, train_plot)
 panel_data <- select(auc, panel, contrast, module, tag, auc, perm_p, q_bh, sig)
+
+save_card(plots, "E_modules", WIDTH)
+invisible(plots)

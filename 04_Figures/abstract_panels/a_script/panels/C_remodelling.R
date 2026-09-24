@@ -1,4 +1,8 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# Graphical abstract card C: proteins altered by training at FDR and Π.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R", local = TRUE)
 
 WIDTH <- 1.65
 N_SUBJ <- c(Younger = 17L, Older = 15L)
@@ -69,3 +73,6 @@ count_plot <- function(which_criterion) {
 
 plots <- map(levels(counts$criterion), count_plot)
 panel_data <- select(counts, age, criterion, direction, n)
+
+save_card(plots, "C_remodelling", WIDTH)
+invisible(plots)

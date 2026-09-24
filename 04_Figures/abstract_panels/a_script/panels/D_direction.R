@@ -1,4 +1,8 @@
-source(here::here("04_Figures", "abstract_panels", "a_script", "_common.R"))
+#!/usr/bin/env Rscript
+# Graphical abstract card D: the training RRHO map and the FDR protein scatter.
+
+setwd(here::here())
+source("04_Figures/abstract_panels/a_script/panels/_common.R", local = TRUE)
 pacman::p_load(RRHO2)
 
 WIDTH <- 1.45
@@ -114,3 +118,6 @@ plots <- list(glyph_rrho, glyph_fdr)
 panel_data <- stats |>
   select(set, n, n_agree, pct, rho) |>
   mutate(max_neg_log10_p = max(rrho$hypermat, na.rm = TRUE))
+
+save_card(plots, "D_direction", WIDTH)
+invisible(plots)

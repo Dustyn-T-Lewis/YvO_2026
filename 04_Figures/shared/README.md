@@ -37,7 +37,7 @@ Each takes a `cfg` list defined by the caller.
 them, so anything sourced after it at a different canvas width must re-source `style.R`
 first. `F04/a_script/02_supp_panels.R` does.
 
-`module_palette.R` is a separate file because `abstract_panels/a_script/_common.R` needs
+`module_palette.R` is a separate file because `abstract_panels/a_script/panels/_common.R` needs
 the module colours but cannot source `style.R`, which runs `devices.R` and defines the
 globals `print_scale_apply.R` rewrites.
 
