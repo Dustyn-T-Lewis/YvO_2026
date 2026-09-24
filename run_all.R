@@ -21,10 +21,6 @@ setwd(here::here())
 # when the scripts that write them are about to run.
 Sys.setenv(YVO_PIPELINE_RUN = "1")
 
-figure_scripts <- function(fig) {
-  file.path("04_Figures", fig, "a_script", paste0("90_stitch_", fig, ".R"))
-}
-
 steps <- c(
   "01_normalization/a_script/01_normalize.R",
   "01_normalization/a_script/02_generate_reports.R",
@@ -42,7 +38,7 @@ steps <- c(
   file.path("04_Figures/F01/a_script", c("S2.R", "F01.R", "F01_data.R")),
   file.path("04_Figures/F02/a_script", c("F02.R", "S3.R", "F02_data.R")),
   file.path("04_Figures/F03/a_script", c("F03.R", "S4a.R", "S4b.R", "F03_data.R")),
-  figure_scripts("F04"),
+  file.path("04_Figures/F04/a_script", c("F04.R", "S5a.R", "S5b.R", "F04_data.R")),
   file.path("04_Figures/F06/a_script", c("F06.R", "S7.R", "F06_data.R")),
   file.path("04_Figures/F00/a_script", c("S1a.R", "S1b.R", "F00_data.R")),
   "04_Figures/abstract_panels/a_script/abstract.R",
