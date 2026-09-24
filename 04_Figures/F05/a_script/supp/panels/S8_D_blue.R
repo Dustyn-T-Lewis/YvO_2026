@@ -1,0 +1,8 @@
+#!/usr/bin/env Rscript
+# S8 Figure D: blue module triptych, protein z-scores, eigengene
+# trajectories and top ORA terms.
+
+setwd(here::here())
+source("04_Figures/F05/a_script/supp/panels/_triptych.R", local = TRUE)
+
+triptych_panel("blue", "S8_D_blue")

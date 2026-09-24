@@ -11,20 +11,21 @@ Draws Figure 6, the module ROCs and the module-phenotype coupling grid, and S7 F
 
 ## Writes
 
-- `b_reports/F06.pdf`, `F06.png`: Figure 6
-- `b_reports/S7.pdf`, `S7.png`: S7 Figure
-- `b_reports/panels/`: each panel on its own, named after its script
+- `b_reports/main/F06.pdf`, `F06.png`: Figure 6
+- `b_reports/supp/S7.pdf`, `S7.png`: S7 Figure
+- `b_reports/supp/S7_Figure.pdf`: S7 Figure with its legend, the official supplementary file
+- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script
 - `c_data/F06_data.xlsx`: S7 Table
 
 ## Run
 
 ```sh
-Rscript 04_Figures/F06/a_script/F06.R
-Rscript 04_Figures/F06/a_script/S7.R
+Rscript 04_Figures/F06/a_script/main/F06.R
+Rscript 04_Figures/F06/a_script/supp/S7.R
 Rscript 04_Figures/F06/a_script/F06_data.R
 ```
 
-Each panel script in `a_script/panels/` also runs on its own. Files starting with `_` hold code shared by several scripts and are only sourced.
+Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. Files starting with `_` hold code shared by several scripts and are only sourced.
 
 ## Order
 
@@ -38,13 +39,14 @@ F05 runs first. `A_age_roc.R` and `B_training_roc.R` draw from the module grid t
 
 | File | Manuscript item |
 |---|---|
-| `b_reports/F06.pdf` | Figure 6 |
-| `b_reports/panels/A_age_roc.pdf` | Figure 6A |
-| `b_reports/panels/B_training_roc.pdf` | Figure 6B |
-| `b_reports/panels/C_hero_grid.pdf` | Figure 6C |
-| `b_reports/S7.pdf` | S7 Figure |
-| `b_reports/panels/S7_A_module_grid.pdf` | S7 Figure A |
-| `b_reports/panels/S7_B_full_sweep.pdf` | S7 Figure B |
+| `b_reports/main/F06.pdf` | Figure 6 |
+| `b_reports/main/panels/A_age_roc.pdf` | Figure 6A |
+| `b_reports/main/panels/B_training_roc.pdf` | Figure 6B |
+| `b_reports/main/panels/C_hero_grid.pdf` | Figure 6C |
+| `b_reports/supp/S7.pdf` | S7 Figure |
+| `b_reports/supp/S7_Figure.pdf` | S7 Figure with its legend, the official file |
+| `b_reports/supp/panels/S7_A_module_grid.pdf` | S7 Figure A |
+| `b_reports/supp/panels/S7_B_full_sweep.pdf` | S7 Figure B |
 | `c_data/F06_data.xlsx`, sheets `module_grid_summary`, `module_grid_curves` | S7 Table, S7 Figure A and the cells Figure 6A and 6B draw |
 | `c_data/F06_data.xlsx`, sheet `panel_B_full_screen` | S7 Table, the 180-test screen behind Figure 6C and S7 Figure B |
 | `c_data/F06_data.xlsx`, sheets `panel_A_classifier_auc`, `panel_A_feature_stability`, `panel_A_permutation`, `panel_A_roc_curves` | S7 Table, multivariate age classifiers |

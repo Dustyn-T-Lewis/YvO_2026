@@ -70,7 +70,9 @@ NODE_LABELS <- c(
 OUT <- "03_DEP/c_data"
 XLSX <- file.path(OUT, "03_DEP_results.xlsx")
 RPT <- "03_DEP/b_reports/02_supplement"
-dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
+for (d in c(RPT, "03_DEP/b_reports/supp")) {
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+}
 
 dal_norm <- readRDS("01_normalization/c_data/03_DAList_normalized.rds")
 keep <- colnames(dal_norm$data)
@@ -730,13 +732,15 @@ fig <- (p_design / (p_counts | p_se) / p_scatter / p_pvals) +
 # open_pdf resolves the device rather than letting ggsave pick base pdf from
 # the extension, which drops characters the other staged figures keep.
 open_pdf(
-  "03_DEP/b_reports/S9.pdf", FIG_W / 25.4, FIG_H / 25.4
+  "03_DEP/b_reports/supp/S9.pdf", FIG_W / 25.4, FIG_H / 25.4
 )
 print(fig)
 dev.off()
 
-ggsave("03_DEP/b_reports/S9.png", fig,
+ggsave("03_DEP/b_reports/supp/S9.png", fig,
   width = FIG_W, height = FIG_H, units = "mm", dpi = 300, bg = "white"
 )
 
-message("\nS9 Figure -> 03_DEP/b_reports/S9.pdf and S9.png")
+caption_supp(fig, "S9", FIG_W, FIG_H, "03_DEP/b_reports/supp")
+
+message("\nS9 Figure -> 03_DEP/b_reports/supp/")

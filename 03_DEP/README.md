@@ -17,7 +17,8 @@ Fits limma to the normalized matrix for the four contrasts, then builds the supp
 - `c_data/03_reversal_aging_fdr.csv`, `03_reversal_null_draws.csv`: whether training in older adults moves the aging proteins back toward young, with its permutation null
 - `c_data/04_discordant_ora.csv`: pathway enrichment of the proteins whose training response differs in sign between age groups
 - `c_data/05_supplement_permanova.csv`: proteome variance on the supplement stratum in older adults
-- `b_reports/S9.pdf`, `S9.png`: S9 Figure, from `supp/02`
+- `b_reports/supp/S9.pdf`, `S9.png`: S9 Figure, from `supp/02`
+- `b_reports/supp/S9_Figure.pdf`: S9 Figure with its legend, the official supplementary file
 - `b_reports/`: proteoDA reports and contrast summaries, not tracked
 
 The fit uses `~ 0 + group` with `duplicateCorrelation` on subject (0.278). The contrasts are Aging (Old_Pre minus Young_Pre), Training_Young, Training_Old and Interaction (Training_Old minus Training_Young). At FDR < 0.05 they give 278, 135, 0 and 1 proteins; at Π < 0.05, 195, 99, 18 and 33. The smallest Training_Old adjusted p is 0.155657, tied between FSCN1 and HPRT1.

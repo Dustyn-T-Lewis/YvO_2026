@@ -13,20 +13,21 @@ Draws Figure 2, the proteome overview and differential expression landscape, and
 
 ## Writes
 
-- `b_reports/F02.pdf`, `F02.png`: Figure 2
-- `b_reports/S3.pdf`, `S3.png`: S3 Figure
-- `b_reports/panels/`: each panel on its own, named after its script
+- `b_reports/main/F02.pdf`, `F02.png`: Figure 2
+- `b_reports/supp/S3.pdf`, `S3.png`: S3 Figure
+- `b_reports/supp/S3_Figure.pdf`: S3 Figure with its legend, the official supplementary file
+- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script
 - `c_data/F02_data.xlsx`: S3 Table
 
 ## Run
 
 ```sh
-Rscript 04_Figures/F02/a_script/F02.R
-Rscript 04_Figures/F02/a_script/S3.R
+Rscript 04_Figures/F02/a_script/main/F02.R
+Rscript 04_Figures/F02/a_script/supp/S3.R
 Rscript 04_Figures/F02/a_script/F02_data.R
 ```
 
-Each panel script in `a_script/panels/` also runs on its own. Files starting with `_` hold code shared by several panels and are only sourced.
+Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. Files starting with `_` hold code shared by several panels and are only sourced.
 
 ## Order
 
@@ -36,16 +37,17 @@ Stage 03 runs first. `F02_data.R` runs last: it folds the CSVs the two composite
 
 | File | Manuscript item |
 |---|---|
-| `b_reports/F02.pdf` | Figure 2 |
-| `b_reports/panels/A_pca.pdf` | Figure 2A |
-| `b_reports/panels/B_logfc_density.pdf` | Figure 2B |
-| `b_reports/panels/C_dep_counts.pdf` | Figure 2C |
-| `b_reports/panels/D_upset.pdf` | Figure 2D |
-| `b_reports/panels/E_fgsea.pdf` | Figure 2E |
-| `b_reports/panels/F_barcode.pdf` | Figure 2F |
-| `b_reports/S3.pdf` | S3 Figure |
-| `b_reports/panels/S3_A_cv_scatter.pdf` | S3 Figure A |
-| `b_reports/panels/S3_B_cv_violin.pdf` | S3 Figure B |
-| `b_reports/panels/S3_C_imputed.pdf` | S3 Figure C |
+| `b_reports/main/F02.pdf` | Figure 2 |
+| `b_reports/main/panels/A_pca.pdf` | Figure 2A |
+| `b_reports/main/panels/B_logfc_density.pdf` | Figure 2B |
+| `b_reports/main/panels/C_dep_counts.pdf` | Figure 2C |
+| `b_reports/main/panels/D_upset.pdf` | Figure 2D |
+| `b_reports/main/panels/E_fgsea.pdf` | Figure 2E |
+| `b_reports/main/panels/F_barcode.pdf` | Figure 2F |
+| `b_reports/supp/S3.pdf` | S3 Figure |
+| `b_reports/supp/S3_Figure.pdf` | S3 Figure with its legend, the official file |
+| `b_reports/supp/panels/S3_A_cv_scatter.pdf` | S3 Figure A |
+| `b_reports/supp/panels/S3_B_cv_violin.pdf` | S3 Figure B |
+| `b_reports/supp/panels/S3_C_imputed.pdf` | S3 Figure C |
 | `c_data/F02_data.xlsx`, sheets `panel_A_*` to `panel_F_*` | S3 Table, Figure 2 source data |
 | `c_data/F02_data.xlsx`, sheets `SUPP_panel_A_*` to `SUPP_panel_C_*` | S3 Table, S3 Figure source data |
