@@ -23,7 +23,7 @@ curves_all <- read_csv(file.path(DAT, "module_grid_curves.csv"), show_col_types 
 
 F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot(
-  "F05 stitcher must run first: missing F05_data.xlsx" =
+  "run 04_Figures/F05/a_script/F05_data.R first: missing F05_data.xlsx" =
     file.exists(F05_SUPP)
 )
 mod_bio_df <- read_sheet_df(F05_SUPP, "WGCNA_mod_bio_labels")

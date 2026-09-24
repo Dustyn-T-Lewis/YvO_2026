@@ -20,7 +20,7 @@ dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
 
 F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot(
-  "F05 stitcher must run first: missing F05_data.xlsx" =
+  "run 04_Figures/F05/a_script/F05_data.R first: missing F05_data.xlsx" =
     file.exists(F05_SUPP)
 )
 

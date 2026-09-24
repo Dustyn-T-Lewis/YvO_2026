@@ -264,7 +264,7 @@ build_heatmap <- function(heat_df, col_labels, trait_order,
   # same BH flag, and a fifth that sized large-but-null cells like significant
   # ones; exactly one LMM cell qualified, and it is nominally significant
   # anyway. The dagger a nominal cell might carry instead of the dashed outline
-  # would not survive the stitcher's device, which renders it as a full stop.
+  # would not survive the composite's device, which renders it as a full stop.
   heat_df <- heat_df |>
     mutate(
       evidence = case_when(
@@ -396,7 +396,7 @@ assemble_figure <- function(p_brackets, p_counts, p_heat,
     title = NULL,
     subtitle = NULL,
     theme = theme(
-      # Top margin for the stitcher-drawn title. The left one holds the "350"
+      # Top margin for the title F05.R draws. The left one holds the "350"
       # tick: it is the outermost break on a scale whose limit is sqrt(350) with
       # no expansion, so the label straddles the panel edge and half of it needs
       # room outside. The count bars are the leftmost element, so that room has
@@ -624,7 +624,7 @@ p_leg_phenotype <- build_legend_strip(
   title = "r (phenotype)", txt_cell = txt_cell
 )
 
-# The title and subtitle are drawn by the stitcher, over the margin reserved at
+# The title and subtitle are drawn by F05.R, over the margin reserved at
 # the top of this panel; the strings this call used to pass were discarded.
 fig_A <- assemble_figure(
   p_brackets, p_counts, p_heat,
