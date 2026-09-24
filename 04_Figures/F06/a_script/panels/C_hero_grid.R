@@ -1,21 +1,21 @@
 #!/usr/bin/env Rscript
-# Figure 6 — Panel C: Module x Phenotype coupling is age-dependent (3x2 grid)
+# Figure 6C: module x phenotype coupling is age-dependent (3x2 grid).
 #
 # Six hero scatters, taken as the six best source x module x outcome cells in
-# the live screen; each cell plots both age strata.
-#
-# Sourced by 01_main_panels.R — expects style.R + figure_supplement_helpers.R
-# already loaded.
-# Exports: pC, pC_title, pC_subtitle, pC_legend
+# the live screen; each cell plots both age strata. Writes the 180-test screen
+# to c_data/panel_B_full_screen_bh.csv for S7_B_full_sweep.R and S7 Table.
+
+setwd(here::here())
 
 pacman::p_load(tidyverse, patchwork, ggtext)
 
+source("04_Figures/shared/style.R")
+source("04_Figures/shared/figure_supplement_helpers.R")
+
 BASE <- "04_Figures/F06"
-RPT_PNG <- file.path(BASE, "b_reports", "main", "png", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "main", "pdf", "panels")
+RPT <- file.path(BASE, "b_reports", "panels")
 DAT_OUT <- file.path(BASE, "c_data")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
+dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
 
 F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
@@ -341,21 +341,16 @@ panel_B <- wrap_plots(hero_plots, ncol = GRID_NCOL) +
 PC_W <- 210 # matches the width panel C gets in the composite
 PC_H <- 88
 
-ggsave(file.path(RPT_PNG, "MAIN_panel_C_hero_grid.png"),
+ggsave(file.path(RPT, "C_hero_grid.png"),
   panel_B,
   width = PC_W, height = PC_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "MAIN_panel_C_hero_grid.pdf"),
+ggsave(file.path(RPT, "C_hero_grid.pdf"),
   panel_B,
   width = PC_W, height = PC_H, units = "mm",
   device = get_pdf_device()
 )
 
-message("  MAIN_panel_C_hero_grid saved (3x2 hero grid)")
+message("  C_hero_grid saved (3x2 hero grid)")
 
-# Export for composite; pC_subtitle is already set above and shared with the
-# standalone panel so the two can never disagree.
-pC_title <- "Module\u2013Phenotype Coupling (Age-Dependent)"
-pC_legend <- NULL
-pC <- panel_B +
-  plot_annotation(title = NULL, subtitle = NULL)
+invisible(panel_B)

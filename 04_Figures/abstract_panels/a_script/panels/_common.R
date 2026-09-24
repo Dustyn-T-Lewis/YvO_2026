@@ -10,7 +10,7 @@ SCRIPT_DIR <- file.path(PANEL_DIR, "a_script")
 REPORT_DIR <- file.path(PANEL_DIR, "b_reports")
 DATA_DIR <- file.path(PANEL_DIR, "c_data")
 F01_XLSX <- here::here("04_Figures", "F01", "c_data", "F01_data.xlsx")
-F06_XLSX <- here::here("04_Figures", "F06", "c_data", "F06_supplementary.xlsx")
+F06_XLSX <- here::here("04_Figures", "F06", "c_data", "F06_data.xlsx")
 F04_XLSX <- here::here("04_Figures", "F04", "c_data", "F04_supplementary.xlsx")
 
 source(here::here("04_Figures", "shared", "devices.R"))

@@ -1,47 +1,54 @@
-# F06 · Figure 6, module discrimination and phenotype coupling
+# F06
 
-Reads F05's network objects and workbook; writes the three-panel ROC composite, the
-supplementary sweep plate and a 13-sheet workbook. Was F07 until 2026-09-22.
+Draws Figure 6, the module ROCs and the module-phenotype coupling grid, and S7 Figure, and writes S7 Table.
 
-```
-04_Figures/F05/c_data/F05_data.xlsx + datExpr.rds + module_colors.rds
-                                             + me_pre.rds + me_post.rds
-02_imputation/c_data/01_imputed.csv, 03_DEP/c_data/03_combined_results.csv
-  01_main_panels.R  _supp_module_grid -> _panel_A_auc_bars -> _panel_B_hero_grid
-                    -> _supp_panel_B_grid -> _supp_prepare_roc -> _supp_multivariate
-                    -> _supp_loso_sensitivity -> _supp_loso_wgcna_refit
-  02_supp_panels.R  composites the pre-rendered supp PNGs
-  90_stitch_F06.R   sources both, sweeps CSVs
-  -> c_data/F06_supplementary.xlsx
-```
+## Reads
+
+- `04_Figures/F05/c_data/F05_data.xlsx`, sheets `MEs`, `me_pre`, `me_post`, `delta_me`, `metadata_subj_age`, `metadata_pheno_wide`, `common_subj`, `WGCNA_mod_bio_labels` and `WGCNA_module_assignments`
+- `04_Figures/F05/c_data/datExpr.rds`, `module_colors.rds`, `me_pre.rds` and `me_post.rds`
+- `02_imputation/c_data/01_imputed.csv`
+- `03_DEP/c_data/03_combined_results.csv`
+
+## Writes
+
+- `b_reports/F06.pdf`, `F06.png`: Figure 6
+- `b_reports/S7.pdf`, `S7.png`: S7 Figure
+- `b_reports/panels/`: each panel on its own, named after its script
+- `c_data/F06_data.xlsx`: S7 Table
+
+## Run
 
 ```sh
-Rscript 04_Figures/F06/a_script/90_stitch_F06.R
+Rscript 04_Figures/F06/a_script/F06.R
+Rscript 04_Figures/F06/a_script/S7.R
+Rscript 04_Figures/F06/a_script/F06_data.R
 ```
 
-## What comes out
+Each panel script in `a_script/panels/` also runs on its own. Files starting with `_` hold code shared by several scripts and are only sourced.
 
-`MAIN_F06_composite` with A per-module age ROCs, B per-module training ROCs, C the
-module-phenotype hero grid. `SUPP_F06_composite`. A 13-sheet workbook: module grid summary
-and curves, multivariate classifier AUC, stability, permutation and curves, classifier
-pilot summary and curves, the 180-test panel B screen, and three LOSO sheets.
+## Order
 
-## Orderings that matter
+F05 runs first. `A_age_roc.R` and `B_training_roc.R` draw from the module grid that `S7_A_module_grid.R` writes, and run it first when the grid is missing. `S7_B_full_sweep.R` draws from the 180-test screen that `C_hero_grid.R` writes, and runs it first when the screen is missing.
 
-F05 must run first. Seven scripts stop outright if the F05 workbook is absent:
-`_panel_A_auc_bars.R`, `_panel_B_hero_grid.R`, `_supp_prepare_roc.R`,
-`_supp_panel_B_grid.R`, `_supp_module_grid.R`, `_supp_multivariate.R` and
-`_supp_loso_wgcna_refit.R`. Three of them also read F05's `.rds` objects directly.
+`F06_data.R` runs last. It runs the four analysis steps in `a_script/` that compute sheets but draw nothing: `_supp_prepare_roc.R`, `_supp_multivariate.R`, `_supp_loso_sensitivity.R` and `_supp_loso_wgcna_refit.R`. It then folds their CSVs and the ones the two composites leave in `c_data/` into the workbook and deletes them. `_loocv.R` holds the nested LOOCV classifier the first two share. `_panel_selection.R` names the cells Figure 6A and 6B draw, for the ROC panels and the two LOSO steps.
 
-`01_main_panels.R` fixes the internal order, each step consuming the previous step's CSVs:
-module grid before panel A, hero grid before the panel B sweep. `02_supp_panels.R` runs
-after, reading only rendered PNGs.
+`_supp_loso_wgcna_refit.R` refits the network on 30 leave-one-subject-out folds with no cache and takes about 255 s.
 
-`90_stitch_F06.R` ends by removing every remaining `.csv` under `c_data`. The workbook is
-the only surviving copy, and it is what `abstract_panels` reads. Verified 2026-09-22: the
-workbook rebuilds byte-identically from an empty `c_data`, so a fresh clone is sufficient.
+## Outputs and manuscript items
 
-## Cost
+| File | Manuscript item |
+|---|---|
+| `b_reports/F06.pdf` | Figure 6 |
+| `b_reports/panels/A_age_roc.pdf` | Figure 6A |
+| `b_reports/panels/B_training_roc.pdf` | Figure 6B |
+| `b_reports/panels/C_hero_grid.pdf` | Figure 6C |
+| `b_reports/S7.pdf` | S7 Figure |
+| `b_reports/panels/S7_A_module_grid.pdf` | S7 Figure A |
+| `b_reports/panels/S7_B_full_sweep.pdf` | S7 Figure B |
+| `c_data/F06_data.xlsx`, sheets `module_grid_summary`, `module_grid_curves` | S7 Table, S7 Figure A and the cells Figure 6A and 6B draw |
+| `c_data/F06_data.xlsx`, sheet `panel_B_full_screen` | S7 Table, the 180-test screen behind Figure 6C and S7 Figure B |
+| `c_data/F06_data.xlsx`, sheets `panel_A_classifier_auc`, `panel_A_feature_stability`, `panel_A_permutation`, `panel_A_roc_curves` | S7 Table, multivariate age classifiers |
+| `c_data/F06_data.xlsx`, sheets `classifier_pilot_summary`, `classifier_pilot_curves` | S7 Table, classifier pilot |
+| `c_data/F06_data.xlsx`, sheets `loso_auc_summary`, `loso_wgcna_refit_summary`, `loso_wgcna_refit_mod_stability` | S7 Table, leave-one-subject-out sensitivity of the Figure 6A and 6B cells |
 
-255.2 s. `_supp_loso_wgcna_refit.R` refits the network on 30 leave-one-subject-out folds
-with no cache.
+`abstract_panels` reads the sheet `module_grid_summary`.

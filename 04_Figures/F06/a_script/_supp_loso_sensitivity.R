@@ -6,7 +6,7 @@
 # 1st PC on n-1 training subjects, project the held-out subject onto that PC,
 # and compute an out-of-fold AUC.
 #
-# Sourced by 01_main_panels.R — expects style.R + figure_supplement_helpers.R
+# Sourced by F06_data.R — expects style.R + figure_supplement_helpers.R
 # already loaded.
 
 pacman::p_load(tidyverse, pROC)
@@ -26,9 +26,9 @@ me_post   <- readRDS("04_Figures/F05/c_data/me_post.rds")
 subj_age  <- read_sheet_df(F05_SUPP, "metadata_subj_age")
 pheno     <- read_sheet_df(F05_SUPP, "metadata_pheno_wide")
 
-# In-sample AUCs: prefer CSV (if _supp_module_grid.R just ran), else xlsx
+# In-sample AUCs: prefer CSV (if S7_A_module_grid.R just ran), else xlsx
 in_sample_csv  <- file.path(BASE, "c_data", "module_grid", "module_grid_summary.csv")
-in_sample_xlsx <- file.path(BASE, "c_data", "F06_supplementary.xlsx")
+in_sample_xlsx <- file.path(BASE, "c_data", "F06_data.xlsx")
 if (file.exists(in_sample_csv)) {
   in_sample <- read_csv(in_sample_csv, show_col_types = FALSE)
 } else {

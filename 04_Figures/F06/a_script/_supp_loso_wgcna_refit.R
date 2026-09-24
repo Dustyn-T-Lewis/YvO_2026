@@ -9,7 +9,7 @@
 #
 # Runtime: ~13-15 min (32 folds x ~25 s/fold blockwiseModules).
 #
-# Sourced by 01_main_panels.R — expects style.R + figure_supplement_helpers.R
+# Sourced by F06_data.R — expects style.R + figure_supplement_helpers.R
 # already loaded.
 
 pacman::p_load(tidyverse, WGCNA, pROC)
@@ -36,7 +36,7 @@ subj_age  <- read_sheet_df(F05_SUPP, "metadata_subj_age")
 pheno     <- read_sheet_df(F05_SUPP, "metadata_pheno_wide")
 
 in_sample_csv  <- file.path(BASE, "c_data", "module_grid", "module_grid_summary.csv")
-in_sample_xlsx <- file.path(BASE, "c_data", "F06_supplementary.xlsx")
+in_sample_xlsx <- file.path(BASE, "c_data", "F06_data.xlsx")
 in_sample <- if (file.exists(in_sample_csv)) {
   read_csv(in_sample_csv, show_col_types = FALSE)
 } else {
