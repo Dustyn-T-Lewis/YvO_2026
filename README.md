@@ -39,8 +39,9 @@ from a run and is ignored.
 
 ## Reproducing
 
-`setup.R` installs from CRAN, Bioconductor and two GitHub sources, then
-`renv::restore()` pins every version from `renv.lock`. `run_all.R` runs each
+`setup.R` calls `renv::restore()`, which installs every package at the
+version in `renv.lock`: CRAN, Bioconductor, and proteoDA, RRHO2 and DreamAI
+from GitHub. `run_all.R` runs each
 step as a separate `Rscript` child and logs timings to `.runlogs/`.
 
 A full run takes about 16 minutes. The two slowest steps are the effect-size
