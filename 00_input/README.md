@@ -1,40 +1,16 @@
-# 00 · Input
+# 00_input
 
-Hand-entered and hand-exported source files. No script writes anything here.
+The source data. No script writes here, so this directory has no `a_script/`, `b_reports/` or `c_data/`.
 
-```
-YvO_raw.xlsx                         -> 01_normalize.R
-YvO_meta.xlsx                        -> 01_normalize.R, 03_DEP/a_script/supp/02,03,05, F01, F04
-YvO_pheno_calc.xlsx                  -> 01_normalize.R
-HPA_skeletal_muscle_annotations.tsv  -> 01_normalize.R, F05/_supp_qc_compartment.R
-wgcna_reference_modules.csv          -> F05/YvO_WGCNA_run.R
-parent_meta/{NORE,EAA,PPS_older,PPS_younger}.xlsx -> F01/04_phenotype_table.R
-```
+## Files
 
-## What comes out
+- `YvO_raw.xlsx`: protein intensities, 64 samples from 32 participants, Pre and Post. Read by `01_normalize.R`.
+- `YvO_meta.xlsx`: one row per sample. `Col_ID` names the intensity column; `01_normalize.R` stops unless the two sets match exactly. Read by `01_normalize.R`, `03_DEP/a_script/supp/02`, `03` and `05`, F01 and F04.
+- `YvO_pheno_calc.xlsx`: phenotypes as a formatted report. Read by `01_normalize.R`, which drops the summary rows and stops unless 32 participants remain, and by `03_DEP/a_script/supp/05`.
+- `HPA_skeletal_muscle_annotations.tsv`: Human Protein Atlas annotations for the tissue filter. Read by `01_normalize.R` and F05.
+- `wgcna_reference_modules.csv`: module assignments from the submitted analysis. `F05/a_script/YvO_WGCNA_run.R` uses them only to keep module colours the same between the two networks.
+- `parent_meta/NORE.xlsx`, `EAA.xlsx`, `PPS_older.xlsx`, `PPS_younger.xlsx`: the parent trials' records, for Table 1. Read by F01.
 
-`Col_ID` joins `YvO_meta.xlsx` to the intensity columns; `01_normalize.R:61` asserts the
-two sets match exactly. `uniprot_id` keys annotation to data rows and stays the row name
-through every later stage.
+`Subject_ID` is not unique: ten values are shared by two participants. Scripts group samples by the `Col_ID` prefix instead, `sub("_(Pre|Post)$", "", Col_ID)`.
 
-`Subject_ID` is not unique: ten values are shared by two participants. Subjects are
-therefore grouped by the `Col_ID` prefix, `sub("_(Pre|Post)$", "", Col_ID)`, in
-`01_run_dep.R`, `03_reversal_aging_fdr.R` and `05_supplement_sensitivity.R`.
-
-`YvO_pheno_calc.xlsx` is a formatted report rather than a table. `01_normalize.R:331-336`
-drops the `Mean`, `Std Dev`, `n-size`, repeated-header and `T-test` rows, then asserts 32
-participants remain.
-
-## Orderings that matter
-
-`supplement_cohort` is deleted at `01_normalize.R:59`, before the DAList is built, so the
-fitted model cannot see it. `03_DEP/a_script/supp/02_supplement_covariate.R` reads it back out of
-this workbook directly.
-
-No parent trial spans both age groups, so supplement arm is confounded with age by
-recruitment. The design still fits at full rank, which is the trap: forcing supplement in
-takes Aging from 278 proteins to 12 with the Ruple arms pooled, 84 with all six arms, and
-6 with control and placebo collapsed. Measured in `02_supplement_forced_fit.csv`.
-
-Adding a column to `YvO_meta.xlsx` makes it available to every stage: `01_normalize.R`
-passes the sheet through unchanged apart from that one deletion.
+`01_normalize.R` deletes the `supplement_cohort` column before building the DAList, so the model never sees it. No parent trial spans both age groups, so supplement arm is confounded with age. `03_DEP/a_script/supp/02_supplement_covariate.R` reads the column back from this workbook to measure that.

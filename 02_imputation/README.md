@@ -1,48 +1,38 @@
-# 02 · Imputation
+# 02_imputation
 
-The normalized matrix with its gaps filled by missForest, plus the benchmark that chose it.
+Fills the missing values in the normalized matrix with missForest, the method the imputation benchmark ranked first.
 
-```
-01_normalization/c_data/02_normalized.csv + 03_DAList_normalized.rds
-  benchmark/_run_all.R   17 methods -> c_data/benchmark/*.csv, imputed_matrices.rds  (opt-in)
-  01_impute.R            k-means on (mean intensity, % missing) -> MAR/MNAR/Complete;
-                         Fisher test per MNAR protein; missForest(maxiter 10, ntree 100)
-                         -> c_data/02_imputation.xlsx, 01_imputed.csv,
-                            02_mar_mnar_classification.csv, 01_DAList_imputed.rds
-  02_generate_reports.R  -> b_reports/01_missingness_report.pdf, 02_imputation_report.pdf
-```
+## Reads
+
+- `01_normalization/c_data/02_normalized.csv` and `03_DAList_normalized.rds`
+- `c_data/benchmark/04_composite_ranking.csv`, written by the benchmark
+
+## Writes
+
+- `c_data/02_imputation.xlsx`: S9 Table, 7 sheets
+- `c_data/01_imputed.csv`: the imputed matrix, read by F05 and F06
+- `c_data/01_DAList_imputed.rds`: the imputed DAList with each protein's missingness class, read by `03_DEP/a_script/supp/01`, `03`, `05` and by F02, F04 and F05
+- `c_data/02_mar_mnar_classification.csv`: MAR, MNAR or complete for each protein, read by the benchmark and F04
+- `c_data/00_report_intermediates.rds`: read by F00
+- `c_data/benchmark/01_reconstruction.csv` to `04_composite_ranking.csv` and `04_full_report.txt`: the benchmark results
+- `b_reports/`: missingness and imputation reports, not tracked
+
+## Run
 
 ```sh
-Rscript 02_imputation/a_script/benchmark/_run_all.R   # opt-in; SKIP_IMPUTE=1 reuses the cache
 Rscript 02_imputation/a_script/01_impute.R
 Rscript 02_imputation/a_script/02_generate_reports.R
 ```
 
-## What comes out
+The benchmark is opt-in and is not part of `run_all.R`. It compares 17 methods and writes `c_data/benchmark/`. Its ranking is tracked, so a normal run does not need it.
 
-`02_imputation.xlsx`: 7 sheets, ships as S9 Table. Five core sheets, `benchmark_ranking`
-when `benchmark/04_composite_ranking.csv` exists, and the Overview index.
+```sh
+Rscript 02_imputation/a_script/benchmark/_run_all.R
+SKIP_IMPUTE=1 Rscript 02_imputation/a_script/benchmark/_run_all.R   # reuse imputed_matrices.rds
+```
 
-`01_DAList_imputed.rds`: the DAList with `miss_classification` and `imputation_reliable`
-merged into `$annotation`. Read by `03_DEP/a_script/supp/01,03,05` and by F02, F04, F05, F06.
+GSimp is not on CRAN or Bioconductor, so its source is vendored in `a_script/benchmark/methods/gsimp_source/`, unmodified, from https://github.com/WandeRum/GSimp (Wei et al. 2018, PLOS Computational Biology 14:e1005973). Those files are GPL-3; their licence is in that directory. `methods/09_gsimp.R` sources them.
 
-`02_mar_mnar_classification.csv`: the `km` classifier that `benchmark/_common.R` reads
-back as `CLASSIFIERS$km`.
+## Order
 
-## Orderings that matter
-
-`01_impute.R` must have run once before the benchmark: `benchmark/_common.R` loads
-`02_mar_mnar_classification.csv` as one of its two classifiers.
-
-The benchmark must then exist before a full run. `02_generate_reports.R:30` stops on a
-missing `04_composite_ranking.csv`, and `run_all.R` preflights the same file because the
-benchmark is opt-in and two stages read it.
-
-Rows are sorted with `gene_order` before `missForest` for determinism, so `$annotation` is
-re-matched to `rownames($data)` afterwards and asserted identical. `merge()` keeps
-left-frame order, which is not the matrix order (`01_impute.R:232-241`).
-
-## Cost
-
-`01_impute.R` 37.9 s, `02_generate_reports.R` 2.4 s. The benchmark is not one of
-`run_all.R`'s 22 steps and is run by hand.
+`01_impute.R` runs before the first benchmark run, because the benchmark reads `02_mar_mnar_classification.csv`. The benchmark ranking must exist before `01_impute.R` and `02_generate_reports.R` run; `run_all.R` stops if it is missing.
