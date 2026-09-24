@@ -1,4 +1,4 @@
-# Shared classified-heatmap engine — row-z-scored abundance, rows grouped
+# Shared classified-heatmap engine: row-z-scored abundance, rows grouped
 # directly by GO Slim + Hallmark functional classification (membership-based,
 # not enrichment or expression clustering: every protein's primary category
 # is its smallest matching set across both databases pooled, which maximizes

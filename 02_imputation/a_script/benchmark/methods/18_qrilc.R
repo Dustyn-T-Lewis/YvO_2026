@@ -1,5 +1,5 @@
 # methods/18_qrilc.R
-# QRILC — quantile regression imputation of left-censored data
+# QRILC: quantile regression imputation of left-censored data
 # Lazar et al. 2016
 # Pure MNAR; draws from fitted left tail per sample
 

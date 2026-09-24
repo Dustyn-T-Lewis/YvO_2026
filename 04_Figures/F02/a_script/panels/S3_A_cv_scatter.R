@@ -200,7 +200,7 @@ pA12 <- ggplot(scatter_df, aes(x = cv_pre, y = cv_post)) +
   )
 
 # Add a dummy facet column so "Training Response" renders as a strip header
-# (matching the Young/Old facet strips in pA12 — same vertical position).
+# (at the same height as the Young/Old facet strips in pA12).
 delta_wide$.facet <- "Training Response"
 
 pA3 <- ggplot(delta_wide, aes(x = dcv_Young, y = dcv_Old)) +

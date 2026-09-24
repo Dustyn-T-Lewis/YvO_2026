@@ -1,4 +1,4 @@
-# 04_discordant_ora — R2.2's second half: do the whole-proteome discordant
+# 04_discordant_ora: R2.2's second half: do the whole-proteome discordant
 # proteins group into biological pathways?
 #
 # The reviewer's ~40% is the proteins whose training logFCs disagree in sign

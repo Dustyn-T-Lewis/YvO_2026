@@ -724,7 +724,7 @@ message(sprintf(
   length(bl_subj_y), length(bl_subj_o), length(common_young), length(common_old)
 ))
 
-# LMM contrasts — models repeated measures properly (eigengene ~ group + (1|subject))
+# LMM contrasts model the repeated measures: eigengene ~ group + (1|subject)
 lmm_data <- meta |>
   mutate(group = factor(group, levels = c("Young_Pre", "Young_Post", "Old_Pre", "Old_Post")))
 

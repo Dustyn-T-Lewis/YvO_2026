@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
-# S5 Table, sheet SUPP_enrichment_blunting: Pathway Enrichment — Training Blunting
+# S5 Table, sheet SUPP_enrichment_blunting: Pathway Enrichment: Training Blunting
 # ComplexHeatmap showing pathway-level blunting split by response pattern
 # Method: fGSEA on GO:BP + Reactome + Hallmark + KEGG_REF, reduced via
-# collapsePathways() (Jaccard dedup disabled — collapsePathways sufficient).
+# collapsePathways(). Jaccard dedup is off because collapsePathways suffices.
 
 setwd(here::here())
 

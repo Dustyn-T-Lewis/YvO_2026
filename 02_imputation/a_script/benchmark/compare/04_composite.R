@@ -1,4 +1,4 @@
-# compare/04_composite.R — composite ranking from all metrics
+# compare/04_composite.R: composite ranking from all metrics
 # Reads: 01_reconstruction.csv, 02_downstream.csv, 03_stability.csv
 # Writes: 04_composite_ranking.csv, 04_full_report.txt
 

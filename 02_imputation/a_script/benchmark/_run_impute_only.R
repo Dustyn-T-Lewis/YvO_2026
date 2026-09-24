@@ -1,4 +1,4 @@
-# _run_impute_only.R — Run only the imputation phase (no comparison scripts)
+# _run_impute_only.R: Run only the imputation phase (no comparison scripts)
 # Usage: Rscript 02_imputation/a_script/benchmark/_run_impute_only.R
 
 source("02_imputation/a_script/benchmark/_common.R")

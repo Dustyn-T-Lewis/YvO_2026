@@ -1,5 +1,5 @@
 # methods/21_bpca.R
-# BPCA standalone — Bayesian PCA imputation
+# BPCA standalone: Bayesian PCA imputation
 # Oba et al. 2003
 # Pure MAR; no QRILC component (cf. BPCA_QRILC hybrid)
 

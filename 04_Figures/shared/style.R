@@ -1,4 +1,4 @@
-# style.R — palettes, themes, sizing, helpers for all figure scripts
+# style.R: palettes, themes, sizing, helpers for all figure scripts
 #
 # Everything that is a repo-wide constant lives in tree_config.R.
 
@@ -135,7 +135,7 @@ strip_for_composite <- function(p) {
 
 # Runs a panel script in its own environment and returns the plot it ends on.
 source_panel <- function(path) source(path, local = new.env())$value
-# text hierarchy — J Physiol spec
+# Text hierarchy, from the J Physiol specification
 FIG_TITLE_SIZE <- 7
 FIG_SUBTITLE_SIZE <- 6
 FIG_STRIP_SIZE <- 5
@@ -226,7 +226,7 @@ fmt_anova_sub <- function(age_p, time_p, int_p, threshold = 0.05) {
   )
 }
 
-# Bonett & Wright 2000 — Fisher z CI for r (k = number of covariates)
+# Fisher z CI for r, Bonett & Wright 2000 (k = number of covariates)
 fisher_z_ci <- function(r, n, k = 0, level = 0.95) {
   n_eff <- n - k
   if (n_eff < 4 || is.na(r)) {

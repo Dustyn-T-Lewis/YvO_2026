@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # S5a Figure A: Spearman Rho Bootstrap
-# Diagnostic for main Panels A & D — shows Spearman rho between Training_Young and
+# Diagnostic for main Panels A & D: shows Spearman rho between Training_Young and
 # Training_Old logFC is robust to resampling (1000 bootstrap replicates).
 
 setwd(here::here())

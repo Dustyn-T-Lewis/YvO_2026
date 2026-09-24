@@ -1,13 +1,12 @@
 #!/usr/bin/env Rscript
-# F06 Supplementary — LOSO sensitivity for per-module univariate ROC AUCs
+# F06 Supplementary: LOSO sensitivity for per-module univariate ROC AUCs
 #
 # Addresses eigengene-projection optimism (not module-definition circularity).
 # For each cell the main figure draws, leave one subject out, refit the module's
 # 1st PC on n-1 training subjects, project the held-out subject onto that PC,
 # and compute an out-of-fold AUC.
 #
-# Sourced by F06_data.R — expects style.R + figure_supplement_helpers.R
-# already loaded.
+# Sourced by F06_data.R after style.R and figure_supplement_helpers.R.
 
 pacman::p_load(tidyverse, pROC)
 

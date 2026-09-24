@@ -1,4 +1,4 @@
-# compare/03_stability.R — Q1/Q4 ratio, KS statistic, jackknife retention
+# compare/03_stability.R: Q1/Q4 ratio, KS statistic, jackknife retention
 # Reads imp_list from parent environment (or CACHE_RDS)
 # Writes: 02_imputation/c_data/benchmark/03_stability.csv
 

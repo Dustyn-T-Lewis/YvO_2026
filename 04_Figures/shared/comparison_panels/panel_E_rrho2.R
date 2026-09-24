@@ -1,4 +1,4 @@
-# Shared RRHO2 Panel E — used by F04 (concordance) and F05 (reversal)
+# Shared RRHO2 Panel E: used by F04 (concordance) and F05 (reversal)
 
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/print_scale_apply.R")
@@ -168,7 +168,7 @@ n_UD <- length(hotspot_genes$UD)
 n_DU <- length(hotspot_genes$DU)
 message(sprintf("  Hotspot genes: UU=%d, DD=%d, UD=%d, DU=%d", n_UU, n_DD, n_UD, n_DU))
 
-# no multiplier — prevents corner overlap in composite
+# No multiplier, so the corners do not overlap in the composite
 txt_quad <- scale_text(BASE_QUADRANT, 146)
 
 # jet colormap (Cahill et al. 2018 canonical appearance)

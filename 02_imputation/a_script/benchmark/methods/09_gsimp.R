@@ -1,4 +1,4 @@
-# GSimp — left-censored Gibbs sampler imputation
+# GSimp: left-censored Gibbs sampler imputation
 # Wei et al. 2018 (PLOS Comp Bio 14:e1005973)
 # Real implementation sourced from github.com/WandeRum/GSimp
 # Pure MNAR; uses glmnet to predict each variable, draws from

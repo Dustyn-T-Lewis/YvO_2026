@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # S5a Figure C: sign concordance against effect magnitude
-# Diagnostic for main Panel A — asks whether whole-proteome sign discordance
+# Diagnostic for main Panel A: asks whether whole-proteome sign discordance
 # carries biology or just tracks proteins too small to have a reliable sign.
 # Proteins are binned on the smaller of the two age-group |log2FC| values, so a
 # bin is low only when the effect is near zero in both groups.

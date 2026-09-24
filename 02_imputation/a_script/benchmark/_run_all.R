@@ -1,4 +1,4 @@
-# _run_all.R — Run full benchmark
+# _run_all.R: Run full benchmark
 # Usage: Rscript 02_imputation/a_script/benchmark/_run_all.R
 # Or with cache: SKIP_IMPUTE=1 Rscript 02_imputation/a_script/benchmark/_run_all.R
 

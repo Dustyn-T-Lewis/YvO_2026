@@ -210,7 +210,7 @@ cu_all <- au_all |>
   mutate(x_start = peak_x, y_start = peak_y, x_end = label_x, y_end = label_y)
 
 pF <- ggplot() +
-  # Background contrast wash (per facet) — darkened to match C/D/E's
+  # Background contrast wash per facet, darkened to match C/D/E's
   # canonical 0.20 alpha (0.18 is a slight pull-back to avoid over-darkening)
   geom_rect(
     data = bg_wash,

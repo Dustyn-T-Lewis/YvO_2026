@@ -1,5 +1,5 @@
 # methods/04_mice.R
-# MICE/PMM — predictive mean matching
+# MICE/PMM: predictive mean matching
 # van Buuren & Groothuis-Oudshoorn 2011
 # Pure MAR assumption
 # NOTE: Full MICE on 2138 proteins is infeasible.

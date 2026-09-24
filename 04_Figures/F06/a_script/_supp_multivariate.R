@@ -1,15 +1,14 @@
 #!/usr/bin/env Rscript
-# F06 Supplementary — Age Discrimination via Multi-Classifier Comparison
+# F06 Supplementary: Age Discrimination via Multi-Classifier Comparison
 # Writes: c_data/panel_A_{multi_classifier_auc,feature_stability,permutation,roc_curves}.csv
 #
 # 4 classifiers compared head-to-head:
 #   1. Pre-only:  baseline eigengenes
 #   2. Post-only: post-training eigengenes
 #   3. delta-ME:  training response (Post - Pre)
-#   4. Combined:  mean(Pre, Post) per subject — AVERAGED not stacked
+#   4. Combined:  mean(Pre, Post) per subject, averaged rather than stacked
 #
-# Sourced by F06_data.R — expects style.R + figure_supplement_helpers.R
-# already loaded.
+# Sourced by F06_data.R after style.R and figure_supplement_helpers.R.
 
 pacman::p_load(tidyverse, pROC)
 source("04_Figures/F06/a_script/_loocv.R")

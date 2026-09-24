@@ -1,4 +1,4 @@
-# Shared NES Scatter Panel — Panel D in F04 (concordance) and F05 (reversal)
+# Shared NES Scatter Panel: Panel D in F04 (concordance) and F05 (reversal)
 
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/print_scale_apply.R")

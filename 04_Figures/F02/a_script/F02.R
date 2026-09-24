@@ -49,7 +49,7 @@ pD_pw <- (pD_bars_clean / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
     theme = theme(plot.margin = margin(t = 4, r = 2, b = 4, l = 1.75))
   )
 
-# Clean version (no title/subtitle) for composite — title placed at composite level
+# Clean version without title or subtitle; the composite places the title
 pD <- ggdraw(pD_pw) +
   draw_label("Intersection size",
     x = 0.02, y = 0.58, angle = 90,
@@ -63,7 +63,7 @@ pD <- ggdraw(pD_pw) +
 
 pE_title <- pE[[1]]$labels$title
 pE_subtitle <- pE[[1]]$labels$subtitle
-# pE is a patchwork with inset_element legends — use & to strip across all plots.
+# pE is a patchwork with inset_element legends, so & strips all its plots.
 # Inset legends use theme_void() so stripping is harmless to them.
 pE <- pE & labs(title = NULL, subtitle = NULL, tag = NULL)
 

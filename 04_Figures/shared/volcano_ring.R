@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# volcano_ring.R — Circular volcano-in-ring composite plot utility
+# volcano_ring.R: Circular volcano-in-ring composite plot utility
 # Standard Cartesian ggplot with ggforce::geom_arc_bar(); NO coord_polar().
 
 pacman::p_load(dplyr, stringr, purrr, tibble, ggplot2, ggforce, patchwork, scales)

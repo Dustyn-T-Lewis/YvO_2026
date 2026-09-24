@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # S5 Table, sheet SUPP_ora_dedup: ORA Dedup Sensitivity
-# Diagnostic for main Panel A — shows ORA results are robust to Jaccard dedup cutoff.
+# Diagnostic for main Panel A: ORA results do not depend on the Jaccard dedup cutoff.
 
 setwd(here::here())
 

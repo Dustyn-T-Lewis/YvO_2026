@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# F01 — participant characteristics tables for the manuscript.
+# F01: participant characteristics tables for the manuscript.
 #
 # Three tables rather than one, because the variables carry different column
 # shapes and forcing them into a single grid leaves half the cells empty.
@@ -40,7 +40,7 @@ n_old <- sum(meta$Timepoint == "Pre" & meta$Group == "Old")
 fmt_p <- function(p) if (p < 0.001) "<0.001" else sprintf("%.3f", p)
 dec1 <- function(x) sprintf("%.1f ± %.1f", mean(x), sd(x))
 
-# 1A — one measurement per participant.
+# 1A: one measurement per participant.
 single <- function(var, label, fmt = dec1, scale = 1, tp = "Pre") {
   d <- meta |> filter(Timepoint == tp, !is.na(.data[[var]]))
   y <- d[[var]][d$Group == "Young"] / scale
@@ -61,7 +61,7 @@ table_1a <- bind_rows(
   )
 )
 
-# 1B — assembled from the *_summary.csv each panel script writes, so the table
+# 1B: assembled from the *_summary.csv each panel script writes, so the table
 # and the figure report one calculation rather than two.
 SUMMARIES <- c(
   "panel_B_dxa_lbm_summary.csv", "panel_C_vl_thickness_summary.csv",

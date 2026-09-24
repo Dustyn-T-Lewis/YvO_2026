@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # S5a Figure B: GO Slim Category Distribution
-# Diagnostic for main Panel B — quantitative GO Slim category breakdown by
+# Diagnostic for main Panel B: quantitative GO Slim category breakdown by
 # concordance quadrant (Concordant Up / Concordant Down / Discordant).
 
 setwd(here::here())

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# F06 Supplementary — Full WGCNA-refit LOSO sensitivity
+# F06 Supplementary: Full WGCNA-refit LOSO sensitivity
 #
 # Strongest sensitivity for module-definition circularity. For each of
 # 32 subjects, remove their 2 samples from datExpr, refit the WGCNA network
@@ -9,8 +9,7 @@
 #
 # Runtime: ~13-15 min (32 folds x ~25 s/fold blockwiseModules).
 #
-# Sourced by F06_data.R — expects style.R + figure_supplement_helpers.R
-# already loaded.
+# Sourced by F06_data.R after style.R and figure_supplement_helpers.R.
 
 pacman::p_load(tidyverse, WGCNA, pROC)
 

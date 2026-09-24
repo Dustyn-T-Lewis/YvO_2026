@@ -1,4 +1,4 @@
-# _common.R — shared constants and data loading for benchmark
+# _common.R: shared constants and data loading for benchmark
 # Source this at the top of every method and comparison script
 
 pacman::p_load(dplyr)
