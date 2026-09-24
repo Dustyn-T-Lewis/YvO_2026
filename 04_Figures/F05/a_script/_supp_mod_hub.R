@@ -1,4 +1,5 @@
-# Sourced by 02_supp_panels.R — expects style.R + pathway_utils.R already loaded.
+# Sourced by F05_data.R — expects style.R + pathway_utils.R already loaded.
+# Writes the hub edge table for S6 Table; the network plots it builds are not saved.
 
 pacman::p_load(tidyverse, patchwork, ggrepel, WGCNA, igraph, ggraph, ggforce, concaveman, graphlayouts, tidygraph, ggnewscale)
 

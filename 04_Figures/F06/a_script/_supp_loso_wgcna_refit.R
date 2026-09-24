@@ -25,8 +25,8 @@ DAT_OUT <- file.path(BASE, "c_data", "loso_auc")
 dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
 
 # Inputs
-F05_SUPP  <- "04_Figures/F05/c_data/F05_supplementary.xlsx"
-stopifnot("F05 must run first: missing F05_supplementary.xlsx" =
+F05_SUPP  <- "04_Figures/F05/c_data/F05_data.xlsx"
+stopifnot("F05 must run first: missing F05_data.xlsx" =
   file.exists(F05_SUPP))
 datExpr   <- readRDS("04_Figures/F05/c_data/datExpr.rds")
 mod_full  <- readRDS("04_Figures/F05/c_data/module_colors.rds")

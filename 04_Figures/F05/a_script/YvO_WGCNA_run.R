@@ -13,7 +13,7 @@ set.seed(42)
 WGCNA_R2_CUTOFF <- 0.87 # signed R^2 threshold for scale-free topology
 WGCNA_NETWORK_TYPE <- "signed"
 WGCNA_TOM_TYPE <- "signed"
-WGCNA_COR_TYPE <- "Pearson" # bicor sensitivity in _supp_qc_bicor.R
+WGCNA_COR_TYPE <- "Pearson" # bicor sensitivity in panels/S6_D_bicor.R
 WGCNA_MIN_MOD_SIZE <- 30L
 WGCNA_MERGE_CUT_H <- 0.25
 WGCNA_N_PERM <- 200L # for modulePreservation (in _supp_preservation.R)
@@ -112,7 +112,7 @@ message(sprintf(
   soft_power, r2_values[soft_power], sft_slope, r2_note
 ))
 
-# Pearson chosen over bicor. Bicor sensitivity in _supp_qc_bicor.R confirms concordance.
+# Pearson chosen over bicor. Bicor sensitivity in panels/S6_D_bicor.R confirms concordance.
 net <- blockwiseModules(
   datExpr,
   power             = soft_power,
@@ -157,7 +157,7 @@ if (length(swapped)) {
 }
 module_colors <- unname(relabel[module_colors])
 
-# Dendrogram plot is produced in _supp_qc_dendrogram.R.
+# Dendrogram plot is produced in panels/S6_B_dendrogram.R.
 
 # Trait matrix (3 design + 6 phenotype)
 traits <- meta |>
@@ -503,7 +503,7 @@ write_csv(mod_bio_labels, file.path(PANEL_DIR, "mod_bio_labels.csv"))
 write_csv(ann, file.path(PANEL_DIR, "imp_annotations.csv"))
 
 # Per-gene z-scores averaged within group_time (rows = gene, cols = group level).
-# Consumed by _supp_mod_triptych.R for per-module gene heatmaps.
+# Consumed by panels/_triptych.R for per-module gene heatmaps.
 expr_g <- t(datExpr)
 rownames(expr_g) <- ann$gene[match(rownames(expr_g), ann$uniprot_id)]
 expr_g <- expr_g[!is.na(rownames(expr_g)) & rownames(expr_g) != "", ]

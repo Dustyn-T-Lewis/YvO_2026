@@ -4,7 +4,7 @@ Reads F05's network objects and workbook; writes the three-panel ROC composite, 
 supplementary sweep plate and a 13-sheet workbook. Was F07 until 2026-09-22.
 
 ```
-04_Figures/F05/c_data/F05_supplementary.xlsx + datExpr.rds + module_colors.rds
+04_Figures/F05/c_data/F05_data.xlsx + datExpr.rds + module_colors.rds
                                              + me_pre.rds + me_post.rds
 02_imputation/c_data/01_imputed.csv, 03_DEP/c_data/03_combined_results.csv
   01_main_panels.R  _supp_module_grid -> _panel_A_auc_bars -> _panel_B_hero_grid

@@ -1,4 +1,4 @@
-# Sourced by 02_supp_panels.R — expects style.R already loaded.
+# Sourced by F05_data.R — expects style.R already loaded.
 
 pacman::p_load(dplyr, readr, WGCNA)
 
