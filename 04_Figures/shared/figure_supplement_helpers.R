@@ -2,6 +2,8 @@
 
 pacman::p_load(openxlsx, readr, readxl)
 
+source("04_Figures/shared/tree_config.R")
+
 add_sheet <- function(wb, name, data) {
   # A zero-row frame writes a sheet with no header at all, which reads as a
   # broken export rather than an empty result.
