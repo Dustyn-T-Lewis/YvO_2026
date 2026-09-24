@@ -1,13 +1,13 @@
-# F02 Supp Panel B: CV% Violins (Inter-Individual Variability)
-# Faceted by Age (Young | Old), Pre/Post on x-axis. Median labels w/ bootstrap CIs.
-# Outputs: pB (ggplot object), SUPP_panel_B_cv.{pdf,png}
+#!/usr/bin/env Rscript
+# S3 Figure B: inter-individual CV% violins per age and time, with median
+# bootstrap CIs.
 
-# Assumes style.R sourced, packages loaded, norm_df/norm_meta/samp_names set by parent
-
+setwd(here::here())
+source("04_Figures/F02/a_script/panels/_supp.R", local = TRUE)
 PB_W <- 110
 PB_H <- 80
-RPT_PNG <- "04_Figures/F02/b_reports/supp/png/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/supp/pdf/panels"
+RPT_PNG <- "04_Figures/F02/b_reports/panels"
+RPT_PDF <- "04_Figures/F02/b_reports/panels"
 DAT_DIR <- "04_Figures/F02/c_data"
 
 meta <- norm_meta
@@ -211,17 +211,11 @@ write.csv(cliff_results,
   row.names = FALSE
 )
 
-ggsave(file.path(RPT_PNG, "SUPP_panel_B_cv.png"), pB,
+ggsave(file.path(RPT_PNG, "S3_B_cv_violin.png"), pB,
   width = PB_W, height = PB_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "SUPP_panel_B_cv.pdf"), pB,
+ggsave(file.path(RPT_PDF, "S3_B_cv_violin.pdf"), pB,
   width = PB_W, height = PB_H, units = "mm", device = pdf_device
 )
 
-# Export for composite
-pSB_title <- "Inter-Individual Variability (CV%)"
-pSB_subtitle <- sub_txt
-pSB_legend <- NULL
-pB <- strip_for_composite(pB)
-
-message("F02 Supp Panel B done")
+invisible(pB)

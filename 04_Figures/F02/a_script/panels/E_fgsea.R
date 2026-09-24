@@ -1,13 +1,14 @@
-# F02 — Panel E: fGSEA Stacked Bar Chart (Pathway Enrichment)
+#!/usr/bin/env Rscript
+# Figure 2E: fGSEA pathway counts.
 # Dodged Up/Down bars per contrast, stacked by database.
 # Stack order bottom→top (largest→smallest): GO:BP, Reactome, Hallmark, KEGG, GO Slim.
 # Reads frozen fGSEA cache from shared/fgsea_tstat_all_v2.csv.
-# Outputs: pE (patchwork object), MAIN_panel_E_fgsea.{pdf,png}
 
-# Assumes style.R sourced and packages loaded by calling script
-
-RPT_PNG <- "04_Figures/F02/b_reports/main/png/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/main/pdf/panels"
+setwd(here::here())
+source("04_Figures/F02/a_script/panels/_main.R", local = TRUE)
+source("04_Figures/shared/build_fgsea_cache.R")
+RPT_PNG <- "04_Figures/F02/b_reports/panels"
+RPT_PDF <- "04_Figures/F02/b_reports/panels"
 DAT <- "04_Figures/F02/c_data"
 dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
 
@@ -260,18 +261,12 @@ pE <- (p +
   )) +
   plot_annotation(theme = theme(plot.margin = margin(t = 6, r = 3, b = 4, l = 3)))
 
-ggsave(file.path(RPT_PNG, "MAIN_panel_E_fgsea.png"), pE,
+ggsave(file.path(RPT_PNG, "E_fgsea.png"), pE,
   width = PC_W, height = PC_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "MAIN_panel_E_fgsea.pdf"), pE,
+ggsave(file.path(RPT_PDF, "E_fgsea.pdf"), pE,
   width = PC_W, height = PC_H, units = "mm", device = pdf_device
 )
 message("F02 Panel E (stacked fGSEA) saved")
 
-# Export for composite
-# pE is a patchwork with inset_element legends — use & to strip across all plots.
-# Inset legends use theme_void() so stripping is harmless to them.
-pE_title <- "Pathway Enrichment (Up/Down)"
-pE_subtitle <- pe_subtitle
-pE_legend <- NULL
-pE <- pE & labs(title = NULL, subtitle = NULL, tag = NULL)
+invisible(pE)

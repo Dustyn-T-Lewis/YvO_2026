@@ -1,15 +1,14 @@
-# F02 Supp Panel A: CV Scatter Triptych (Pre vs Post + Δ Young vs Δ Old)
-# A1/A2: per-protein CV% Pre vs Post (Young / Old)
-# A3:    ΔCV Young vs ΔCV Old
-# Outputs: pA12 + pA3 (assembled by parent), SUPP_panel_A_cv_scatter.{pdf,png}
+#!/usr/bin/env Rscript
+# S3 Figure A: per-protein CV% Pre against Post for each age group, and
+# delta-CV Young against delta-CV Old.
 
-# Assumes style.R sourced, packages loaded, norm_df/norm_meta/samp_names set by parent
-
+setwd(here::here())
+source("04_Figures/F02/a_script/panels/_supp.R", local = TRUE)
 PA_SUB <- 60
 PA_W <- 178
 PA_H <- 70
-RPT_PNG <- "04_Figures/F02/b_reports/supp/png/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/supp/pdf/panels"
+RPT_PNG <- "04_Figures/F02/b_reports/panels"
+RPT_PDF <- "04_Figures/F02/b_reports/panels"
 DAT_DIR <- "04_Figures/F02/c_data"
 
 ann_cols <- c("uniprot_id", "protein", "gene", "description")
@@ -284,22 +283,11 @@ write.csv(delta_wide |> select(gene, dcv_Young, dcv_Old, mean_dcv, dist_origin),
 # tag via labs(tag = ...) without producing a duplicate tag.
 pA <- (pA12 | pA3) + plot_layout(widths = c(2, 1))
 
-ggsave(file.path(RPT_PNG, "SUPP_panel_A_cv_scatter.png"), pA,
+ggsave(file.path(RPT_PNG, "S3_A_cv_scatter.png"), pA,
   width = PA_W, height = PA_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "SUPP_panel_A_cv_scatter.pdf"), pA,
+ggsave(file.path(RPT_PDF, "S3_A_cv_scatter.pdf"), pA,
   width = PA_W, height = PA_H, units = "mm", device = pdf_device
 )
 
-# Export for composite
-pSA_title <- "Per-Protein Variability (CV%)"
-pSA_subtitle <- sprintf(
-  "CV%% Pre vs Post | %s proteins | Y r = %.2f, O r = %.2f, \u0394CV r = %.2f",
-  format(nrow(norm_df), big.mark = ","),
-  r_young, r_old, r_delta
-)
-pSA_legend <- NULL
-pA12 <- strip_for_composite(pA12)
-pA3 <- strip_for_composite(pA3)
-
-message("F02 Supp Panel A done")
+invisible(pA)

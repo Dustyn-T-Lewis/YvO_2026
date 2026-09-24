@@ -1,15 +1,15 @@
-# F02 — Panel F: DEP Rank Location (Barcode Plot)
+#!/usr/bin/env Rscript
+# Figure 2F: DEP rank location (barcode plot).
 # Shows where DEPs sit in the t-statistic-ranked proteome. Density (dark,
 # filled) and its peak labels are Pi < 0.05 -- the richer set, so density is
 # always drawable even where FDR is sparse or empty. Two independent tick
 # tracks below: Pi (upper, near the density) and FDR (lower, separate band).
-# Outputs: pF (ggplot object), MAIN_panel_F_barcode.{pdf,png}
 
-# Assumes style.R sourced and packages loaded by calling script
-
+setwd(here::here())
+source("04_Figures/F02/a_script/panels/_main.R", local = TRUE)
 DEP_FILE <- "03_DEP/c_data/03_combined_results.csv"
-RPT_PNG <- "04_Figures/F02/b_reports/main/png/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/main/pdf/panels"
+RPT_PNG <- "04_Figures/F02/b_reports/panels"
+RPT_PDF <- "04_Figures/F02/b_reports/panels"
 DAT <- "04_Figures/F02/c_data"
 dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
 dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
@@ -362,18 +362,11 @@ pF <- ggplot() +
     panel.spacing.y = unit(2, "pt")
   )
 
-ggsave(file.path(RPT_PNG, "MAIN_panel_F_barcode.png"), pF,
+ggsave(file.path(RPT_PNG, "F_barcode.png"), pF,
   width = PD_W, height = PD_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "MAIN_panel_F_barcode.pdf"), pF,
+ggsave(file.path(RPT_PDF, "F_barcode.pdf"), pF,
   width = PD_W, height = PD_H, units = "mm", device = pdf_device
 )
 
-# Export for composite
-pF_title <- "DEP Rank Location"
-pF_subtitle <- sprintf(
-  "%s genes, t-ranked | density = Π, ticks = Π + FDR",
-  format(length(unique(rank_df$gene)), big.mark = ",")
-)
-pF_legend <- NULL
-pF <- strip_for_composite(pF)
+invisible(pF)
