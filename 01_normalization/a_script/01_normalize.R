@@ -53,7 +53,7 @@ intensity <- raw[, setdiff(names(raw), annot_cols)]
 
 # supplement_cohort collapses the three EAA arms into the Ruple trial. It is a
 # supplementary view, read straight from the workbook by
-# 03_DEP/supp/02_supplement_covariate.R, and is dropped here so the fitted
+# 03_DEP/a_script/supp/02_supplement_covariate.R, and is dropped here so the fitted
 # model cannot see it.
 metadata <- as.data.frame(read_excel("00_input/YvO_meta.xlsx"))
 metadata$supplement_cohort <- NULL

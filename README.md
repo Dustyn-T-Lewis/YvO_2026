@@ -33,8 +33,9 @@ changing anything: several stages depend on files written by an earlier step in
 the same run.
 
 Each directory follows one shape. `a_script/` holds the code, `c_data/`
-the tables it writes, `b_reports/` the rendered figures. `b_reports/` is not
-tracked; it regenerates from a run.
+the tables it writes, `b_reports/` the rendered figures. Git tracks the
+figures the manuscript cites and the workbooks; every other render regenerates
+from a run and is ignored.
 
 ## Reproducing
 
@@ -43,7 +44,7 @@ tracked; it regenerates from a run.
 step as a separate `Rscript` child and logs timings to `.runlogs/`.
 
 A full run takes about 16 minutes. The two slowest steps are the effect-size
-bootstrap in `03_DEP/supp/01` at 160 s and the leave-one-subject-out network
+bootstrap in `03_DEP/a_script/supp/01` at 160 s and the leave-one-subject-out network
 refit behind Figure 6 at 255 s.
 
 Scripts prefixed with `_` are sourced by their stitcher and will fail if run on
