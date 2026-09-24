@@ -13,7 +13,7 @@ dir.create(OUT, recursive = TRUE, showWarnings = FALSE)
 
 # Load data
 F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
-stopifnot("F05 stitcher must run first: missing F05_data.xlsx" =
+stopifnot("run 04_Figures/F05/a_script/F05_data.R first: missing F05_data.xlsx" =
   file.exists(F05_SUPP))
 MEs     <- read_matrix_sheet(F05_SUPP, "MEs",     "sample_id")
 me_pre  <- read_matrix_sheet(F05_SUPP, "me_pre",  "subject_key")

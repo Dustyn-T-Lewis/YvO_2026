@@ -389,7 +389,7 @@ pD_legend <- NULL
 # Strip titles but KEEP legend (legend provides shape/size key for composite)
 pD <- pD + labs(title = NULL, subtitle = NULL, tag = NULL)
 
-pw_conc_frac <- metric_frac # F04 stitcher
-pw_rev_frac <- metric_frac # F05 stitcher
+pw_conc_frac <- metric_frac # F04
+pw_rev_frac <- metric_frac # F05
 
 cat(sprintf("%s Panel D done\n", cfg$fig_id))
