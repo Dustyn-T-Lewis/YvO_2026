@@ -1,19 +1,13 @@
 #!/usr/bin/env Rscript
-# F06 Supplementary Composite Stitch
+# S7 Figure: A the per-module ROC grid, B the full module-phenotype sweep.
 #
-# Reads pre-rendered PNGs from b_reports/supp/png/panels/ and composites them.
-#
-# Output 1: SUPP_F06_composite.pdf  — panels A and B above, C centred below
-# Output 2: SUPP_F06_composite.png  — the same composite
-#
-# Panel sources (all in b_reports/supp/png/panels/):
-#   A = Per-module ROC grid      (SUPP_F06_module_grid.png)
-#   B = Panel B full sweep       (SUPP_F06_panel_B_grid.png)
+# Runs both panel scripts, then reads their PNG renders from b_reports/panels/
+# and composites them side by side.
 #
 # Three panels were dropped: the two leave-one-subject-out sensitivity plots
 # and the multivariate classifier decomposition. Each plotted a handful of
 # AUCs that ship as loso_auc_summary, loso_wgcna_refit_summary and
-# panel_A_classifier_auc in F06_supplementary.xlsx, where they read as a
+# panel_A_classifier_auc in F06_data.xlsx, where they read as a
 # table. Their scripts now compute those sheets and draw nothing.
 
 setwd(here::here())
@@ -22,10 +16,13 @@ source("04_Figures/shared/style.R")
 
 pacman::p_load(patchwork, cowplot, png, grid)
 
-BASE       <- "04_Figures/F06"
-RPT_PNG    <- file.path(BASE, "b_reports", "supp", "png")
-RPT_PDF    <- file.path(BASE, "b_reports", "supp", "pdf")
-RPT_PANELS <- file.path(RPT_PNG, "panels")
+PANELS <- "04_Figures/F06/a_script/panels"
+source_panel(file.path(PANELS, "S7_A_module_grid.R"))
+# B runs C_hero_grid.R first when the 180-test screen is missing.
+source_panel(file.path(PANELS, "S7_B_full_sweep.R"))
+
+RPT        <- "04_Figures/F06/b_reports"
+RPT_PANELS <- file.path(RPT, "panels")
 
 read_panel <- function(file) {
   path <- file.path(RPT_PANELS, file)
@@ -36,8 +33,8 @@ read_panel <- function(file) {
 }
 
 # Page 1 panels (A + B, aspect-matched)
-pA <- read_panel("SUPP_F06_module_grid.png")
-pB <- read_panel("SUPP_F06_panel_B_grid.png")
+pA <- read_panel("S7_A_module_grid.png")
+pB <- read_panel("S7_B_full_sweep.png")
 
 COMP_H <- 166   # mm tall
 wA_mm  <- COMP_H * pA$aspect
@@ -65,13 +62,13 @@ page1_final <- ggdraw(page1 & theme(plot.margin = margin(2, 2, 2, 2))) +
 graphics.off()
 pdf_device <- get_raster_pdf_device()
 
-ggsave(file.path(RPT_PDF, "SUPP_F06_composite.pdf"), page1_final,
+ggsave(file.path(RPT, "S7.pdf"), page1_final,
        width = COMP_W, height = COMP_H, units = "mm",
        device = pdf_device, limitsize = FALSE)
-embed_pdf_fonts(file.path(RPT_PDF, "SUPP_F06_composite.pdf"))
+embed_pdf_fonts(file.path(RPT, "S7.pdf"))
 
-ggsave(file.path(RPT_PNG, "SUPP_F06_composite.png"), page1_final,
+ggsave(file.path(RPT, "S7.png"), page1_final,
        width = COMP_W, height = COMP_H, units = "mm",
        dpi = 300, limitsize = FALSE)
 
-message(sprintf("Wrote SUPP_F06_composite (%.0f x %.0f mm)", COMP_W, COMP_H))
+message(sprintf("Wrote S7 (%.0f x %.0f mm)", COMP_W, COMP_H))

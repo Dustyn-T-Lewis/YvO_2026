@@ -3,7 +3,7 @@
 # (LOOCV + top-k feature selection + logistic regression + permutation test).
 # Output: classifier_pilot_summary.csv + classifier_pilot_curves.csv
 #
-# Sourced by 01_main_panels.R — expects figure_supplement_helpers.R already loaded.
+# Sourced by F06_data.R — expects figure_supplement_helpers.R already loaded.
 
 pacman::p_load(tidyverse, pROC)
 source("04_Figures/F06/a_script/_loocv.R")

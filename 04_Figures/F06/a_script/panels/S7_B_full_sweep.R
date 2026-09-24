@@ -1,21 +1,23 @@
 #!/usr/bin/env Rscript
-# F06 Supplementary — Panel B full-sweep grid
+# S7 Figure B: full-sweep grid.
 #
 # Shows the full 2-source x 10-module x 5-outcome scatter landscape
-# underlying the 6 hero cells in MAIN Panel C.
+# underlying the 6 hero cells in Figure 6C.
 #
-# Sourced by 01_main_panels.R — expects style.R + figure_supplement_helpers.R
-# already loaded.
-# Reads panel_B_full_screen_bh.csv from c_data (or falls back to xlsx).
+# Reads panel_B_full_screen_bh.csv from c_data, and runs C_hero_grid.R first
+# when it is missing.
+
+setwd(here::here())
 
 pacman::p_load(tidyverse, patchwork)
 
+source("04_Figures/shared/style.R")
+source("04_Figures/shared/figure_supplement_helpers.R")
+
 BASE     <- "04_Figures/F06"
 DAT_F06  <- file.path(BASE, "c_data")
-RPT_PNG  <- file.path(BASE, "b_reports", "supp", "png", "panels")
-RPT_PDF  <- file.path(BASE, "b_reports", "supp", "pdf", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
+RPT      <- file.path(BASE, "b_reports", "panels")
+dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 
 F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot("F05 stitcher must run first: missing F05_data.xlsx" =
@@ -29,13 +31,11 @@ common_subj    <- read_vector_sheet(F05_SUPP, "common_subj")
 mod_bio_df     <- read_sheet_df(F05_SUPP, "WGCNA_mod_bio_labels")
 mod_bio_labels <- setNames(mod_bio_df$bio_label, mod_bio_df$module_color)
 
-F06_SUPP <- file.path(DAT_F06, "F06_supplementary.xlsx")
 screen_src <- file.path(DAT_F06, "panel_B_full_screen_bh.csv")
-screen <- if (file.exists(screen_src)) {
-  read_csv(screen_src, show_col_types = FALSE)
-} else {
-  read_sheet_df(F06_SUPP, "panel_B_full_screen_bh")
+if (!file.exists(screen_src)) {
+  source_panel("04_Figures/F06/a_script/panels/C_hero_grid.R")
 }
+screen <- read_csv(screen_src, show_col_types = FALSE)
 
 # Counted here rather than written into the subtitle by hand: the literal this
 # replaces claimed 6 raw-significant tests against a live count of 2.
@@ -200,10 +200,12 @@ composite <- (lbl_A / block_A / lbl_B / block_B) +
                                    lineheight = 1.3)))
 
 W_in <- 14; H_in <- 16
-ggsave(file.path(RPT_PDF, "SUPP_F06_panel_B_grid.pdf"), composite,
+ggsave(file.path(RPT, "S7_B_full_sweep.pdf"), composite,
        width = W_in, height = H_in, units = "in",
        device = get_pdf_device())
-ggsave(file.path(RPT_PNG, "SUPP_F06_panel_B_grid.png"), composite,
+ggsave(file.path(RPT, "S7_B_full_sweep.png"), composite,
        width = W_in, height = H_in, units = "in", dpi = 300)
 
-message("Wrote: SUPP_F06_panel_B_grid.{pdf,png}")
+message("Wrote: S7_B_full_sweep.{pdf,png}")
+
+invisible(composite)
