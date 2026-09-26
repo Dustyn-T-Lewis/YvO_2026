@@ -1,6 +1,6 @@
 # F04
 
-Draws Figure 4, the training-response concordance between age groups, S5a and S5b Figures, and the S5 Table workbook.
+Draws Figure 4, the training-response concordance between age groups, and S5a and S5b Figures, and writes S5 Table.
 
 ## Reads
 
