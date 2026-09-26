@@ -33,7 +33,7 @@ F05 runs first. `A_age_roc.R` and `B_training_roc.R` draw from the module grid t
 
 `F06_data.R` runs last. It runs the four analysis steps in `a_script/` that compute sheets but draw nothing: `_supp_prepare_roc.R`, `_supp_multivariate.R`, `_supp_loso_sensitivity.R` and `_supp_loso_wgcna_refit.R`. It then folds their CSVs and the ones the two composites leave in `c_data/` into the workbook and deletes them. `_loocv.R` holds the nested LOOCV classifier the first two share. `_panel_selection.R` names the cells Figure 6A and 6B draw, for the ROC panels and the two LOSO steps.
 
-`_supp_loso_wgcna_refit.R` refits the network on 30 leave-one-subject-out folds with no cache and takes about 255 s.
+`_supp_loso_wgcna_refit.R` refits the network on each of 30 leave-one-subject-out folds with no cache, which makes `F06_data.R` the slowest step in this directory.
 
 ## Outputs and manuscript items
 

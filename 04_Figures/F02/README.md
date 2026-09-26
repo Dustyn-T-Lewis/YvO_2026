@@ -1,6 +1,6 @@
 # F02
 
-Draws Figure 2, the proteome overview and differential expression landscape, and S3 Figure, the coefficient-of-variation diagnostics.
+Draws Figure 2, the proteome overview and differential expression results, and S3 Figure, the coefficient-of-variation diagnostics.
 
 ## Reads
 

@@ -34,7 +34,7 @@ Stages 01 to 03 run first. `F00_data.R` runs last: it folds the data frames the 
 
 Panel S1b J stops if the benchmark ranking is missing. That file comes from an opt-in script.
 
-Panel S1a F jitters its points. `set.seed(42)` sits before the plot, and ggplot2 draws a new jitter seed from the RNG at every render. The panel seeds again before its PDF so that S1a.R renders the composite from the same RNG state as before the split. The S1a PDF and PNG therefore draw different jitter, as they always have.
+Panel S1a F jitters its points, and ggplot2 draws a new jitter seed at every render. The panel sets `set.seed(42)` before the plot and again before its PDF, so the composite always starts from the same state. The S1a PDF and PNG show different jitter.
 
 ## Outputs and manuscript items
 
