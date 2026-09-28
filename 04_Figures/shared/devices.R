@@ -23,21 +23,21 @@ probe_device <- function(expr) {
 }
 
 get_pdf_device <- function() {
-  # cairo_pdf > quartz > base pdf.
+  # quartz > cairo_pdf > base pdf.
   #
-  # quartz sits ahead of the base device because its font repertoire is far
-  # wider. Measured 2026-09-16 on the same label: quartz keeps the Greek and
-  # the dashes the figures are full of, and loses three characters; the base
-  # device loses eleven, including every Pi, Delta and rho. Preferring the base
-  # device would turn six holes into about sixty-five.
-  if (probe_device(function() cairo_pdf(tempfile()))) {
-    return(cairo_pdf)
-  }
-
+  # quartz first because its text metrics match the PNGs. cairo_pdf, measured
+  # 2026-09-28, keeps the Greek but sets text narrower: legend entries lose
+  # their spaces ("MAR:706") and plot areas shift. The base device comes last:
+  # measured 2026-09-16, it loses every Pi, Delta and rho, where quartz loses
+  # three rarer characters.
   if (probe_device(function() quartz(type = "pdf", file = tempfile(fileext = ".pdf")))) {
     return(function(filename, width, height, ...) {
       quartz(file = filename, type = "pdf", width = width, height = height)
     })
+  }
+
+  if (probe_device(function() cairo_pdf(tempfile()))) {
+    return(cairo_pdf)
   }
 
   "pdf"
@@ -47,15 +47,11 @@ get_raster_pdf_device <- function() {
   # For composites assembled from pre-rendered panel PNGs, which the quartz
   # device draws upside down: Figure 5, S7 Figure and S8 Figure all shipped
   # mirrored while their PNG twins were correct, and nothing warned. The base
-  # device places rasters the right way up.
+  # device places rasters the right way up, and on every platform the same.
   #
   # Only the three raster composites use it, because of the repertoire gap
   # described above. They carry no text beyond panel letters and two titles,
   # so losing the wider glyph set costs them nothing.
-  if (probe_device(function() cairo_pdf(tempfile()))) {
-    return(cairo_pdf)
-  }
-
   grDevices::pdf
 }
 
