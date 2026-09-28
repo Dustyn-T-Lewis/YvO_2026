@@ -1,10 +1,8 @@
 #!/usr/bin/env Rscript
 # S2 Figure: the five phenotype pre/post pairs in one figure.
 #
-# Strength/CSA and body composition used to render as two figures on two
-# canvases, 88 mm over three rows against 110 mm over two, so the same panel
-# was drawn half again as tall depending on which file it landed in. One
-# canvas at the tighter row height ends that.
+# One canvas at one row height, so every pair is drawn at the same size; as two
+# figures the same panel came out half again as tall in one of them.
 
 setwd(here::here())
 
