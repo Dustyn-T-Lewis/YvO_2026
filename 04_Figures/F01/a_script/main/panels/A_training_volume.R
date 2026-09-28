@@ -14,13 +14,9 @@ DAT <- "04_Figures/F01/c_data"
 for (d in c(RPT, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 meta <- read_excel("00_input/YvO_meta.xlsx")
-for (col in c(
-  "BMI", "Type_I_fCSA", "Type_II_fCSA",
-  "deadlift_1rm_kg", "Total_Training_Volume_kg"
-)) {
-  if (col %in% names(meta) && is.character(meta[[col]])) {
-    meta[[col]] <- suppressWarnings(as.numeric(meta[[col]]))
-  }
+if (is.character(meta$Total_Training_Volume_kg)) {
+  meta$Total_Training_Volume_kg <-
+    suppressWarnings(as.numeric(meta$Total_Training_Volume_kg))
 }
 
 meta <- meta |>
@@ -53,14 +49,13 @@ bar_colors <- c(
 )
 
 pA <- ggplot(tv_df, aes(Group, tv_scaled, fill = Group)) +
-  annotate("rect",
-    xmin = 0.5, xmax = 1.5, ymin = -Inf, ymax = Inf,
-    fill = AGE_COLORS["Young"], alpha = 0.20, color = "grey85", linewidth = 0.15
-  ) +
-  annotate("rect",
-    xmin = 1.5, xmax = 2.5, ymin = -Inf, ymax = Inf,
-    fill = AGE_COLORS["Old"], alpha = 0.20, color = "grey85", linewidth = 0.15
-  ) +
+  lapply(1:2, \(i) {
+    annotate("rect",
+      xmin = i - 0.5, xmax = i + 0.5, ymin = -Inf, ymax = Inf,
+      fill = AGE_COLORS[c("Young", "Old")[i]], alpha = 0.20,
+      color = "grey85", linewidth = 0.15
+    )
+  }) +
   geom_bar(stat = "summary", fun = mean, width = 0.6, color = "grey30", linewidth = 0.3) +
   geom_errorbar(stat = "summary", fun.data = mean_se, width = 0.2, linewidth = 0.4) +
   geom_jitter(width = 0.15, size = 1, alpha = 0.35, shape = 16, color = "grey30") +
@@ -83,9 +78,8 @@ pA <- ggplot(tv_df, aes(Group, tv_scaled, fill = Group)) +
 ggsave(file.path(RPT, "A_training_volume.png"), pA,
   width = 90, height = 150, units = "mm", dpi = 300
 )
-# The jitter is drawn at render time. Figure 1 used to render only the PNG of
-# this panel, so the PDF restores the seed afterwards and panels B and C draw
-# the same points they always did.
+# Jitter is drawn at render time. The PDF render restores the seed so panels
+# B and C draw the same points they did when only the PNG was rendered.
 with_preserve_seed(ggsave(file.path(RPT, "A_training_volume.pdf"), pA,
   width = 90, height = 150, units = "mm", device = get_pdf_device()
 ))

@@ -40,7 +40,6 @@ n_old <- sum(meta$Timepoint == "Pre" & meta$Group == "Old")
 fmt_p <- function(p) if (p < 0.001) "<0.001" else sprintf("%.3f", p)
 dec1 <- function(x) sprintf("%.1f ± %.1f", mean(x), sd(x))
 
-# 1A: one measurement per participant.
 single <- function(var, label, fmt = dec1, scale = 1, tp = "Pre") {
   d <- meta |> filter(Timepoint == tp, !is.na(.data[[var]]))
   y <- d[[var]][d$Group == "Young"] / scale
@@ -85,7 +84,7 @@ LABELS <- c(
   Type_I_fCSA = "Type I fCSA (\u00b5m\u00b2)", Type_II_fCSA = "Type II fCSA (\u00b5m\u00b2)",
   deadlift_1rm_kg = "Deadlift 1RM (kg)"
 )
-ORDER <- names(LABELS)
+REPEATED <- names(LABELS)
 
 cell_fmt <- function(m, s, d) sprintf("%.*f \u00b1 %.*f", d, m, d, s)
 
@@ -103,7 +102,7 @@ table_1b <- map_dfr(file.path(DAT, SUMMARIES), read.csv) |>
     p_Time = vapply(p_time, fmt_p, ""),
     p_Age_x_Time = vapply(p_age_x_time, fmt_p, "")
   ) |>
-  arrange(match(variable, ORDER)) |>
+  arrange(match(variable, REPEATED)) |>
   select(-variable)
 
 table_1c <- meta |>
@@ -121,11 +120,6 @@ hdr <- function(d) {
 }
 table_1a <- hdr(table_1a)
 table_1b <- hdr(table_1b)
-
-REPEATED <- c(
-  "DXA_LBM_kg", "DXA_FM_kg", "FM_to_LBM", "VL_thick_cm",
-  "Type_I_fCSA", "Type_II_fCSA", "deadlift_1rm_kg"
-)
 
 static <- meta |>
   filter(Timepoint == "Pre") |>

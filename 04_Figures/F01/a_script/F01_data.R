@@ -49,13 +49,7 @@ build_workbook(
     "data for Figure 1 and S2 Figure."
   ),
   overview_df = data.frame(
-    Sheet = c(
-      "Table_1A_characteristics", "Table_1B_pre_post", "Table_1C_composition",
-      "Per_participant", "Notes",
-      "panel_A_train_volume", "panel_B_dxa_lbm", "panel_C_vl_thickness",
-      "supp_deadlift_1rm", "supp_type_II_fcsa", "supp_type_I_fcsa",
-      "supp_dxa_fat_mass", "supp_fat_to_lean"
-    ),
+    Sheet = vapply(f01_specs, \(x) x$name, ""),
     Description = c(
       "Table 1 upper block: baseline characteristics by age group.",
       "Table 1 lower block: every pre-post measure, with age, time and age-by-time p-values.",
@@ -70,8 +64,7 @@ build_workbook(
       "S2 Figure C: type I fibre cross-sectional area.",
       "S2 Figure D: whole-body DXA fat mass.",
       "S2 Figure E: fat-to-lean mass ratio."
-    ),
-    stringsAsFactors = FALSE
+    )
   ),
   sheet_specs = f01_specs
 )
