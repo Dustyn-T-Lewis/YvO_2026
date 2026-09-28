@@ -4,7 +4,7 @@
 # protein count and by share of summed linear intensity.
 
 withr::local_dir(here::here())
-pacman::p_load(withr, readr, dplyr, tibble, purrr, msigdbr)
+pacman::p_load(readr, dplyr, purrr, msigdbr)
 
 dal <- readRDS("01_normalization/c_data/03_DAList_normalized.rds")
 
