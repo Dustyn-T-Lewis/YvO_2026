@@ -102,11 +102,7 @@ embed_pdf_fonts <- function(path) {
 # Under Rscript, an implicit device open writes Rplots.pdf into the working
 # directory. Redirect that device to a null sink; every real output goes
 # through an explicit device, so nothing is lost.
-suppress_rplots_device <- function() {
-  options(device = function(...) grDevices::pdf(file = nullfile(), ...))
-}
-
-suppress_rplots_device()
+options(device = function(...) grDevices::pdf(file = nullfile(), ...))
 
 # Multi-page reports open a device, print into it and close it, rather than
 # going through ggsave(device = ). Resolve the device to a function so the

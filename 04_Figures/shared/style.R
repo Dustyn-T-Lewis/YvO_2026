@@ -70,44 +70,11 @@ SIG_COLORS_F3 <- c(
   "NS"                 = "grey70"
 )
 
-SIG_LABEL_FILL_F3 <- c(
-  "Sig Both"           = scales::alpha("#2E7D32", 0.75),
-  "Sig Aging only"     = scales::alpha("#E05A4E", 0.75),
-  "Sig Training only"  = scales::alpha("#5DA5DA", 0.75),
-  "NS"                 = scales::alpha("grey70", 0.75)
-)
-SIG_LABEL_TEXT_F3 <- setNames(rep("white", 4), names(SIG_LABEL_FILL_F3))
-
 ORA_QUAD_COLORS_F2 <- c(
   "Concordant Up"               = "#E57373",
   "Concordant Down"             = "#64B5F6",
   "Discordant (Y Up / O Down)"  = "#FFB74D",
   "Discordant (Y Down / O Up)"  = "#81C784"
-)
-
-ORA_QUAD_COLORS_F3 <- c(
-  "Reversed (Aging Up / Training Down)"  = "#E57373",
-  "Reversed (Aging Down / Training Up)"  = "#64B5F6",
-  "Exacerbated Up"                       = "#FFB74D",
-  "Exacerbated Down"                     = "#81C784"
-)
-
-CLUSTER_COLORS <- c(
-  C1 = "#E74C3C", C2 = "#3498DB", C3 = "#2ECC71",
-  C4 = "#F39C12", C5 = "#9B59B6", C6 = "#1ABC9C",
-  C7 = "#E67E22", C8 = "#34495E", C9 = "#D35400",
-  C10 = "#7F8C8D"
-)
-
-THEME_COLORS <- c(
-  "Mitochondrial & Energy Metabolism" = "#E57373",
-  "Muscle Structure & Myogenesis" = "#64B5F6",
-  "Proteostasis & Stress Response" = "#81C784",
-  "Cytoskeletal & Cell Division" = "#CE93D8",
-  "Immune & Complement" = "#FFB74D",
-  "ECM & Tissue Remodeling" = "#F05292",
-  "Metabolic & Redox Regulation" = "#FFD54F",
-  "Intracellular Transport & Signaling" = "#4DB6AC"
 )
 
 PANEL_MD <- 178 # J Physiol double-column width
@@ -135,6 +102,7 @@ strip_for_composite <- function(p) {
 
 # Runs a panel script in its own environment and returns the plot it ends on.
 source_panel <- function(path) source(path, local = new.env())$value
+
 # Text hierarchy, from the J Physiol specification
 FIG_TITLE_SIZE <- 7
 FIG_SUBTITLE_SIZE <- 6

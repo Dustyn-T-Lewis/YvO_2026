@@ -162,7 +162,6 @@ build_tick_data <- function(ring_data,
 build_volcano_layers <- function(de_df,
                                  contrast,
                                  volcano_radius = 3.5,
-                                 fc_thresh      = log2(1.5),
                                  p_thresh       = 0.05,
                                  up_color       = DIR_COLORS["Up"],
                                  down_color     = DIR_COLORS["Down"],
@@ -202,8 +201,6 @@ build_volcano_layers <- function(de_df,
   n <- \(dir, t) sum(vdf$direction == dir & vdf$tier == t)
   n_up   <- n("Up", "fdr")
   n_down <- n("Down", "fdr")
-  n_up_pi   <- n("Up", "pi")
-  n_down_pi <- n("Down", "pi")
 
   x_data_max <- max(abs(vdf$logFC), na.rm = TRUE)
   y_data_max <- max(vdf$neg_log10p, na.rm = TRUE)
@@ -217,17 +214,33 @@ build_volcano_layers <- function(de_df,
       y_plot = (neg_log10p / y_data_max) * 2 * vr - vr
     )
 
-  vdf_ns  <- vdf  |> filter(direction == "NS")
-  vdf_sig <- vdf  |> filter(direction != "NS")
+  # A filled box, then the count again as bare text on top of it.
+  count_box <- function(x, n, fill) {
+    list(
+      annotate(
+        "label", x = x, y = vr * count_y_mult,
+        label = n, size = count_label_size * 1.25,
+        color = "black", fill = alpha(fill, 0.9), fontface = "bold",
+        label.padding = unit(count_label_padding, "pt"), label.r = unit(2, "pt"),
+        linewidth = count_border_width
+      ),
+      annotate(
+        "text", x = x, y = vr * count_y_mult,
+        label = n, size = count_label_size * 1.25,
+        color = "white", fontface = "bold"
+      )
+    )
+  }
 
-  layers <- list(
+  c(list(
     ns_points = geom_point(
-      data = vdf_ns, aes(x = x_plot, y = y_plot),
+      data = filter(vdf, direction == "NS"), aes(x = x_plot, y = y_plot),
       color = ns_color, size = point_size * 0.8, alpha = point_alpha * 0.35,
       inherit.aes = FALSE
     ),
     sig_points = geom_point(
-      data = vdf_sig, aes(x = x_plot, y = y_plot, color = direction, alpha = tier),
+      data = filter(vdf, direction != "NS"),
+      aes(x = x_plot, y = y_plot, color = direction, alpha = tier),
       size = point_size * 1.4, stroke = 0.3, inherit.aes = FALSE
     ),
     color_scale = scale_color_manual(
@@ -267,52 +280,17 @@ build_volcano_layers <- function(de_df,
       "text", x = 0, y = vr * 1.04,
       label = expression(bold(-log[10])~bolditalic(p)), size = count_label_size * 0.9,
       color = "grey40"
-    ),
-    n_up_box = annotate(
-      "label", x = vr * count_x_mult, y = vr * count_y_mult,
-      label = n_up, size = count_label_size * 1.25,
-      color = "black", fill = alpha(up_color, 0.9), fontface = "bold",
-      label.padding = unit(count_label_padding, "pt"), label.r = unit(2, "pt"),
-      linewidth = count_border_width
-    ),
-    n_up_text = annotate(
-      "text", x = vr * count_x_mult, y = vr * count_y_mult,
-      label = n_up, size = count_label_size * 1.25,
-      color = "white", fontface = "bold"
-    ),
-    n_down_box = annotate(
-      "label", x = -vr * count_x_mult, y = vr * count_y_mult,
-      label = n_down, size = count_label_size * 1.25,
-      color = "black", fill = alpha(down_color, 0.9), fontface = "bold",
-      label.padding = unit(count_label_padding, "pt"), label.r = unit(2, "pt"),
-      linewidth = count_border_width
-    ),
-    n_down_text = annotate(
-      "text", x = -vr * count_x_mult, y = vr * count_y_mult,
-      label = n_down, size = count_label_size * 1.25,
-      color = "white", fontface = "bold"
     )
-  )
-
-  attr(layers, "x_data_max") <- x_data_max
-  attr(layers, "y_data_max") <- y_data_max
-  attr(layers, "n_up")       <- n_up
-  attr(layers, "n_down")     <- n_down
-  attr(layers, "n_up_pi")    <- n_up_pi
-  attr(layers, "n_down_pi")  <- n_down_pi
-
-  layers
+  ),
+  count_box(vr * count_x_mult, n_up, up_color),
+  count_box(-vr * count_x_mult, n_down, down_color))
 }
 
 build_ring_layers <- function(ring_data,
                               tick_data,
                               tick_r0    = 4.4,
                               tick_r1    = 4.8,
-                              arc_r0     = 4.8,
-                              arc_r1     = 5.6,
-                              up_color   = DIR_COLORS["Up"],
-                              down_color = DIR_COLORS["Down"]) {
-
+                              arc_r0     = 4.8) {
   if (nrow(ring_data) == 0) return(list())
 
   layers <- list()
@@ -369,7 +347,6 @@ build_label_layer <- function(ring_data,
                               nudge_outward = 0.8,
                               up_color   = DIR_COLORS["Up"],
                               down_color = DIR_COLORS["Down"]) {
-
   if (nrow(ring_data) == 0) return(list())
 
   lbl_df <- ring_data |>
@@ -419,8 +396,19 @@ build_label_layer <- function(ring_data,
 
   attr(lbl_df, "max_label_r") <- max(lbl_df$label_r_term)
 
-  up_lbl   <- lbl_df  |> filter(NES > 0)
-  down_lbl <- lbl_df  |> filter(NES <= 0)
+  label_boxes <- function(df, fill) {
+    if (nrow(df) == 0) return(NULL)
+    geom_label(
+      data = df,
+      aes(x = lbl_x + nudge_x, y = lbl_y, label = legend_label),
+      hjust = 0.5, vjust = 0.5,
+      fill = unname(fill), color = "white",
+      fontface = "bold", size = label_size,
+      label.padding = unit(label_padding, "pt"), label.r = unit(1.5, "pt"),
+      lineheight = 0.85,
+      inherit.aes = FALSE
+    )
+  }
 
   layers <- list()
 
@@ -431,39 +419,16 @@ build_label_layer <- function(ring_data,
     inherit.aes = FALSE
   )
 
-  if (nrow(up_lbl) > 0) {
-    layers$up_labels <- geom_label(
-      data = up_lbl,
-      aes(x = lbl_x + nudge_x, y = lbl_y, label = legend_label),
-      hjust = 0.5, vjust = 0.5,
-      fill = unname(up_color), color = "white",
-      fontface = "bold", size = label_size,
-      label.padding = unit(label_padding, "pt"), label.r = unit(1.5, "pt"),
-      lineheight = 0.85,
-      inherit.aes = FALSE
-    )
-  }
-
-  if (nrow(down_lbl) > 0) {
-    layers$down_labels <- geom_label(
-      data = down_lbl,
-      aes(x = lbl_x + nudge_x, y = lbl_y, label = legend_label),
-      hjust = 0.5, vjust = 0.5,
-      fill = unname(down_color), color = "white",
-      fontface = "bold", size = label_size,
-      label.padding = unit(label_padding, "pt"), label.r = unit(1.5, "pt"),
-      lineheight = 0.85,
-      inherit.aes = FALSE
-    )
-  }
+  layers$up_labels <- label_boxes(filter(lbl_df, NES > 0), up_color)
+  layers$down_labels <- label_boxes(filter(lbl_df, NES <= 0), down_color)
 
   attr(layers, "max_label_r") <- attr(lbl_df, "max_label_r")
   layers
 }
 
 # min_size excludes small gene sets prone to tissue-irrelevant GO artifacts
-# (Reimand et al. 2019 Nat Protocols S3.4); n_each = NULL passes all sig terms.
-select_ring_terms <- function(go_df, contrast_name, n_each = NULL,
+# (Reimand et al. 2019 Nat Protocols S3.4).
+select_ring_terms <- function(go_df, contrast_name,
                               databases = c("Hallmark", "GO Slim"),
                               min_size = 15) {
   sig <- go_df |>
@@ -471,15 +436,7 @@ select_ring_terms <- function(go_df, contrast_name, n_each = NULL,
            padj < 0.05, size >= min_size) |>
     arrange(padj)
 
-  up   <- sig  |> filter(NES > 0)
-  down <- sig  |> filter(NES < 0)
-
-  if (!is.null(n_each)) {
-    up   <- up    |> slice_head(n = n_each)
-    down <- down  |> slice_head(n = n_each)
-  }
-
-  bind_rows(up, down)
+  bind_rows(filter(sig, NES > 0), filter(sig, NES < 0))
 }
 
 center_ring_angles <- function(ring, n_up) {
@@ -497,7 +454,6 @@ center_ring_angles <- function(ring, n_up) {
 }
 
 build_ring_with_gaps <- function(top_terms, contrast_name, go_df,
-                                 n_each = NULL,
                                  databases = c("Hallmark", "GO Slim")) {
   real_rows <- go_df |>
     filter(contrast == contrast_name, pathway %in% top_terms$pathway)
@@ -545,13 +501,13 @@ build_ring_with_gaps <- function(top_terms, contrast_name, go_df,
   ring
 }
 
-# make_volcano_ring(): Cartesian volcano-in-ring composite plot.
+# make_volcano_ring(): Cartesian volcano-in-ring composite plot. The ring
+# comes in ready-made as ring_data_override (see build_ring_with_gaps()).
 #
-# Argument groups (40+ params; see defaults below):
-#   Data:        de_df, go_df, contrast, ring_data_override, databases
-#   Ring geom:   n_terms, gap_degrees, start_offset, volcano_radius,
-#                tick_r0/r1, arc_r0/r1, label_r, label_gap
-#   Stats:       fc_thresh, p_thresh
+# Argument groups:
+#   Data:        de_df, go_df, contrast, ring_data_override
+#   Ring geom:   volcano_radius, tick_r0/r1, arc_r0, label_r, label_gap
+#   Stats:       p_thresh
 #   Colors:      up_color, down_color, ns_color, bg_color
 #   Text:        title_size, subtitle_size, label_size, count_label_size,
 #                label_padding, min_angle_gap, nudge_outward
@@ -566,18 +522,12 @@ make_volcano_ring <- function(de_df,
                               contrast_subtitle  = NULL,
                               title_size         = 22,   # scaled from F01's 12pt @ 215mm to F03's 380mm canvas
                               subtitle_size      = NULL,
-                              n_terms            = 12,
-                              gap_degrees        = 3,
-                              start_offset       = 0,
-                              databases          = c("Hallmark", "GO Slim"),
                               volcano_radius     = 3.5,
                               tick_r0            = 4.4,
                               tick_r1            = 4.8,
                               arc_r0             = 4.8,
-                              arc_r1             = 5.6,
                               label_r            = 7.0,
                               label_gap          = NULL,
-                              fc_thresh          = log2(1.5),
                               p_thresh           = 0.05,
                               up_color           = DIR_COLORS["Up"],
                               down_color         = DIR_COLORS["Down"],
@@ -593,22 +543,12 @@ make_volcano_ring <- function(de_df,
                               label_padding       = 2,
                               min_angle_gap       = 18,
                               nudge_outward       = 0.8,
-                              ring_data_override = NULL,
+                              ring_data_override,
                               bg_color           = NULL,
                               bg_alpha           = 0.12,
                               show_legend        = TRUE) {
-
   if (is.null(subtitle_size)) subtitle_size <- title_size * 0.65
-
-  if (!is.null(ring_data_override)) {
-    ring_data <- ring_data_override
-  } else {
-    ring_data <- prepare_ring_data(
-      go_df = go_df, contrast = contrast, n_terms = n_terms,
-      gap_degrees = gap_degrees, start_offset = start_offset,
-      databases = databases
-    )
-  }
+  ring_data <- ring_data_override
 
   tick_data <- build_tick_data(
     ring_data = ring_data, de_df = de_df, contrast = contrast,
@@ -617,7 +557,7 @@ make_volcano_ring <- function(de_df,
 
   volcano_layers <- build_volcano_layers(
     de_df = de_df, contrast = contrast, volcano_radius = volcano_radius,
-    fc_thresh = fc_thresh, p_thresh = p_thresh,
+    p_thresh = p_thresh,
     up_color = up_color, down_color = down_color, ns_color = ns_color,
     point_size = point_size, point_alpha = point_alpha,
     count_label_size = count_label_size,
@@ -629,9 +569,7 @@ make_volcano_ring <- function(de_df,
 
   ring_layers <- build_ring_layers(
     ring_data = ring_data, tick_data = tick_data,
-    tick_r0 = tick_r0, tick_r1 = tick_r1,
-    arc_r0 = arc_r0, arc_r1 = arc_r1,
-    up_color = up_color, down_color = down_color
+    tick_r0 = tick_r0, tick_r1 = tick_r1, arc_r0 = arc_r0
   )
 
   label_layers <- build_label_layer(
@@ -644,7 +582,7 @@ make_volcano_ring <- function(de_df,
   max_label_r <- attr(label_layers, "max_label_r")
   if (is.null(max_label_r)) max_label_r <- label_r
 
-  # disc fill behind ring (contrast color, up to tick ring)
+  # Disc in the contrast colour, out to the tick ring.
   bg_layer <- if (!is.null(bg_color)) {
     bg_circle <- data.frame(
       x = tick_r0 * cos(seq(0, 2 * pi, length.out = 200)),
@@ -655,11 +593,6 @@ make_volcano_ring <- function(de_df,
                  inherit.aes = FALSE)
   }
 
-  legend_pos <- if (show_legend) "right" else "none"
-
-  title_lab    <- contrast_title %||% title
-  subtitle_lab <- contrast_subtitle
-
   p <- ggplot() +
     bg_layer +
     ring_layers$tick_bg +
@@ -668,7 +601,7 @@ make_volcano_ring <- function(de_df,
     ring_layers$enrich_arcs +
     ring_layers$fill_scale +
     label_layers +
-    labs(title = title_lab, subtitle = subtitle_lab) +
+    labs(title = contrast_title %||% title, subtitle = contrast_subtitle) +
     coord_fixed(
       xlim = c(-(max_label_r + 0.8), max_label_r + 0.8),
       ylim = c(-(max_label_r + 0.15), max_label_r + 0.15),
@@ -683,7 +616,7 @@ make_volcano_ring <- function(de_df,
           plot.tag      = element_text(face = "bold", size = 26),  # scaled from F01's 15pt @ 215mm to F03's 380mm canvas
           plot.tag.position = c(0.02, 0.99),
           plot.margin   = margin(1, 1, 1, 1, "mm"),
-          legend.position = legend_pos,
+          legend.position = if (show_legend) "right" else "none",
           legend.title = element_text(size = 7, face = "bold", color = "grey30"),
           legend.text  = element_text(size = 6, color = "grey40"),
           legend.key.width  = unit(2, "mm"),
@@ -692,10 +625,7 @@ make_volcano_ring <- function(de_df,
     guides(color = "none",
            fill = guide_colorbar(direction = "vertical"))
 
-  attr(p, "ring_data")  <- ring_data
-  attr(p, "tick_data")  <- tick_data
-  attr(p, "n_up")       <- attr(volcano_layers, "n_up")
-  attr(p, "n_down")     <- attr(volcano_layers, "n_down")
+  attr(p, "ring_data") <- ring_data
 
   p
 }

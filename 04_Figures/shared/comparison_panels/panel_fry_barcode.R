@@ -171,12 +171,6 @@ labels <- pull_part("label")
 criterion_levels <- names(CRITERIA)
 as_facet <- function(d) mutate(d, criterion = factor(criterion, levels = criterion_levels))
 
-fry_barcode_stats <- list(
-  n_ranked = n_ranked,
-  sets = lengths(sets),
-  p_values = fry_p[names(sets)]
-)
-
 write.csv(
   tibble(set = names(sets), n = lengths(sets), fry_p = fry_p[names(sets)]),
   file.path(cfg$dat, "panel_F_fry_barcode.csv"),

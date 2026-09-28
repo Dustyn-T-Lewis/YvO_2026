@@ -1,4 +1,4 @@
-# GO Slim pathway assignment: shared by F2/panel_F.R and F3/panel_F.R
+# GO Slim pathway assignment, used by F04 S5a_B_goslim_bars.R.
 # Maps genes to 15 consolidated pathways via GO Slim Generic BP + GOBPANCESTOR traversal.
 
 requireNamespace("GO.db",       quietly = TRUE)
@@ -65,7 +65,6 @@ SLIM_CONSOLIDATED <- c(
   "GO:0003016" = "Development"
 )
 
-
 if (!exists("CONSOLIDATED_PATHWAY_ORDER")) {
   CONSOLIDATED_PATHWAY_ORDER <- c(
     "Muscle & Contractile", "Cytoskeleton & Motility", "ECM & Adhesion",
@@ -100,7 +99,6 @@ if (!exists("CONSOLIDATED_COLORS")) {
 }
 
 assign_go_slim_consolidated <- function(fg_genes, all_genes, min_cat_size = 2) {
-
   suppressMessages({
     all_entrez <- AnnotationDbi::mapIds(org.Hs.eg.db::org.Hs.eg.db, keys = all_genes,
                         keytype = "SYMBOL", column = "ENTREZID",
@@ -135,11 +133,6 @@ assign_go_slim_consolidated <- function(fg_genes, all_genes, min_cat_size = 2) {
     unnest(slim_list) |>
     select(SYMBOL, slim = slim_list) |>
     distinct()
-
-  all_gene_consolidated <- all_gene_slim |>
-    mutate(consolidated = SLIM_CONSOLIDATED[slim]) |>
-    filter(!is.na(consolidated)) |>
-    distinct(SYMBOL, consolidated)
 
   fg_gene_slim <- all_gene_slim |> filter(SYMBOL %in% fg_genes)
   fg_gene_consolidated <- fg_gene_slim |>

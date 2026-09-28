@@ -1,8 +1,8 @@
 # Shared classified-heatmap engine: row-z-scored abundance, rows grouped
 # directly by GO Slim + Hallmark functional classification (membership-based,
 # not enrichment or expression clustering: every protein's primary category
-# is its smallest matching set across both databases pooled, which maximizes
-# how many proteins get a real label instead of falling to "Unclassified").
+# is the matching term, across both databases pooled, that holds the most
+# proteins of this set; see pH_primary below).
 # Categories under `min_group_size` fold into "Other classified"; genuinely
 # unclassified proteins form their own group, always last. Within a group,
 # rows sort by the primary log2FC column (descending) -- there is no
@@ -10,8 +10,7 @@
 # plain grey when not, so the labeling coverage is visible on the plot
 # itself, not just claimed in a caption. Config-driven, following
 # panel_D_nes_scatter.R's calling convention: set `cfg`,
-# then source this file. Produces `pH_heat` (ggdraw composite), `pH_zmat`,
-# `pH_group_id`, `pH_K` (group count), `pH_cluster_membership`.
+# then source this file. Callers read `pH_heat` (ggdraw composite).
 #
 # cfg fields:
 #   protein_df       pre-filtered data frame (one row per displayed protein),
@@ -191,25 +190,18 @@ pH_legend_param <- setNames(
   names(cfg$logfc_cols)[1]
 )
 
-pH_pi_col <- c(`Π < 0.05` = "grey20", `n.s.` = "grey90")
-if (!is.null(cfg$pi_col)) {
-  pH_row_anno_args[["Π sig."]] <- if_else(pH_df[[cfg$pi_col]] < 0.05, "Π < 0.05", "n.s.")
-  pH_col_args[["Π sig."]] <- pH_pi_col
+# Pi first, then FDR: the marker columns are drawn in this order.
+for (pH_mark in list(
+  list(col = cfg$pi_col, key = "Π sig.", level = "Π < 0.05"),
+  list(col = cfg$fdr_col, key = "FDR sig.", level = "FDR < 0.05")
+)) {
+  if (is.null(pH_mark$col)) next
+  pH_row_anno_args[[pH_mark$key]] <-
+    if_else(pH_df[[pH_mark$col]] < 0.05, pH_mark$level, "n.s.")
+  pH_col_args[[pH_mark$key]] <- setNames(c("grey20", "grey90"), c(pH_mark$level, "n.s."))
   pH_show_legend <- c(pH_show_legend, TRUE)
-  pH_legend_param[["Π sig."]] <- list(
-    title = "Π < 0.05", direction = "horizontal",
-    title_gp = gpar(fontsize = 6, fontface = "bold"),
-    labels_gp = gpar(fontsize = 5.5)
-  )
-}
-
-pH_fdr_col <- c(`FDR < 0.05` = "grey20", `n.s.` = "grey90")
-if (!is.null(cfg$fdr_col)) {
-  pH_row_anno_args[["FDR sig."]] <- if_else(pH_df[[cfg$fdr_col]] < 0.05, "FDR < 0.05", "n.s.")
-  pH_col_args[["FDR sig."]] <- pH_fdr_col
-  pH_show_legend <- c(pH_show_legend, TRUE)
-  pH_legend_param[["FDR sig."]] <- list(
-    title = "FDR < 0.05", direction = "horizontal",
+  pH_legend_param[[pH_mark$key]] <- list(
+    title = pH_mark$level, direction = "horizontal",
     title_gp = gpar(fontsize = 6, fontface = "bold"),
     labels_gp = gpar(fontsize = 5.5)
   )
