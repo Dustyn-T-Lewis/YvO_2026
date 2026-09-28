@@ -23,7 +23,7 @@ dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
 
 MIN_REPS <- 10L
-OUTLIER_K <- 3L
+OUTLIER_K <- 3L # consensus outlier: flagged by >=3 of the 4 methods
 MAHAL_P <- 0.01 # chi-sq p-threshold for Mahalanobis-distance outlier flag
 MAD_K <- 3 # 3*MAD ~ 99.7% under normality
 
@@ -32,7 +32,7 @@ run_pca <- function(mat, metadata, log_transform = TRUE) {
     mat[is.na(mat[, j]), j] <- median(mat[, j], na.rm = TRUE)
   }
   if (log_transform) mat <- log2(mat)
-  pca <- prcomp(t(mat), center = TRUE, scale. = TRUE)
+  pca <- prcomp(t(mat), scale. = TRUE)
   ve <- round(summary(pca)$importance[2, 1:3] * 100, 1)
   list(
     pca = pca,
@@ -43,8 +43,19 @@ run_pca <- function(mat, metadata, log_transform = TRUE) {
   )
 }
 
+log_step <- function(log_df, step, n_before, n_after) {
+  bind_rows(log_df, tibble(
+    step = step, n_before = n_before,
+    n_after = n_after, n_removed = n_before - n_after
+  ))
+}
 
-# Load
+filter_missing <- function(dal) {
+  filter_proteins_by_group(dal,
+    min_reps = MIN_REPS, min_groups = 1,
+    grouping_column = "Group_Time"
+  )
+}
 
 raw <- read_excel("00_input/YvO_raw.xlsx")
 annot_cols <- c("uniprot_id", "protein", "gene", "description", "n_seq")
@@ -53,8 +64,8 @@ intensity <- raw[, setdiff(names(raw), annot_cols)]
 
 # supplement_cohort collapses the three EAA arms into the Ruple trial. It is a
 # supplementary view, read straight from the workbook by
-# 03_DEP/a_script/supp/02_supplement_covariate.R, and is dropped here so the fitted
-# model cannot see it.
+# 03_DEP/a_script/supp/02_supplement_covariate.R, and is dropped here so the
+# fitted model cannot see it.
 metadata <- as.data.frame(read_excel("00_input/YvO_meta.xlsx"))
 metadata$supplement_cohort <- NULL
 rownames(metadata) <- metadata$Col_ID
@@ -67,8 +78,6 @@ filter_log <- tibble(
   n_after = n_raw, n_removed = NA_integer_
 )
 message(sprintf("Raw: %d proteins x %d samples", n_raw, ncol(intensity)))
-
-# HPA tissue filter
 
 hpa <- read_tsv("00_input/HPA_skeletal_muscle_annotations.tsv",
   show_col_types = FALSE
@@ -87,12 +96,11 @@ annotation <- annotation[keep_hpa, ] |>
   left_join(hpa, by = join_by(gene == Gene))
 removed_genes <- setdiff(raw$gene, annotation$gene)
 
-filter_log <- bind_rows(filter_log, tibble(
-  step = "HPA tissue filter", n_before = n_before,
-  n_after = nrow(annotation), n_removed = n_before - nrow(annotation)
-))
+filter_log <- log_step(
+  filter_log, "HPA tissue filter", n_before, nrow(annotation)
+)
 
-# Blood contaminant removal (Geyer 2016 + HPA Ig)
+# Blood contaminants: Geyer 2016 plasma panel plus HPA immunoglobulin genes.
 
 BLOOD_CONTAMINANTS <- c(
   "HBA1", "HBA2", "HBB",
@@ -112,13 +120,11 @@ keep <- !annotation$gene %in% blood_genes
 intensity <- intensity[keep, ]
 annotation <- annotation[keep, ]
 
-filter_log <- bind_rows(filter_log, tibble(
-  step = "Blood contaminant removal", n_before = n_before,
-  n_after = nrow(annotation), n_removed = n_before - nrow(annotation)
-))
+filter_log <- log_step(
+  filter_log, "Blood contaminant removal", n_before, nrow(annotation)
+)
 
-# Deduplicate by UniProt ID (keep max mean intensity)
-
+# Duplicate UniProt IDs keep the row with the highest mean intensity.
 if (any(duplicated(annotation$uniprot_id))) {
   n_before <- nrow(annotation)
   annotation$row_mean <- rowMeans(data.matrix(intensity), na.rm = TRUE)
@@ -129,30 +135,23 @@ if (any(duplicated(annotation$uniprot_id))) {
   annotation <- annotation[keep_idx, ]
   intensity <- intensity[keep_idx, ]
   annotation$row_mean <- NULL
-  filter_log <- bind_rows(filter_log, tibble(
-    step = "Deduplication", n_before = n_before,
-    n_after = nrow(annotation), n_removed = n_before - nrow(annotation)
-  ))
+  filter_log <- log_step(
+    filter_log, "Deduplication", n_before, nrow(annotation)
+  )
 }
-
-# Assemble DAList + missingness filter
 
 int_mat <- as.data.frame(data.matrix(intensity))
 rownames(int_mat) <- annotation$uniprot_id
 annot_df <- as.data.frame(annotation)
 rownames(annot_df) <- annotation$uniprot_id
-meta_df <- as.data.frame(metadata)
-rownames(meta_df) <- metadata$Col_ID
 
-# Two alignment guards before the DAList is built, on the two axes that have
-# gone wrong here before. proteoDA 2.0's align_data_and_metadata() checks the
-# sample axis: every data column has a metadata row and vice versa. Its default
-# reorders samples into group blocks, which would change the matrix everything
-# downstream sees, so the existing order is kept and asserted. The row axis it
-# does not cover, and that is the axis the 2026-05-02 bug was on -- annotation
-# rows drifting out of step with data rows.
+# Two alignment guards, on the two axes that have gone wrong here before.
+# align_data_and_metadata() checks the sample axis; its default reorders samples
+# into group blocks, which would change the matrix everything downstream sees,
+# so the existing order is kept and asserted. It does not cover the row axis,
+# where the 2026-05-02 bug was: annotation rows drifting out of step with data.
 aligned <- align_data_and_metadata(
-  int_mat, meta_df,
+  int_mat, metadata,
   sample_col = "Col_ID", group_col = "Group_Time",
   prefer_group_blocks = FALSE
 )
@@ -169,26 +168,19 @@ dal <- DAList(data = int_mat, annotation = annot_df, metadata = meta_df) |>
   zero_to_missing()
 
 n_before <- nrow(dal$data)
-dal <- filter_proteins_by_group(dal,
-  min_reps = MIN_REPS, min_groups = 1,
-  grouping_column = "Group_Time"
+dal <- filter_missing(dal)
+filter_log <- log_step(
+  filter_log, sprintf("Missingness (>=%d in >=1 group)", MIN_REPS),
+  n_before, nrow(dal$data)
 )
-
-filter_log <- bind_rows(filter_log, tibble(
-  step = sprintf("Missingness (>=%d in >=1 group)", MIN_REPS),
-  n_before = n_before, n_after = nrow(dal$data),
-  n_removed = n_before - nrow(dal$data)
-))
 
 removed_blood <- raw |>
   select(uniprot_id, gene, description) |>
   filter(gene %in% blood_genes, !gene %in% removed_genes)
 
 filtered_proteins <- bind_rows(
-  tibble(
-    uniprot_id = raw$uniprot_id, gene = raw$gene,
-    description = raw$description
-  ) |>
+  raw |>
+    select(uniprot_id, gene, description) |>
     filter(gene %in% removed_genes) |>
     mutate(removal_step = "HPA tissue filter"),
   removed_blood |> mutate(removal_step = "Blood contaminant"),
@@ -198,8 +190,6 @@ filtered_proteins <- bind_rows(
     mutate(removal_step = "Missingness")
 ) |>
   distinct(uniprot_id, .keep_all = TRUE)
-
-# Outlier detection (4-method consensus, >=3/4)
 
 pct_missing <- colMeans(is.na(dal$data)) * 100
 
@@ -221,7 +211,7 @@ miss_info$miss_flag <- miss_info$pct_missing > miss_thresh |
   coalesce(miss_info$delta_missing > delta_thresh, FALSE)
 
 complete_mat <- dal$data[rowSums(is.na(dal$data)) == 0, ]
-pca_pre <- run_pca(complete_mat, dal$metadata, log_transform = TRUE)
+pca_pre <- run_pca(complete_mat, dal$metadata)
 pc3 <- pca_pre$pca$x[, 1:3]
 mahal <- mahalanobis(pc3, colMeans(pc3), cov(pc3))
 pca_flags <- tibble(
@@ -274,18 +264,12 @@ if (n_outliers > 0) {
   # simply be reversed. Without this, proteins kept on the strength of
   # observations in a dropped sample survive into the fit.
   n_before <- nrow(dal$data)
-  dal <- filter_proteins_by_group(dal,
-    min_reps = MIN_REPS, min_groups = 1,
-    grouping_column = "Group_Time"
+  dal <- filter_missing(dal)
+  filter_log <- log_step(
+    filter_log, "Missingness re-applied after outlier removal",
+    n_before, nrow(dal$data)
   )
-  filter_log <- bind_rows(filter_log, tibble(
-    step = sprintf("Missingness re-applied after outlier removal"),
-    n_before = n_before, n_after = nrow(dal$data),
-    n_removed = n_before - nrow(dal$data)
-  ))
 }
-
-# Normalize (cycloess via proteoDA)
 
 write_norm_report(dal,
   grouping_column = "Group_Time",
@@ -297,7 +281,9 @@ write_qc_report(dal,
   output_dir = RPT, filename = "02_qc_pre.pdf", overwrite = TRUE
 )
 
-dal <- normalize_data(dal, norm_method = "cycloess", adaptive.span = FALSE, span = 0.7)
+dal <- normalize_data(dal,
+  norm_method = "cycloess", adaptive.span = FALSE, span = 0.7
+)
 
 write_qc_report(dal,
   color_column = "Group_Time",
@@ -309,25 +295,22 @@ message(sprintf(
   nrow(dal$data), ncol(dal$data)
 ))
 
-# Build xlsx
-
 norm_df <- bind_cols(
   as_tibble(dal$annotation) |> select(uniprot_id, protein, gene, description),
   as_tibble(dal$data)
 )
 
-meta_out <- as.data.frame(metadata) |>
+meta_out <- metadata |>
   mutate(QC_Status = if_else(Col_ID %in% outlier_ids, "Excluded", "Retained"))
 
 pheno <- as.data.frame(read_excel("00_input/YvO_pheno_calc.xlsx"))
 pheno <- pheno[rowSums(!is.na(pheno) & pheno != "") > 0, , drop = FALSE]
 
-# YvO_pheno_calc.xlsx is a formatted report rather than a table: each age block
-# closes with Mean / Std Dev / n-size and, for the older block, a T-test row;
-# the Young block repeats the header and a footnote ends the sheet. Dropping the
-# all-blank rows above left nine of them, so the phenotype sheet of S8 Table
-# shipped 32 participants interleaved with summary rows and a second header.
-# Participants are the rows whose Part# is an identifier.
+# YvO_pheno_calc.xlsx is a formatted report, not a table: each age block ends
+# with Mean / Std Dev / n-size (plus a T-test row for Old), the Young block
+# repeats the header and a footnote ends the sheet. Dropping blank rows alone
+# once shipped S8 Table with summary rows among the 32 participants, so keep
+# only rows whose Part# is an identifier.
 REPORT_FURNITURE <- c("Mean", "Std Dev", "n-size", "Part#")
 part_id <- trimws(pheno[["Part#"]])
 pheno <- pheno[!is.na(part_id) & part_id != "" &
@@ -383,12 +366,8 @@ saveWorkbook(wb, file.path(DAT, "01_normalization.xlsx"), overwrite = TRUE)
 
 # CSV for downstream stages (benchmark, figures)
 readr::write_csv(norm_df, file.path(DAT, "02_normalized.csv"))
-
-# Save R objects
-
 saveRDS(dal, file.path(DAT, "03_DAList_normalized.rds"))
 
-# Compute report/F00 diagnostic data
 filter_bar_data <- filter_log |>
   filter(!is.na(n_removed)) |>
   mutate(step = factor(step, levels = step)) |>

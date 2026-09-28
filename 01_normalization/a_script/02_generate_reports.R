@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
 # Stage 01: Diagnostic reports
 # Reads 00_report_intermediates.rds, generates 04_diagnostics.pdf
-# Optionally copies xlsx to Box
 
 withr::local_dir(here::here())
 
@@ -29,10 +28,20 @@ pal_gt <- c(
 col_age  <- c(Young = "#4393C3", Old = "#D6604D")
 shape_tp <- c(Pre = 16, Post = 17)
 theme_qc <- theme_minimal(base_size = 12)
+no_legend <- theme(legend.position = "none")
+title_theme <- theme(plot.title = element_text(size = 18, face = "bold"))
+age_scales <- list(
+  scale_color_manual(values = col_age),
+  scale_shape_manual(values = shape_tp)
+)
+label_flagged <- function(flag) {
+  geom_text_repel(
+    data = \(d) filter(d, .data[[flag]]),
+    aes(label = prefix), size = 2.5, show.legend = FALSE
+  )
+}
 
 outlier_diag$age <- outlier_diag$Group
-
-# Page 1: Filtering & missingness
 
 p_filter <- ggplot(filter_bar_data, aes(step, n, fill = status)) +
   geom_col(width = 0.7) +
@@ -53,8 +62,6 @@ p_miss <- ggplot(miss_bar_data,
   theme_qc + theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 5),
                    strip.text = element_text(face = "bold"))
 
-# Page 2: Outlier diagnostics
-
 p_out_miss <- ggplot(outlier_diag, aes(pct_missing, delta_missing,
                                         color = age, shape = Timepoint)) +
   geom_point(size = 3) +
@@ -62,10 +69,8 @@ p_out_miss <- ggplot(outlier_diag, aes(pct_missing, delta_missing,
              color = "red", alpha = 0.5) +
   geom_hline(yintercept = delta_thresh, linetype = "dashed",
              color = "red", alpha = 0.5) +
-  geom_text_repel(data = \(d) filter(d, miss_flag),
-                  aes(label = prefix), size = 2.5, show.legend = FALSE) +
-  scale_color_manual(values = col_age) +
-  scale_shape_manual(values = shape_tp) +
+  label_flagged("miss_flag") +
+  age_scales +
   labs(x = "Sample missingness (%)", y = "|Delta missingness|",
        title = "A: Missingness",
        subtitle = sprintf("IQR thresholds: %.1f%% / %.1f%% | %d flagged",
@@ -80,10 +85,8 @@ pca_outlier_df <- pca_pre$scores |>
 p_out_pca <- ggplot(pca_outlier_df,
                     aes(PC1, PC2, color = age, shape = Timepoint)) +
   geom_point(size = 3.5, alpha = 0.85) +
-  geom_text_repel(data = \(d) filter(d, pca_flag),
-                  aes(label = prefix), size = 2.5, show.legend = FALSE) +
-  scale_color_manual(values = col_age) +
-  scale_shape_manual(values = shape_tp) +
+  label_flagged("pca_flag") +
+  age_scales +
   labs(x = sprintf("PC1 (%.1f%%)", pca_pre$var_exp[1]),
        y = sprintf("PC2 (%.1f%%)", pca_pre$var_exp[2]),
        title = "B: PCA Mahalanobis",
@@ -95,13 +98,11 @@ p_out_mad <- ggplot(outlier_diag,
                     aes(reorder(prefix, sample_median), sample_median,
                         color = age, shape = Timepoint)) +
   geom_point(size = 2.5) +
-  geom_text_repel(data = \(d) filter(d, mad_flag),
-                  aes(label = prefix), size = 2.5, show.legend = FALSE) +
+  label_flagged("mad_flag") +
   geom_hline(yintercept = global_med) +
   geom_hline(yintercept = global_med + c(-1, 1) * mad_k * mad_val,
              linetype = "dashed", color = "red", alpha = 0.5) +
-  scale_color_manual(values = col_age) +
-  scale_shape_manual(values = shape_tp) +
+  age_scales +
   labs(x = "Sample", y = "Median log2 intensity",
        title = "C: MAD median intensity",
        subtitle = sprintf("%dx MAD | %d flagged",
@@ -112,21 +113,17 @@ p_out_cor <- ggplot(outlier_diag,
                     aes(reorder(prefix, median_cor), median_cor,
                         color = age, shape = Timepoint)) +
   geom_point(size = 2.5) +
-  geom_text_repel(data = \(d) filter(d, cor_flag),
-                  aes(label = prefix), size = 2.5, show.legend = FALSE) +
+  label_flagged("cor_flag") +
   geom_hline(yintercept = median(outlier_diag$median_cor)) +
   geom_hline(yintercept = median(outlier_diag$median_cor) -
                mad_k * mad(outlier_diag$median_cor),
              linetype = "dashed", color = "red", alpha = 0.5) +
-  scale_color_manual(values = col_age) +
-  scale_shape_manual(values = shape_tp) +
+  age_scales +
   labs(x = "Sample", y = "Median pairwise correlation",
        title = "D: Inter-sample correlation",
        subtitle = sprintf("%dx MAD | %d flagged",
                            mad_k, sum(outlier_diag$cor_flag))) +
   theme_qc + theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 4))
-
-# Page 3: Post-normalization PCA
 
 p_pca_post <- ggplot(pca_post$scores,
                      aes(PC1, PC2, color = Group_Time, shape = Timepoint)) +
@@ -139,8 +136,6 @@ p_pca_post <- ggplot(pca_post$scores,
        y = sprintf("PC2 (%.1f%%)", pca_post$var_exp[2]),
        title = "Post-normalization PCA") +
   theme_qc + theme(legend.position = "bottom")
-
-# Page 4: Variability
 
 p_cv <- ggplot(subj_var, aes(reorder(Subject_ID, iqr), iqr)) +
   geom_line(aes(group = Subject_ID), color = "gray60", linewidth = 0.4) +
@@ -166,8 +161,6 @@ p_eta2 <- ggplot(eta2_df, aes(eta2)) +
        title = "Variance partition by group") +
   theme_qc
 
-# Assemble PDF
-
 open_pdf(file.path(RPT, "04_diagnostics.pdf"), width = 20, height = 10)
 
 print(
@@ -176,33 +169,29 @@ print(
       title = "Protein Filtering & Detection",
       subtitle = sprintf("%d raw \u2192 %d retained | %d samples",
                          n_raw, dal_nrow, dal_ncol),
-      theme = theme(plot.title = element_text(size = 18, face = "bold"),
-                    plot.subtitle = element_text(size = 14))))
+      theme = title_theme +
+        theme(plot.subtitle = element_text(size = 14))))
 
 shared_legend <- get_legend(
   p_out_miss + theme(legend.position = "bottom",
                      legend.justification = "center"))
 print(
-  ((p_out_miss + theme(legend.position = "none")) |
-   (p_out_pca  + theme(legend.position = "none"))) /
-  ((p_out_mad  + theme(legend.position = "none")) |
-   (p_out_cor  + theme(legend.position = "none"))) /
+  ((p_out_miss + no_legend) | (p_out_pca + no_legend)) /
+  ((p_out_mad + no_legend) | (p_out_cor + no_legend)) /
   wrap_elements(shared_legend) +
     plot_layout(heights = c(1, 1, 0.08)) +
     plot_annotation(
       title = "Outlier Diagnostics (4-method consensus)",
       subtitle = sprintf("\u22653/4 agreement | %d removed", n_outliers),
-      theme = theme(plot.title = element_text(size = 18, face = "bold"),
-                    plot.subtitle = element_text(size = 13))))
+      theme = title_theme +
+        theme(plot.subtitle = element_text(size = 13))))
 
 print(p_pca_post + plot_annotation(
-  title = "Post-Normalization QC",
-  theme = theme(plot.title = element_text(size = 18, face = "bold"))))
+  title = "Post-Normalization QC", theme = title_theme))
 
 print(
   (p_cv | p_eta2) + plot_annotation(
-    title = "Variability Summary",
-    theme = theme(plot.title = element_text(size = 18, face = "bold"))))
+    title = "Variability Summary", theme = title_theme))
 
 dev.off()
 message("Saved: ", file.path(RPT, "04_diagnostics.pdf"))
