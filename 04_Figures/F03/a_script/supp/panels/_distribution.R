@@ -8,11 +8,9 @@ source("04_Figures/shared/style.R")
 CTRS <- c("Aging", "Training_Young", "Training_Old", "Interaction")
 
 read_contrasts <- function() {
-  per_contrast <- lapply(CTRS, \(ctr) {
+  setNames(lapply(CTRS, \(ctr) {
     as.data.frame(read_excel("03_DEP/c_data/03_DEP_results.xlsx", sheet = ctr))
-  })
-  names(per_contrast) <- CTRS
-  per_contrast
+  }), CTRS)
 }
 
 dist_panel <- function(col, fill, xlab, vline = NULL, stat_fmt, title, tag, name) {

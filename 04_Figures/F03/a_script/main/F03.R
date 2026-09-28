@@ -17,8 +17,8 @@ pD <- strip_for_composite(source_panel(file.path(PANELS, "D_volcano_interaction.
 dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 fgsea_all <- read_csv("04_Figures/shared/fgsea_tstat_all_v2.csv", show_col_types = FALSE)
 
-PI_THRESH  <- 0.05  # pi-score significance threshold
-FDR_THRESH <- 0.05  # BH-adjusted p threshold for fGSEA
+PI_THRESH <- 0.05
+FDR_THRESH <- 0.05
 
 RPT <- "04_Figures/F03/b_reports/main"
 
@@ -70,10 +70,9 @@ tier_key <- local({
 nes_legend <- build_nes_legend_bar(text_size = 6.5, title_size = 6.5,
                                    bar_margin = margin(0, 0, 0, 0, "mm"))
 
-# The enlarged title block (below) is ~10 pt taller per row than the 7/6 pt one
-# it replaces, so every ring drops by that much: 8 mm on the top row, 3 mm on the
-# bottom. Panel B is the binding constraint -- its "Protein Folding" label sits
-# closest to the ring's 12 o'clock and already grazed the old subtitle.
+# The title block is ~10 pt taller per row than the old 7/6 pt one, so every
+# ring drops by that much. Panel B binds: its "Protein Folding" label sits
+# closest to 12 o'clock and grazed the old subtitle.
 pA <- pA + theme(plot.margin = margin(13, -9, 0, 9, "mm"))
 pB <- pB + theme(plot.margin = margin(13, 0, 0, 0, "mm"))
 pC <- pC + theme(plot.margin = margin(8, -9, 0, 9, "mm"))
@@ -81,28 +80,9 @@ pD <- pD + theme(plot.margin = margin(8, 0, 0, 0, "mm"))
 
 composite <- ((pA | pB) / (pC | pD)) + plot_layout(heights = c(1, 1))
 
-layout_cfg <- list(
-  # Canvas dimensions (mm)
-  # 3 mm of extra height pays back most of the ring area the deeper title block
-  # takes, without pushing the embedded figure past its 165.1 mm column width.
-  w = 178, h = 190,
-  # Label x positions: left and right columns, plus title offset from tag
-  x_l   = 0.070,   # left-column tag x (panels A, C)
-  x_r   = 0.510,   # right-column tag x (panels B, D)
-  x_ttl = 0.040,   # title x offset from tag
-  # Label y positions: top and bottom rows; subtitle drops by sub_off
-  # Both anchors move up and the title-to-subtitle gap grows with the subtitle:
-  # Title and tag sit 0.007 lower and sub_off loses the same, so the stack
-  # tightens while the subtitle stays clear of the rings.
-  y_top   = 0.9647,
-  y_bot   = 0.4947,
-  sub_off = 0.0247,
-  # NES legend position (draw_plot args)
-  nes_x = 0.22, nes_y = 0.022, nes_w = 0.30, nes_h = 0.034,
-  key_x = 0.55, key_y = 0.018, key_w = 0.26, key_h = 0.044
-)
-
-COMP_W <- layout_cfg$w; COMP_H <- layout_cfg$h
+# 3 mm of extra height pays back most of the ring area the deeper title block
+# takes, without pushing the embedded figure past its 165.1 mm column width.
+COMP_W <- 178; COMP_H <- 190
 # Set explicitly rather than via composite_text_sizes(COMP_W). That helper keys
 # off canvas *width*, which is right for the wide, short canvases of the other
 # figures but not here: F03 is near-square, so at the shared 165.1 mm embed width
@@ -113,13 +93,15 @@ COMP_W <- layout_cfg$w; COMP_H <- layout_cfg$h
 TAG_SZ <- 12
 TTL_SZ <- 11
 SUB_SZ <- 9.5
-X_L <- layout_cfg$x_l; X_R <- layout_cfg$x_r; X_TTL <- layout_cfg$x_ttl
-Y_TOP <- layout_cfg$y_top; Y_BOT <- layout_cfg$y_bot; SUB_OFF <- layout_cfg$sub_off
+# Tags for the left (A, C) and right (B, D) columns; titles sit X_TTL right of
+# the tag and subtitles SUB_OFF below the title, tight but clear of the rings.
+X_L <- 0.070; X_R <- 0.510; X_TTL <- 0.040
+Y_TOP <- 0.9647; Y_BOT <- 0.4947; SUB_OFF <- 0.0247
 
 titles <- c("Aging Effect", "Training Response (Young)",
             "Training Response (Old)", "Age \u00d7 Training Interaction")
-subs <- c(contrast_stats("Aging"), contrast_stats("Training_Young"),
-          contrast_stats("Training_Old"), contrast_stats("Interaction"))
+subs <- vapply(c("Aging", "Training_Young", "Training_Old", "Interaction"),
+               contrast_stats, character(1), USE.NAMES = FALSE)
 tags <- LETTERS[1:4]
 xs <- c(X_L, X_R, X_L, X_R)
 ys <- c(Y_TOP, Y_TOP, Y_BOT, Y_BOT)
@@ -135,10 +117,8 @@ for (i in 1:4) {
                fontface = "bold.italic", colour = "grey40", hjust = 0, vjust = 1)
 }
 composite <- composite +
-  draw_plot(nes_legend, x = layout_cfg$nes_x, y = layout_cfg$nes_y,
-            width = layout_cfg$nes_w, height = layout_cfg$nes_h) +
-  draw_plot(tier_key, x = layout_cfg$key_x, y = layout_cfg$key_y,
-            width = layout_cfg$key_w, height = layout_cfg$key_h)
+  draw_plot(nes_legend, x = 0.22, y = 0.022, width = 0.30, height = 0.034) +
+  draw_plot(tier_key, x = 0.55, y = 0.018, width = 0.26, height = 0.044)
 
 ggsave(file.path(RPT, "F03.pdf"), composite,
        width = COMP_W, height = COMP_H, units = "mm", device = get_pdf_device(),
