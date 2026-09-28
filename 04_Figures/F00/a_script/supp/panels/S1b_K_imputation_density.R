@@ -12,15 +12,15 @@ dens_df <- bind_rows(
 ) |>
   mutate(type = factor(type, levels = c("Observed", "Imputed")))
 
+k_pal <- c(Observed = "#377EB8", Imputed = "#E41A1C")
 pK <- ggplot(dens_df, aes(value, fill = type, color = type)) +
   geom_density(alpha = 0.4, linewidth = 0.4) +
-  scale_fill_manual(values = c(Observed = "#377EB8", Imputed = "#E41A1C"), name = NULL) +
-  scale_color_manual(values = c(Observed = "#377EB8", Imputed = "#E41A1C"), name = NULL) +
+  scale_fill_manual(values = k_pal, name = NULL) +
+  scale_color_manual(values = k_pal, name = NULL) +
   labs(
     x = "log2 intensity", y = "Density", tag = "K",
     title = "Observed vs. imputed intensity",
-    # OOB moved here from a floating top-right annotation, which the inset key
-    # now occupies. A fit statistic belongs in the subtitle anyway.
+    # OOB sits here because the inset key occupies the top-right corner.
     subtitle = sprintf(
       "%s observed | %s imputed | OOB = %.3f",
       comma(length(obs_vals)), comma(length(imp_vals)), int_imp$oob_error

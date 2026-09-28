@@ -24,15 +24,8 @@ COMP_W <- 178
 COMP_H <- 245
 txt <- composite_text_sizes(COMP_W)
 
-# Composite strip: titles, tags, subtitles, and a key that sits inside its own
-# plot box rather than claiming a strip beside or beneath it.
-#
-# Each panel already carries a subtitle with its own counts; these used to be
-# discarded at composite time, which threw away the per-panel numbers a reader
-# needs and left the titles floating over unexplained plots.
-#
-# `at` places the key inside the panel. Every panel picks the corner its data
-# leaves empty, so nothing is occluded and no panel loses width to a legend.
+# Keeps each panel's subtitle, which carries its counts, and insets the key at
+# `at`: the corner that panel's data leaves empty, so no panel loses width.
 sl <- function(p, at = NULL) {
   p +
     theme(
@@ -46,9 +39,8 @@ sl <- function(p, at = NULL) {
       ),
       legend.position = if (is.null(at)) "none" else "inside",
       legend.position.inside = at,
-      # Anchoring justification to the same point puts that corner of the key
-      # on that corner of the panel; without it the key centres on the point
-      # and half of it hangs outside.
+      # Justifying to the same point pins the key's corner to the panel's;
+      # otherwise the key centres on it and half hangs outside.
       legend.justification.inside = at,
       legend.direction = "vertical",
       legend.background = element_rect(fill = alpha("white", 0.75), colour = NA),
@@ -59,7 +51,7 @@ sl <- function(p, at = NULL) {
       legend.margin = margin(1, 2, 1, 2)
     )
 }
-# PCA panels: drop coord_fixed() for uniform alignment in composite
+# Drop coord_fixed() so the PCA panels align with their neighbours.
 pC_comp <- pC + coord_cartesian()
 pD_comp <- pD + coord_cartesian()
 
