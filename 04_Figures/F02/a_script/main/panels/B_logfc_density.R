@@ -102,10 +102,10 @@ pB <- ggplot(lfc_long, aes(logFC, fill = contrast)) +
     axis.ticks.y = element_blank(),
     plot.margin = margin(6, 4, 0, 4)
   )
-ggsave(file.path(PNL_PNG, "B_logfc_density.png"), pB,
+ggsave(file.path(PNL, "B_logfc_density.png"), pB,
   width = PD_W, height = PD_H, units = "mm", dpi = 300
 )
-ggsave(file.path(PNL_PDF, "B_logfc_density.pdf"), pB,
+ggsave(file.path(PNL, "B_logfc_density.pdf"), pB,
   width = PD_W, height = PD_H, units = "mm", device = pdf_dev
 )
 

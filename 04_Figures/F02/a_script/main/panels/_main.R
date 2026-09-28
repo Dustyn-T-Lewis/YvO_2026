@@ -1,25 +1,17 @@
-# Setup shared by the Figure 2 panels: packages, the shared theme, the F02
-# overrides and the inputs panels A to C read.
+# Setup shared by the Figure 2 panels: packages, the shared theme, output
+# folders and the inputs they read.
 
 pacman::p_load(dplyr, tidyr, tibble, stringr, readr, readxl, ggplot2, patchwork, cowplot, vegan, ComplexHeatmap, purrr)
 
 source("04_Figures/shared/style.R")
 
-# F02-specific overrides (from the old F02/style.R)
-HEATMAP_LO <- "#2166AC"
-HEATMAP_HI <- "#B2182B"
-BASE_COUNT <- BASE_COUNT + 1.0
-BASE_GENE <- BASE_GENE + 0.8
-BASE_STAT <- BASE_STAT + 0.5
-
 # One size for every in-panel stat box (A's PERMANOVA label, B's per-contrast
 # labels) so the two cannot drift apart when either panel is retuned.
 STAT_BOX_PT <- 4.4
 
-PNL_PNG <- "04_Figures/F02/b_reports/main/panels"
-PNL_PDF <- PNL_PNG
+PNL <- "04_Figures/F02/b_reports/main/panels"
 DAT <- "04_Figures/F02/c_data"
-for (d in c(PNL_PNG, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+for (d in c(PNL, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 pdf_dev <- get_pdf_device()
 

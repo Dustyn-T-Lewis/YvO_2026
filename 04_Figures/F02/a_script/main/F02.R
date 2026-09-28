@@ -33,15 +33,11 @@ pD_dots <- attr(pD_standalone, "dots")
 p_key_dir_D <- attr(pD_standalone, "key")
 pD_title <- pD_bars$labels$title
 pD_subtitle <- pD_bars$labels$subtitle
-# Build clean version (no title/subtitle) for composite export.
-#
-# The composite copy also drops the bar plot's 5 pt left margin and trims the
-# patchwork's own left margin: together they pull the shared left edge 8.25 pt
-# out so D's panel border lines up with panel A's at ~22.3 pt. Only the
-# composite needs this -- standalone D keeps the margin that stops "100" from
-# clipping against the device edge. "Intersection size" is drawn on the
-# canvas, not the gtable, so it stays where it is; the bar plot's own y-axis
-# numbers move left to within ~2 pt of it, which is as far as this can go.
+# The composite copy drops the bar plot's 5 pt left margin and trims the
+# patchwork's own, pulling the left edge 8.25 pt out so D's panel border lines
+# up with A's at ~22.3 pt. Standalone D keeps the margin that stops "100"
+# clipping at the device edge. "Intersection size" is drawn on the canvas, so
+# it stays put; the y-axis numbers move to within ~2 pt of it, the limit.
 pD_bars_clean <- pD_bars + labs(title = NULL, subtitle = NULL) +
   theme(plot.margin = margin(2, 0, 0, 0))
 pD_pw <- (pD_bars_clean / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
@@ -49,7 +45,6 @@ pD_pw <- (pD_bars_clean / pD_dots) + plot_layout(heights = c(0.78, 0.22)) +
     theme = theme(plot.margin = margin(t = 4, r = 2, b = 4, l = 1.75))
   )
 
-# Clean version without title or subtitle; the composite places the title
 pD <- ggdraw(pD_pw) +
   draw_label("Intersection size",
     x = 0.02, y = 0.58, angle = 90,
@@ -77,14 +72,13 @@ layout <- "ABC\n###\nDEF"
 ROW_TOP <- 0.470
 SPACER <- 0.00
 
-# Per-panel margins (top breathing room + per-panel width nudges).
-# Bottom margin matched to pB/pC's 0-8pt range -- the previous 12pt left A's
-# rendered plot visibly shorter than B's in the composite row.
+# A's bottom margin sits in B and C's 0-8 pt range; 12 pt left A's plot
+# visibly shorter than B's in the composite row.
 pA <- pA + theme(plot.margin = margin(12, 2, 7, 2))
 pB <- pB + theme(plot.margin = margin(12, -52, 0, 5))
-# Index into just the base bar plot -- `&` broadcasts to every patch,
-# including the key inset, and overwrote its own zero-margin theme, pushing
-# the key down onto the Tr.(O)/Interaction row boundary.
+# Index into the base bar plot: `&` reaches every patch, and on the key inset
+# it overwrote the zero margin and pushed the key onto the Tr.(O)/Interaction
+# row boundary.
 pC[[1]] <- pC[[1]] + theme(plot.margin = margin(6, 2, 3, 0))
 # Top margin no longer negative: the deeper ROW_TOP shortens the bottom row,
 # and the old -3 pulled F's first callout up into its own subtitle.
@@ -105,12 +99,9 @@ composite <- wrap_elements(full = pA) + pB + wrap_elements(full = pC) +
     heights = c(ROW_TOP, SPACER, 1 - ROW_TOP - SPACER)
   )
 
-# Manual tag + title + subtitle placement via cowplot.
 COMP_W <- 178
 COMP_H <- 115
-TAG_SZ <- composite_text_sizes(COMP_W)$tag
-TTL_SZ <- composite_text_sizes(COMP_W)$title
-SUB_SZ <- composite_text_sizes(COMP_W)$subtitle
+txt <- composite_text_sizes(COMP_W)
 TOP_Y <- 0.995 - 2 / COMP_H + 0.020 + 0.002 - 0.005 - 0.009
 # Baseline of the D/E/F title row; tracks ROW_TOP, so shift both by the same
 # amount whenever the bottom row moves.
@@ -118,39 +109,38 @@ BOT_Y <- 0.528
 X_LEFT <- 0.002
 X_MID <- 0.372
 X_RIGHT <- 0.630
-X_MID_BOT <- X_MID
-X_RIGHT_BOT <- X_RIGHT + 0.010
 X_TTL <- 0.04
 TTL_NUDGE <- -0.008
 BE_NUDGE <- 0.021
 TAG_DY <- -0.002
 SUB_OFFSET <- 0.022
 
-composite <- ggdraw(composite) +
-  # Panel A
-  draw_label("A", x = X_LEFT, y = TOP_Y - TAG_DY, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pA_title, x = X_LEFT + X_TTL, y = TOP_Y, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pA_subtitle, x = X_LEFT + X_TTL, y = TOP_Y - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey30") +
-  # Panel B
-  draw_label("B", x = X_MID, y = TOP_Y - TAG_DY, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pB_title, x = X_MID + X_TTL - BE_NUDGE, y = TOP_Y, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pB_subtitle, x = X_MID + X_TTL - BE_NUDGE, y = TOP_Y - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey30") +
-  # Panel C
-  draw_label("C", x = X_RIGHT + 0.042, y = TOP_Y - TAG_DY, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pC_title, x = X_RIGHT + 0.042 + X_TTL + TTL_NUDGE, y = TOP_Y, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pC_subtitle, x = X_RIGHT + 0.042 + X_TTL + TTL_NUDGE, y = TOP_Y - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey30") +
-  # Panel D
-  draw_label("D", x = X_LEFT, y = BOT_Y - TAG_DY, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pD_title, x = X_LEFT + X_TTL, y = BOT_Y, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pD_subtitle, x = X_LEFT + X_TTL, y = BOT_Y - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey30") +
-  # Panel E
-  draw_label("E", x = X_MID_BOT, y = BOT_Y - TAG_DY, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pE_title, x = X_MID + X_TTL - BE_NUDGE, y = BOT_Y, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pE_subtitle, x = X_MID + X_TTL - BE_NUDGE, y = BOT_Y - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey30") +
-  # Panel F
-  draw_label("F", x = X_RIGHT_BOT + 0.042, y = BOT_Y - TAG_DY, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pF_title, x = X_RIGHT + 0.042 + X_TTL + TTL_NUDGE, y = BOT_Y, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pF_subtitle, x = X_RIGHT + 0.042 + X_TTL + TTL_NUDGE, y = BOT_Y - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey30")
+# Tag at tag_x, title and subtitle at ttl_x, all hanging from y.
+add_head <- function(canvas, tag, title, sub, tag_x, ttl_x, y) {
+  canvas +
+    draw_label(tag,
+      x = tag_x, y = y - TAG_DY, size = txt$tag,
+      fontface = "bold", hjust = 0, vjust = 1
+    ) +
+    draw_label(title,
+      x = ttl_x, y = y, size = txt$title,
+      fontface = "bold", hjust = 0, vjust = 1
+    ) +
+    draw_label(sub,
+      x = ttl_x, y = y - SUB_OFFSET, size = txt$subtitle,
+      fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey30"
+    )
+}
+
+X_TTL_BE <- X_MID + X_TTL - BE_NUDGE
+X_TTL_CF <- X_RIGHT + 0.042 + X_TTL + TTL_NUDGE
+composite <- ggdraw(composite) |>
+  add_head("A", pA_title, pA_subtitle, X_LEFT, X_LEFT + X_TTL, TOP_Y) |>
+  add_head("B", pB_title, pB_subtitle, X_MID, X_TTL_BE, TOP_Y) |>
+  add_head("C", pC_title, pC_subtitle, X_RIGHT + 0.042, X_TTL_CF, TOP_Y) |>
+  add_head("D", pD_title, pD_subtitle, X_LEFT, X_LEFT + X_TTL, BOT_Y) |>
+  add_head("E", pE_title, pE_subtitle, X_MID, X_TTL_BE, BOT_Y) |>
+  add_head("F", pF_title, pF_subtitle, X_RIGHT + 0.010 + 0.042, X_TTL_CF, BOT_Y)
 
 RPT <- "04_Figures/F02/b_reports/main"
 pdf_dev <- get_pdf_device()

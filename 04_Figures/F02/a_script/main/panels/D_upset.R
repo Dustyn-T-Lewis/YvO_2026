@@ -1,29 +1,14 @@
 #!/usr/bin/env Rscript
-# Figure 2D: DEP contrast overlap (UpSet plot).
-# Custom ggplot2 upset (dual bar + dot matrix) using ComplexHeatmap::make_comb_mat
-# Pi-score significant DEPs across 4 contrasts, split by Up/Down direction
-# The composite builds its own copy from the bar plot, dot matrix and key,
-# which ride on the returned plot as attributes.
+# Figure 2D: overlap of Pi-significant DEPs across the four contrasts, split by
+# direction, as a ggplot2 UpSet (bars over a dot matrix) built on
+# ComplexHeatmap::make_comb_mat. The composite builds its own copy from the
+# bar plot, dot matrix and key, which ride on the returned plot as attributes.
 
 setwd(here::here())
 source("04_Figures/F02/a_script/main/panels/_main.R", local = TRUE)
-DEP_FILE <- "03_DEP/c_data/03_combined_results.csv"
-RPT_PNG <- "04_Figures/F02/b_reports/main/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/main/panels"
-DAT <- "04_Figures/F02/c_data"
-for (d in c(RPT_PNG, RPT_PDF, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
-
-CONTRASTS <- c("Aging", "Training_Young", "Training_Old", "Interaction")
-dep_df <- read_csv(DEP_FILE, show_col_types = FALSE)
-pdf_device <- get_pdf_device()
 
 PC_W <- 67 # J Physiol: col 1 of 3×2 at 178mm
 PC_H <- 55
-
-SET_LABELS <- c(
-  Aging = "Aging", Training_Young = "Tr.(Y)",
-  Training_Old = "Tr.(O)", Interaction = "Inter."
-)
 
 SET_DISPLAY_COLORS <- c(
   "Aging" = unname(CONTRAST_COLORS["Aging"]),
@@ -34,7 +19,6 @@ SET_DISPLAY_COLORS <- c(
 
 all_genes <- unique(dep_df$gene[!is.na(dep_df$gene)])
 
-# Build Pi-score significant sets and direction maps
 # sig_pi != 0 is equivalent to pi_score < 0.05 by construction (see 03_DEP/01_run_dep.R)
 sig_sets <- list()
 dir_map <- list()
@@ -133,12 +117,9 @@ mixed_ord <- mixed_counts[comb_ord]
 set_display_order <- c("Aging", "Tr.(Y)", "Tr.(O)", "Inter.")
 n_int <- length(comb_ord)
 comb_names_ord <- comb_names_vec[comb_ord]
-set_order_ch <- set_name(cm_sub)
 set_y_levels <- rev(set_display_order)
 
-comb_deg_ord <- vapply(comb_names_ord, function(cn) {
-  sum(as.integer(strsplit(cn, "")[[1]]))
-}, integer(1))
+comb_deg_ord <- comb_deg_all[comb_ord]
 
 bar_long <- tibble(
   x = rep(seq_len(n_int), 3),
@@ -153,7 +134,7 @@ bar_long <- tibble(
 dot_df <- expand_grid(x = seq_len(n_int), set = set_display_order)
 dot_df$active <- vapply(seq_len(nrow(dot_df)), function(r) {
   bits <- as.integer(strsplit(comb_names_ord[dot_df$x[r]], "")[[1]])
-  as.logical(bits[match(dot_df$set[r], set_order_ch)])
+  as.logical(bits[match(dot_df$set[r], set_names_ordered)])
 }, logical(1))
 dot_df$set <- factor(dot_df$set, levels = set_y_levels)
 dot_df$ynum <- as.numeric(dot_df$set)
@@ -161,7 +142,7 @@ dot_df$ynum <- as.numeric(dot_df$set)
 seg_list <- vector("list", n_int)
 for (i in seq_len(n_int)) {
   bits <- as.logical(as.integer(strsplit(comb_names_ord[i], "")[[1]]))
-  ypos <- match(set_order_ch[bits], set_y_levels)
+  ypos <- match(set_names_ordered[bits], set_y_levels)
   if (length(ypos) > 1) {
     seg_list[[i]] <- tibble(x = i, ymin = min(ypos), ymax = max(ypos))
   }
@@ -177,14 +158,13 @@ bar_bg_list <- lapply(seq_len(n_int), function(i) {
   }
   tibble(
     xmin = i - 0.5, xmax = i + 0.5,
-    fill = unname(SET_DISPLAY_COLORS[set_order_ch[bits]])
+    fill = unname(SET_DISPLAY_COLORS[set_names_ordered[bits]])
   )
 })
 bar_bg <- bind_rows(compact(bar_bg_list))
 
 lbl_sz <- FIG_AXIS_TEXT / .pt
 
-# Total unique DEPs across all exclusive partitions (for subtitle)
 n_unique_deps <- sum(comb_size(cm_sub))
 
 # Data-driven y-axis: headroom above the tallest bar for its label
@@ -204,33 +184,6 @@ divider_x <- {
   } else {
     NA_real_
   }
-}
-
-sig_overlaps <- overlap_df |>
-  filter(p_bh < 0.05) |>
-  arrange(p_bh) |>
-  head(4) |>
-  mutate(
-    set_A_short = CTR_SHORT[set_A],
-    set_B_short = CTR_SHORT[set_B],
-    label = sprintf(
-      "%s x %s: OR=%.1f, %s",
-      set_A_short, set_B_short,
-      odds_ratio, sapply(p_bh, fmt_p)
-    )
-  )
-
-if (nrow(sig_overlaps) > 0) {
-  overlap_annotation <- paste(sig_overlaps$label, collapse = "\n")
-  top_or_txt <- sprintf(
-    "Strong %s<->%s convergence (OR=%.1f)",
-    sig_overlaps$set_A_short[1],
-    sig_overlaps$set_B_short[1],
-    sig_overlaps$odds_ratio[1]
-  )
-} else {
-  overlap_annotation <- "No significant pairwise overlaps"
-  top_or_txt <- ""
 }
 
 pD_bars <- ggplot(bar_long, aes(x, count, fill = direction)) +
@@ -375,10 +328,6 @@ p_key_dir_D <- ggplot(dir_key_df_D) +
   theme_void() +
   theme(plot.margin = margin(0, 0, 0, 0))
 
-# Place y-axis title + direction key manually via cowplot.
-# Direction key: upper-right corner of the plot area (separator between
-# (6,4) and (2,4) bars is drawn in-plot via geom_vline instead).
-
 pD_standalone <- ggdraw(pD_pw_standalone) +
   draw_label("Intersection size",
     x = 0.02, y = 0.58, angle = 90,
@@ -386,11 +335,11 @@ pD_standalone <- ggdraw(pD_pw_standalone) +
   ) +
   draw_plot(p_key_dir_D, x = 0.83, y = 0.72, width = 0.14, height = 0.28)
 
-ggsave(file.path(RPT_PNG, "D_upset.png"), pD_standalone,
+ggsave(file.path(PNL, "D_upset.png"), pD_standalone,
   width = PC_W, height = PC_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "D_upset.pdf"), pD_standalone,
-  width = PC_W, height = PC_H, units = "mm", device = pdf_device
+ggsave(file.path(PNL, "D_upset.pdf"), pD_standalone,
+  width = PC_W, height = PC_H, units = "mm", device = pdf_dev
 )
 
 message("F02 Panel D (upset, Pi-score) done")

@@ -6,22 +6,12 @@ setwd(here::here())
 source("04_Figures/F02/a_script/supp/panels/_supp.R", local = TRUE)
 PB_W <- 110
 PB_H <- 80
-RPT_PNG <- "04_Figures/F02/b_reports/supp/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/supp/panels"
-DAT_DIR <- "04_Figures/F02/c_data"
-
-meta <- norm_meta
-meta$group <- factor(meta$group,
-  levels = c("Young_Pre", "Young_Post", "Old_Pre", "Old_Post")
-)
-
-pdf_device <- get_pdf_device()
 
 # CV on linear scale (Brenes 2024)
 lin_mat <- 2^as.matrix(norm_df[, samp_names])
 
-cv_list <- lapply(levels(meta$group), function(g) {
-  idx <- meta$sample_id[meta$group == g]
+cv_list <- lapply(levels(norm_meta$group), function(g) {
+  idx <- norm_meta$sample_id[norm_meta$group == g]
   sub <- lin_mat[, idx, drop = FALSE]
   cv_pct <- apply(sub, 1, function(x) {
     x <- x[!is.na(x)]
@@ -44,9 +34,8 @@ cv_df$time <- factor(ifelse(grepl("Pre", cv_df$group), "Pre", "Post"),
   levels = c("Pre", "Post")
 )
 
-# Bootstrap 95% CI on median CV per group
+# Seeds the bootstrap median CIs in cv_ci and grand_ci.
 set.seed(42)
-# boot_median_ci() defined in shared/style.R
 
 # Pairwise Wilcoxon tests, BH corrected; checked, not drawn
 bracket_comps <- list(
@@ -101,13 +90,6 @@ delta_cv <- cv_ci |>
     arrow_label = sprintf("%+.1f%%", delta)
   )
 
-# Arrow annotation data: one arrow per age facet from Pre median to Post median
-arrow_df <- delta_cv |>
-  mutate(
-    x = 1, xend = 2,
-    y_mid = (Pre + Post) / 2
-  )
-
 sub_txt <- sprintf(
   paste0(
     "Group CV%% per Age \u00d7 Time | %s proteins\n",
@@ -118,13 +100,11 @@ sub_txt <- sprintf(
   delta_cv$delta[delta_cv$age == "Old"]
 )
 
-# Consolidated single plot: group on x-axis, age shading in background
 GROUP_LABELS <- c(
   Young_Pre = "Pre", Young_Post = "Post",
   Old_Pre = "Pre", Old_Post = "Post"
 )
 
-# Arrow annotations spanning Pre→Post within each age group
 arrow_df_single <- delta_cv |>
   mutate(
     x = ifelse(age == "Young", 1, 3),
@@ -133,7 +113,6 @@ arrow_df_single <- delta_cv |>
   )
 
 pB <- ggplot(cv_df, aes(x = group, y = cv, fill = group)) +
-  # Age group labels at top
   annotate("text",
     x = 1.5, y = Inf, label = "Young", vjust = 1.3,
     size = 2.0, fontface = "bold", color = "grey25"
@@ -203,19 +182,19 @@ pB <- ggplot(cv_df, aes(x = group, y = cv, fill = group)) +
   )
 
 write.csv(as.data.frame(cv_ci),
-  file.path(DAT_DIR, "SUPP_panel_B_median_cv_ci.csv"),
+  file.path(DAT, "SUPP_panel_B_median_cv_ci.csv"),
   row.names = FALSE
 )
 write.csv(cliff_results,
-  file.path(DAT_DIR, "SUPP_panel_B_wilcoxon.csv"),
+  file.path(DAT, "SUPP_panel_B_wilcoxon.csv"),
   row.names = FALSE
 )
 
-ggsave(file.path(RPT_PNG, "S3_B_cv_violin.png"), pB,
+ggsave(file.path(PNL, "S3_B_cv_violin.png"), pB,
   width = PB_W, height = PB_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "S3_B_cv_violin.pdf"), pB,
-  width = PB_W, height = PB_H, units = "mm", device = pdf_device
+ggsave(file.path(PNL, "S3_B_cv_violin.pdf"), pB,
+  width = PB_W, height = PB_H, units = "mm", device = pdf_dev
 )
 
 invisible(pB)

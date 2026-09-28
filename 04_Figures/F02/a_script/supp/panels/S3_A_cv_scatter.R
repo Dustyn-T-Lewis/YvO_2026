@@ -4,19 +4,11 @@
 
 setwd(here::here())
 source("04_Figures/F02/a_script/supp/panels/_supp.R", local = TRUE)
-PA_SUB <- 60
 PA_W <- 178
 PA_H <- 70
-RPT_PNG <- "04_Figures/F02/b_reports/supp/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/supp/panels"
-DAT_DIR <- "04_Figures/F02/c_data"
 
 ann_cols <- c("uniprot_id", "protein", "gene", "description")
 samp_names <- setdiff(names(norm_df), ann_cols)
-
-# Use norm_meta from parent (replaces regex parsing of sample IDs)
-meta <- norm_meta
-pdf_device <- get_pdf_device()
 
 # CV on linear scale (Brenes 2024)
 lin_mat <- 2^as.matrix(norm_df[, samp_names])
@@ -33,8 +25,9 @@ compute_cv <- function(mat, idx) {
 }
 
 scatter_list <- lapply(c("Young", "Old"), function(ag) {
-  pre_idx <- meta$sample_id[meta$age == ag & meta$time == "Pre"]
-  post_idx <- meta$sample_id[meta$age == ag & meta$time == "Post"]
+  in_age <- norm_meta$age == ag
+  pre_idx <- norm_meta$sample_id[in_age & norm_meta$time == "Pre"]
+  post_idx <- norm_meta$sample_id[in_age & norm_meta$time == "Post"]
   cv_pre <- compute_cv(lin_mat, pre_idx)
   cv_post <- compute_cv(lin_mat, post_idx)
   tibble(gene = norm_df$gene, cv_pre = cv_pre, cv_post = cv_post, age = ag)
@@ -58,8 +51,8 @@ top_cv_labels <- bind_rows(
   scatter_df |> filter(age == "Old") |> slice_max(max_cv, n = 8, with_ties = FALSE)
 )
 
-n_young <- sum(scatter_df$age == "Young" & !is.na(scatter_df$cv_pre) & !is.na(scatter_df$cv_post))
-n_old <- sum(scatter_df$age == "Old" & !is.na(scatter_df$cv_pre) & !is.na(scatter_df$cv_post))
+n_young <- sum(scatter_df$age == "Young")
+n_old <- sum(scatter_df$age == "Old")
 r_young <- cor(scatter_df$cv_pre[scatter_df$age == "Young"],
   scatter_df$cv_post[scatter_df$age == "Young"],
   use = "complete.obs"
@@ -92,7 +85,7 @@ delta_wide <- scatter_df |>
 top_delta <- delta_wide |>
   slice_max(dist_origin, n = 10, with_ties = FALSE)
 
-n_delta <- sum(!is.na(delta_wide$dcv_Young) & !is.na(delta_wide$dcv_Old))
+n_delta <- nrow(delta_wide)
 r_delta <- cor(delta_wide$dcv_Young, delta_wide$dcv_Old, use = "complete.obs")
 ci_delta <- fisher_z_ci(r_delta, n_delta)
 
@@ -110,6 +103,20 @@ theme_B <- FIG_THEME +
       face = "bold.italic", color = "grey40"
     )
   )
+
+# Colourbar inset bottom-right, shared by both plots.
+inset_legend <- theme(
+  strip.text = element_text(
+    face = "bold", size = FIG_STRIP_SIZE,
+    margin = margin(t = 0, b = 1)
+  ),
+  legend.position = c(0.97, 0.02),
+  legend.justification = c(1, 0),
+  legend.background = element_rect(fill = alpha("white", 0.8), color = NA),
+  legend.title = element_text(face = "bold", size = FIG_LEGEND_TITLE),
+  legend.text = element_text(size = FIG_LEGEND_TEXT),
+  legend.key.size = unit(3, "mm")
+)
 
 axis_max_cv <- 300
 
@@ -175,6 +182,7 @@ pA12 <- ggplot(scatter_df, aes(x = cv_pre, y = cv_post)) +
     y = expression(bold(CV * "%"[Post]))
   ) +
   theme_B +
+  inset_legend +
   theme(
     plot.title = element_text(
       hjust = 0, size = FIG_TITLE_SIZE,
@@ -186,21 +194,10 @@ pA12 <- ggplot(scatter_df, aes(x = cv_pre, y = cv_post)) +
       face = "bold.italic", color = "grey40",
       margin = margin(t = 0, b = 1)
     ),
-    strip.text = element_text(
-      face = "bold", size = FIG_STRIP_SIZE,
-      margin = margin(t = 0, b = 1)
-    ),
-    legend.position = c(0.97, 0.02),
-    legend.justification = c(1, 0),
-    legend.background = element_rect(fill = alpha("white", 0.8), color = NA),
-    legend.title = element_text(face = "bold", size = FIG_LEGEND_TITLE),
-    legend.text = element_text(size = FIG_LEGEND_TEXT),
-    legend.key.size = unit(3, "mm"),
     plot.margin = margin(t = 0, r = 0, b = 0, l = 5.5)
   )
 
-# Add a dummy facet column so "Training Response" renders as a strip header
-# (at the same height as the Young/Old facet strips in pA12).
+# A one-level facet draws "Training Response" as a strip level with pA12's.
 delta_wide$.facet <- "Training Response"
 
 pA3 <- ggplot(delta_wide, aes(x = dcv_Young, y = dcv_Old)) +
@@ -253,41 +250,29 @@ pA3 <- ggplot(delta_wide, aes(x = dcv_Young, y = dcv_Old)) +
     title = NULL
   ) +
   theme_B +
+  inset_legend +
   theme(
-    strip.text = element_text(
-      face = "bold", size = FIG_STRIP_SIZE,
-      margin = margin(t = 0, b = 1)
-    ),
-    legend.position = c(0.97, 0.02),
-    legend.justification = c(1, 0),
-    legend.background = element_rect(fill = alpha("white", 0.8), color = NA),
-    legend.title = element_text(face = "bold", size = FIG_LEGEND_TITLE),
-    legend.text = element_text(size = FIG_LEGEND_TEXT),
-    legend.key.size = unit(3, "mm"),
     axis.title.y = element_text(margin = margin(r = 0, l = 0)),
     plot.margin = margin(t = 0, r = 5.5, b = 0, l = 0)
   )
 
 write.csv(scatter_df |> select(gene, cv_pre, cv_post, delta_cv, age),
-  file.path(DAT_DIR, "SUPP_panel_A_cv_scatter.csv"),
+  file.path(DAT, "SUPP_panel_A_cv_scatter.csv"),
   row.names = FALSE
 )
 write.csv(delta_wide |> select(gene, dcv_Young, dcv_Old, mean_dcv, dist_origin),
-  file.path(DAT_DIR, "SUPP_panel_A_cv_delta.csv"),
+  file.path(DAT, "SUPP_panel_A_cv_delta.csv"),
   row.names = FALSE
 )
 
-# 2:1 width ratio so the 2-facet (pA12) and 1-facet (pA3) sub-plots end up
-# with equal-area panels. patchwork (vs cowplot::plot_grid) keeps pC as a
-# proper ggplot/patchwork object so the supp stitch can override the panel
-# tag via labs(tag = ...) without producing a duplicate tag.
+# 2:1 widths give the two-facet pA12 and one-facet pA3 equal-area panels.
 pA <- (pA12 | pA3) + plot_layout(widths = c(2, 1))
 
-ggsave(file.path(RPT_PNG, "S3_A_cv_scatter.png"), pA,
+ggsave(file.path(PNL, "S3_A_cv_scatter.png"), pA,
   width = PA_W, height = PA_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "S3_A_cv_scatter.pdf"), pA,
-  width = PA_W, height = PA_H, units = "mm", device = pdf_device
+ggsave(file.path(PNL, "S3_A_cv_scatter.pdf"), pA,
+  width = PA_W, height = PA_H, units = "mm", device = pdf_dev
 )
 
 invisible(pA)

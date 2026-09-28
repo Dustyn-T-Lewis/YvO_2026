@@ -8,21 +8,18 @@ PA_H <- 55
 all_genes <- unique(dep_df$gene[!is.na(dep_df$gene)])
 
 sig_sets <- list()
-dir_map <- list()
 for (ctr in CONTRASTS) {
   pi_vals <- dep_df[[paste0("pi_score_", ctr)]]
-  lfc_vals <- dep_df[[paste0("logFC_", ctr)]]
-  is_sig <- !is.na(pi_vals) & pi_vals < 0.05
-  sig_sets[[ctr]] <- dep_df$gene[is_sig]
-  dir_map[[ctr]] <- setNames(ifelse(lfc_vals[is_sig] > 0, "Up", "Down"), dep_df$gene[is_sig])
+  sig_sets[[ctr]] <- dep_df$gene[!is.na(pi_vals) & pi_vals < 0.05]
 }
 n_total <- length(all_genes)
+n_fdr <- sapply(CONTRASTS, \(ctr) {
+  q <- dep_df[[paste0("adj.P.Val_", ctr)]]
+  sum(!is.na(q) & q < 0.05)
+})
 
 pi_total <- sum(sapply(sig_sets, length))
-fdr_total <- sum(sapply(CONTRASTS, \(ctr) {
-  fdr_col <- paste0("adj.P.Val_", ctr)
-  if (fdr_col %in% names(dep_df)) sum(dep_df[[fdr_col]] < 0.05, na.rm = TRUE) else 0
-}))
+fdr_total <- sum(n_fdr)
 SET_DISPLAY_COLORS <- c(
   "Aging" = unname(CONTRAST_COLORS["Aging"]),
   "Tr.(Y)" = unname(CONTRAST_COLORS["Training_Young"]),
@@ -31,13 +28,9 @@ SET_DISPLAY_COLORS <- c(
 )
 
 frac_df <- bind_rows(lapply(CONTRASTS, \(ctr) {
-  fdr_col <- paste0("adj.P.Val_", ctr)
   tibble(
     contrast = SET_LABELS[ctr], threshold = c("q < 0.05", "Π < 0.05"),
-    n = c(
-      sum(!is.na(dep_df[[fdr_col]]) & dep_df[[fdr_col]] < 0.05),
-      length(sig_sets[[ctr]])
-    )
+    n = c(n_fdr[[ctr]], length(sig_sets[[ctr]]))
   )
 })) |>
   mutate(
@@ -55,23 +48,17 @@ for (cname in names(SET_DISPLAY_COLORS)) {
   FRAC_FILL[paste(cname, "Π < 0.05", sep = "___")] <- col
 }
 
-# Axis fit to this engine's actual max rather than a fixed span -- a shared
-# 0-28% range across engines left every non-Aging bar squeezed into a sliver.
-# Headroom covers the stacked "n FDR / n \u03A0" label at the longer bar's end.
+# Axis fit to the data rather than a fixed span: a shared 0-28% range left
+# every non-Aging bar a sliver. Headroom covers the stacked count label.
 y_max_C <- max(frac_df$pct) * 1.22
 
-# One stacked label per contrast anchored at whichever bar reaches further,
-# rather than separately-positioned numbers. Built straight from
-# dep_df/sig_sets, not frac_df, so a tier's count still shows even when its own
-# bar is too small (n <= 1) to plot. The nominal-p tier was dropped for R1.3
-# and R2.1a: reporting it alongside FDR invited the reader to treat it as a
-# result, which is what both reviewers objected to.
+# One stacked label per contrast, at whichever bar reaches further. Built from
+# the counts, not frac_df, so a tier's count still shows when its bar is too
+# small (n <= 1) to plot. The nominal-p tier was dropped for R1.3 and R2.1a:
+# shown beside FDR, it read as a result, which both reviewers objected to.
 label_df_C <- tibble(
   contrast = factor(SET_LABELS[CONTRASTS], levels = levels(frac_df$contrast)),
-  n_fdr = sapply(CONTRASTS, \(ctr) {
-    fdr_col <- paste0("adj.P.Val_", ctr)
-    sum(!is.na(dep_df[[fdr_col]]) & dep_df[[fdr_col]] < 0.05)
-  }),
+  n_fdr = n_fdr,
   n_pi = sapply(CONTRASTS, \(ctr) length(sig_sets[[ctr]]))
 ) |>
   mutate(
@@ -79,10 +66,9 @@ label_df_C <- tibble(
     label = sprintf("%d FDR\n%d \u03A0", n_fdr, n_pi)
   )
 
-# Shade key: light = FDR, solid = Pi. Generic grey
-# squares -- the bars themselves already carry per-contrast hue via the
-# background wash. Small and tucked into the bottom-right corner so it reads
-# as a footnote, not a fourth thing competing with the bars for attention.
+# Shade key, light = FDR and solid = Pi, in grey because the background wash
+# already carries each contrast's hue. Small and tucked bottom-right so it
+# reads as a footnote.
 key_df_C <- tibble(
   label = c("FDR < 0.05", "\u03A0 < 0.05"),
   y = c(0, -0.13),
@@ -102,26 +88,15 @@ p_key_C <- ggplot(key_df_C) +
   theme(plot.margin = margin(0, 0, 0, 0))
 
 pC <- ggplot(frac_df, aes(contrast, pct, fill = fill_key)) +
-  annotate("rect",
-    xmin = 3.5, xmax = 4.5, ymin = -Inf, ymax = Inf,
-    fill = CONTRAST_COLORS["Aging"], alpha = 0.20, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = 2.5, xmax = 3.5, ymin = -Inf, ymax = Inf,
-    fill = CONTRAST_COLORS["Training_Young"], alpha = 0.20, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = 1.5, xmax = 2.5, ymin = -Inf, ymax = Inf,
-    fill = CONTRAST_COLORS["Training_Old"], alpha = 0.20, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = 0.5, xmax = 1.5, ymin = -Inf, ymax = Inf,
-    fill = CONTRAST_COLORS["Interaction"], alpha = 0.20, color = "grey70", linewidth = 0.2
-  ) +
+  # Contrasts run bottom-up after coord_flip(), so Aging's band is at 4.
+  lapply(seq_along(CONTRASTS), \(i) {
+    annotate("rect",
+      xmin = 4.5 - i, xmax = 5.5 - i, ymin = -Inf, ymax = Inf,
+      fill = CONTRAST_COLORS[CONTRASTS[i]], alpha = 0.20,
+      color = "grey70", linewidth = 0.2
+    )
+  }) +
   geom_col(position = "identity", width = 0.75, color = "black", linewidth = 0.3) +
-  # Exact counts stacked as one three-line block ("x p" / "y FDR" / "z Π")
-  # at whichever bar reaches further -- the key gives the shade meaning,
-  # this gives the numbers, read together rather than as floating figures.
   geom_text(
     data = label_df_C,
     aes(x = contrast, y = x_pos + y_max_C * 0.012, label = label),
@@ -133,9 +108,8 @@ pC <- ggplot(frac_df, aes(contrast, pct, fill = fill_key)) +
     expand = expansion(mult = c(0, 0)),
     breaks = scales::pretty_breaks(n = 5), limits = c(0, y_max_C)
   ) +
-  # Tightened from the discrete default (add = 0.6) -- the extra padding sat
-  # as blank space above/below the outermost bars, making the panel's
-  # rendered content noticeably shorter than A/B's in the composite row.
+  # Tighter than the discrete default (add = 0.6), whose padding left the
+  # panel's content visibly shorter than A's and B's in the composite row.
   scale_x_discrete(expand = expansion(add = 0.3)) +
   coord_flip() +
   labs(
@@ -159,10 +133,10 @@ pC <- (pC + inset_element(p_key_C,
   left = 0.80, right = 0.99, top = 0.20, bottom = 0.02
 )) & theme(legend.position = "none")
 
-ggsave(file.path(PNL_PNG, "C_dep_counts.png"), pC,
+ggsave(file.path(PNL, "C_dep_counts.png"), pC,
   width = PA_W, height = PA_H, units = "mm", dpi = 300
 )
-ggsave(file.path(PNL_PDF, "C_dep_counts.pdf"), pC,
+ggsave(file.path(PNL, "C_dep_counts.pdf"), pC,
   width = PA_W, height = PA_H, units = "mm", device = pdf_dev
 )
 

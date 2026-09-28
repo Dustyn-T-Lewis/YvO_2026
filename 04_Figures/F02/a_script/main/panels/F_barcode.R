@@ -1,32 +1,18 @@
 #!/usr/bin/env Rscript
-# Figure 2F: DEP rank location (barcode plot).
-# Shows where DEPs sit in the t-statistic-ranked proteome. Density (dark,
-# filled) and its peak labels are Pi < 0.05 -- the richer set, so density is
-# always drawable even where FDR is sparse or empty. Two independent tick
-# tracks below: Pi (upper, near the density) and FDR (lower, separate band).
+# Figure 2F: where DEPs sit in the t-statistic-ranked proteome (barcode).
+# The density and its peak labels use Pi < 0.05, the richer set, so a density
+# is drawable even where FDR is sparse. Two tick tracks below: Pi, then FDR.
 
 setwd(here::here())
 source("04_Figures/F02/a_script/main/panels/_main.R", local = TRUE)
-DEP_FILE <- "03_DEP/c_data/03_combined_results.csv"
-RPT_PNG <- "04_Figures/F02/b_reports/main/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/main/panels"
-DAT <- "04_Figures/F02/c_data"
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
-
-CONTRASTS <- c("Aging", "Training_Young", "Training_Old", "Interaction")
-dep_df <- read_csv(DEP_FILE, show_col_types = FALSE)
-pdf_device <- get_pdf_device()
 
 PD_W <- 67 # J Physiol: col 3 of 3×2 at 178mm
 PD_H <- 55
 
-# Build long-form data: rank position + DEP status per contrast
 rank_list <- lapply(CONTRASTS, function(ctr) {
   t_col <- paste0("t_", ctr)
   pi_col <- paste0("pi_score_", ctr)
   lfc_col <- paste0("logFC_", ctr)
-
   fdr_col <- paste0("adj.P.Val_", ctr)
 
   dep_df |>
@@ -55,11 +41,9 @@ dep_only$direction <- factor(dep_only$direction, levels = c("Up", "Down"))
 pi_all <- dep_only |> filter(is_pi)
 fdr_only <- dep_only |> filter(is_fdr)
 
-# Two independent, non-overlapping tick tracks -- Pi (the richer, primary
-# set) nearer the density, FDR a separate band below. Each protein ticks in
-# every track it qualifies for; the bands don't share an origin, so a dense
-# run of Pi ticks can't visually swallow the FDR track the way nested depths
-# from a shared origin did.
+# Two separate tick bands, Pi nearer the density and FDR below. Each protein
+# ticks in every band it qualifies for; with no shared origin, a dense run of
+# Pi ticks cannot swallow the FDR band as nested depths once did.
 PI_TOP <- 0
 PI_BOT <- -0.14
 FDR_TOP <- -0.18
@@ -81,9 +65,8 @@ dep_counts <- dep_only |>
 
 write.csv(dep_counts, file.path(DAT, "panel_F_barcode_enrichment.csv"), row.names = FALSE)
 
-# Pre-compute density curves so we can normalize and control y-range. Keyed
-# on Pi rather than FDR -- FDR is sparse enough in some contrasts (Tr.(O),
-# Interaction) that a density estimate isn't drawable at all.
+# Densities precomputed so they can be normalized. Keyed on Pi because FDR is
+# too sparse in Tr.(O) and Interaction for a density at all.
 DENS_PAD <- 0.06
 dens_list <- lapply(split(pi_all, pi_all$contrast), function(ctr_df) {
   lapply(split(ctr_df, ctr_df$direction, drop = TRUE), function(dir_df) {
@@ -101,13 +84,10 @@ dens_list <- lapply(split(pi_all, pi_all$contrast), function(ctr_df) {
   }) |> bind_rows()
 }) |> bind_rows()
 
-# Normalize density per contrast: peak = 1.0 (makes panels comparable).
-# A Gaussian kernel never reaches exactly zero, so the raw curve traces a
-# thin, visible line across the entire x-axis (0-100%) even where virtually
-# no proteins sit -- e.g. a Down curve peaked near 0% still draws a hairline
-# out past 90%. Blanking the near-zero tail (NA, not filtering rows, so
-# geom_line/geom_ribbon actually break instead of connecting across the gap)
-# stops the curve where it's no longer meaningfully above baseline.
+# Peak = 1 per contrast so the facets compare. A Gaussian kernel never reaches
+# zero, so the raw curve draws a hairline across the whole axis; the near-zero
+# tail is set to NA, not filtered, so the line and ribbon break there instead
+# of joining across the gap.
 dens_list <- dens_list |>
   group_by(contrast) |>
   mutate(
@@ -121,14 +101,12 @@ dens_list$contrast <- factor(dens_list$contrast, levels = CONTRASTS)
 ANNOT_SZ <- FIG_AXIS_TEXT / .pt
 LABEL_NUDGE <- 0.06
 
-# The two tick bands are told apart only by height and alpha, so name them.
-# No contrast column, so the pair repeats in every facet. Together the bands
-# are barely 7 pt tall on the composite, and that is what caps the type size:
-# any larger and the two labels' boxes touch. The nudge lifts both off their
-# arithmetic centre because a label box hangs a little below its anchor --
-# without it Pi and FDR close to within a quarter point of each other.
-# 3.25 and no lower: the figure prints at 165.1 mm of a 178 mm canvas, so
-# 3.0 here lands at 2.78 pt on the page, under the 3 pt floor.
+# The tick bands differ only by height and alpha, so they are named, in every
+# facet (no contrast column). The bands are barely 7 pt tall on the
+# composite, which caps the type: any larger and the labels' boxes touch. The
+# lift offsets a label box hanging below its anchor, without which Pi and FDR
+# sit a quarter point apart. 3.25 and no lower: the figure prints at 165.1 mm
+# of a 178 mm canvas, so 3.0 would land at 2.78 pt, under the 3 pt floor.
 BAND_LBL_SZ <- 3.25 / .pt
 BAND_LBL_LIFT <- 0.017
 band_lbl_df <- tibble(
@@ -137,16 +115,14 @@ band_lbl_df <- tibble(
   label = c("Π", "FDR")
 )
 
-# Compute peak positions for label placement
 peak_pos <- dens_list |>
   group_by(contrast, direction) |>
   slice_max(y_norm, n = 1, with_ties = FALSE) |>
   ungroup() |>
   select(contrast, direction, peak_x = x, peak_y = y_norm)
 
-# Pi DEP counts per contrast x direction -- the density's own set. Contrasts
-# with too few Pi hits for a density (essentially never, in practice) state
-# their count in place of density labels.
+# Pi DEP counts per contrast and direction, the density's own set. Contrasts
+# with too few Pi hits for a density state their count instead.
 n_down <- pi_all |>
   filter(direction == "Down") |>
   count(contrast) |>
@@ -204,21 +180,39 @@ au_all <- peak_pos |>
   ) |>
   filter(!is.na(label))
 
-cd_all <- ad_all |>
-  mutate(x_start = peak_x, y_start = peak_y, x_end = label_x, y_end = label_y)
-cu_all <- au_all |>
-  mutate(x_start = peak_x, y_start = peak_y, x_end = label_x, y_end = label_y)
+dir_pal <- c(Up = unname(DIR_COLORS["Up"]), Down = unname(DIR_COLORS["Down"]))
+
+# Connector from each density peak to its white-on-colour count label.
+callout <- function(lab, dir, hjust) {
+  if (nrow(lab) == 0) {
+    return(NULL)
+  }
+  list(
+    geom_segment(
+      data = lab,
+      aes(x = peak_x, xend = label_x, y = peak_y, yend = label_y),
+      linewidth = 0.3, color = dir_pal[[dir]],
+      alpha = 0.4, inherit.aes = FALSE
+    ),
+    geom_label(
+      data = lab,
+      aes(x = label_x, y = label_y, label = label),
+      hjust = hjust, vjust = 0.5, size = ANNOT_SZ,
+      fill = dir_pal[[dir]], color = "white",
+      fontface = "bold", linewidth = 0,
+      label.padding = unit(0.08, "lines"),
+      inherit.aes = FALSE
+    )
+  )
+}
 
 pF <- ggplot() +
-  # Background contrast wash per facet, darkened to match C/D/E's
-  # canonical 0.20 alpha (0.18 is a slight pull-back to avoid over-darkening)
+  # 0.18, a shade under C/D/E's 0.20, so the wash does not over-darken.
   geom_rect(
     data = bg_wash,
     aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
     fill = bg_wash$fill, alpha = 0.18, inherit.aes = FALSE
   ) +
-  # Density ribbons -- Pi-based, filled dark and solid to read as the
-  # primary signal (ticks below carry the FDR/Pi tier split)
   geom_ribbon(
     data = dens_list,
     aes(x = x, ymin = 0, ymax = y_norm, fill = direction),
@@ -229,10 +223,8 @@ pF <- ggplot() +
     aes(x = x, y = y_norm, color = direction),
     linewidth = 0.6
   ) +
-  # Barcode ticks: two independent tracks, Pi (all Pi-sig genes) nearer the
-  # density, FDR (all FDR-sig genes) in its own band below. FDR drawn dark
-  # (the stricter, headline tier), Pi light; narrow linewidth keeps a dense
-  # run of ticks from reading as a solid block.
+  # FDR ticks dark (the stricter, headline tier), Pi light; the thin line
+  # keeps a dense run of ticks from reading as a solid block.
   geom_segment(
     data = tick_df,
     aes(
@@ -243,10 +235,8 @@ pF <- ggplot() +
     linewidth = 0.22
   ) +
   scale_alpha_manual(values = c("Π" = 0.45, FDR = 0.9), guide = "none") +
-  # Band names, right-anchored inside the panel. Plain text rather than a
-  # plated label: the ticks thin out well before the right edge, so the plate
-  # was covering nothing. The Up callouts are right-anchored too but sit at
-  # y = 0.90, a long way above these.
+  # Plain text, not a plated label: the ticks thin out well before the right
+  # edge, so a plate covered nothing. The Up callouts sit far above, at 0.90.
   geom_text(
     data = band_lbl_df,
     aes(x = x, y = y, label = label),
@@ -263,67 +253,11 @@ pF <- ggplot() +
     label.padding = unit(0.10, "lines"),
     inherit.aes = FALSE
   ) +
-  # Zero line
   geom_hline(yintercept = 0, linewidth = 0.25, color = "grey50") +
-  # Down connector segments
-  {
-    if (nrow(cd_all) > 0) {
-      geom_segment(
-        data = cd_all,
-        aes(x = x_start, xend = x_end, y = y_start, yend = y_end),
-        linewidth = 0.3, color = unname(DIR_COLORS["Down"]),
-        alpha = 0.4, inherit.aes = FALSE
-      )
-    }
-  } +
-  # Down labels (white text in blue box)
-  {
-    if (nrow(ad_all) > 0) {
-      geom_label(
-        data = ad_all,
-        aes(x = label_x, y = label_y, label = label),
-        hjust = 0, vjust = 0.5, size = ANNOT_SZ,
-        fill = unname(DIR_COLORS["Down"]), color = "white",
-        fontface = "bold", linewidth = 0,
-        label.padding = unit(0.08, "lines"),
-        inherit.aes = FALSE
-      )
-    }
-  } +
-  # Up connector segments
-  {
-    if (nrow(cu_all) > 0) {
-      geom_segment(
-        data = cu_all,
-        aes(x = x_start, xend = x_end, y = y_start, yend = y_end),
-        linewidth = 0.3, color = unname(DIR_COLORS["Up"]),
-        alpha = 0.4, inherit.aes = FALSE
-      )
-    }
-  } +
-  # Up labels (white text in red box)
-  {
-    if (nrow(au_all) > 0) {
-      geom_label(
-        data = au_all,
-        aes(x = label_x, y = label_y, label = label),
-        hjust = 1, vjust = 0.5, size = ANNOT_SZ,
-        fill = unname(DIR_COLORS["Up"]), color = "white",
-        fontface = "bold", linewidth = 0,
-        label.padding = unit(0.08, "lines"),
-        inherit.aes = FALSE
-      )
-    }
-  } +
-  # Scales
-  scale_fill_manual(values = c(
-    Up = unname(DIR_COLORS["Up"]),
-    Down = unname(DIR_COLORS["Down"])
-  )) +
-  scale_color_manual(values = c(
-    Up = unname(DIR_COLORS["Up"]),
-    Down = unname(DIR_COLORS["Down"])
-  )) +
+  callout(ad_all, "Down", 0) +
+  callout(au_all, "Up", 1) +
+  scale_fill_manual(values = dir_pal) +
+  scale_color_manual(values = dir_pal) +
   scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.02))) +
   coord_cartesian(
@@ -362,11 +296,11 @@ pF <- ggplot() +
     panel.spacing.y = unit(2, "pt")
   )
 
-ggsave(file.path(RPT_PNG, "F_barcode.png"), pF,
+ggsave(file.path(PNL, "F_barcode.png"), pF,
   width = PD_W, height = PD_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "F_barcode.pdf"), pF,
-  width = PD_W, height = PD_H, units = "mm", device = pdf_device
+ggsave(file.path(PNL, "F_barcode.pdf"), pF,
+  width = PD_W, height = PD_H, units = "mm", device = pdf_dev
 )
 
 invisible(pF)

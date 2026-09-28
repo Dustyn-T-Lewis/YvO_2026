@@ -1,5 +1,5 @@
 # Setup shared by the S3 Figure panels: packages, the seed, the shared theme,
-# the F02 overrides and the normalized data.
+# the heatmap colours, output folders and the normalized data.
 
 pacman::p_load(dplyr, tidyr, stringr, readr, readxl, ggplot2, ggrepel, ggbeeswarm, patchwork, cowplot)
 
@@ -10,16 +10,12 @@ set.seed(42)
 
 source("04_Figures/shared/style.R")
 
-# F02-specific overrides
-HEATMAP_LO <- "#2166AC"; HEATMAP_HI <- "#B2182B"
-BASE_COUNT <- BASE_COUNT + 1.0
-BASE_GENE  <- BASE_GENE  + 0.8
-BASE_STAT  <- BASE_STAT  + 0.5
+HEATMAP_LO <- "#2166AC"
+HEATMAP_HI <- "#B2182B"
 
-RPT_PNG <- "04_Figures/F02/b_reports/supp/panels"
-RPT_PDF <- RPT_PNG
-DAT     <- "04_Figures/F02/c_data"
-for (d in c(RPT_PNG, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+PNL <- "04_Figures/F02/b_reports/supp/panels"
+DAT <- "04_Figures/F02/c_data"
+for (d in c(PNL, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 pdf_dev <- get_pdf_device()
 
@@ -35,7 +31,6 @@ norm_meta <- as_tibble(dal_norm$metadata) |>
 
 samp_names <- norm_meta$sample_id
 
-# Annotation from DAList
 ann_df <- as_tibble(dal_norm$annotation) |>
   select(uniprot_id, gene, protein, description)
 norm_df <- bind_cols(ann_df, as_tibble(norm_mat))
