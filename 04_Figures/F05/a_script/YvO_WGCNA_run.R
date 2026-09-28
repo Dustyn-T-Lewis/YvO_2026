@@ -13,20 +13,16 @@ set.seed(42)
 WGCNA_R2_CUTOFF <- 0.87 # signed R^2 threshold for scale-free topology
 WGCNA_NETWORK_TYPE <- "signed"
 WGCNA_TOM_TYPE <- "signed"
-WGCNA_COR_TYPE <- "Pearson" # bicor sensitivity in panels/S6_D_bicor.R
 WGCNA_MIN_MOD_SIZE <- 30L
 WGCNA_MERGE_CUT_H <- 0.25
-WGCNA_N_PERM <- 200L # for modulePreservation (in _supp_preservation.R)
 
 DATA_FILE <- "02_imputation/c_data/01_imputed.csv"
 DALIST_RDS <- "02_imputation/c_data/01_DAList_imputed.rds"
 # Module assignment of the submitted analysis (YvO_revise @ d34a7dd), used only to keep
 # colour labels comparable between the two networks.
 REFERENCE_MODULES <- "00_input/wgcna_reference_modules.csv"
-REPORT_DIR <- "04_Figures/F05/b_reports"
 DATA_DIR <- "04_Figures/F05/c_data/wgcna"
-
-dir.create(REPORT_DIR, recursive = TRUE, showWarnings = FALSE)
+PANEL_DIR <- "04_Figures/F05/c_data"
 dir.create(DATA_DIR, recursive = TRUE, showWarnings = FALSE)
 
 stopifnot(file.exists(DATA_FILE), file.exists(DALIST_RDS), file.exists(REFERENCE_MODULES))
@@ -38,7 +34,6 @@ samp_names <- setdiff(names(df), ann_cols)
 mat <- as.matrix(df[, samp_names])
 rownames(mat) <- ann$uniprot_id
 
-# Transpose: samples as rows, proteins as columns (WGCNA convention)
 datExpr <- t(mat)
 
 dal <- readRDS(DALIST_RDS)
@@ -52,7 +47,6 @@ meta <- tibble(
   group     = dal_meta$Group_Time
 )
 
-# goodSamplesGenes check
 gsg <- goodSamplesGenes(datExpr, verbose = 3)
 if (!gsg$allOK) {
   datExpr <- datExpr[gsg$goodSamples, gsg$goodGenes]
@@ -66,7 +60,7 @@ if (!gsg$allOK) {
 # WGCNA needs its own cor()
 cor <- WGCNA::cor
 
-powers <- c(1:20)
+powers <- 1:20
 sft <- pickSoftThreshold(datExpr,
   powerVector = powers,
   networkType = WGCNA_NETWORK_TYPE, verbose = 2
@@ -122,7 +116,6 @@ net <- blockwiseModules(
   mergeCutHeight    = WGCNA_MERGE_CUT_H,
   numericLabels     = TRUE,
   pamRespectsDendro = FALSE,
-  saveTOMs          = FALSE,
   verbose           = 3
 )
 
@@ -159,7 +152,6 @@ module_colors <- unname(relabel[module_colors])
 
 # Dendrogram plot is produced in panels/S6_B_dendrogram.R.
 
-# Trait matrix (3 design + 6 phenotype)
 traits <- meta |>
   mutate(
     age_num     = if_else(age == "Old", 1, 0),
@@ -167,52 +159,43 @@ traits <- meta |>
     interaction = age_num * time_num
   )
 
-# Continuous phenotypes from DAList metadata
+# The phenotypes go on the trait matrix and on meta, which the panels read.
 pheno_cols <- c(
   "VL_thick_cm", "DXA_LBM_kg", "BMI",
   "Type_I_fCSA", "Type_II_fCSA", "deadlift_1rm_kg"
 )
-
-for (pc in pheno_cols) {
-  if (pc %in% names(dal_meta)) {
-    vals <- dal_meta[[pc]]
-    if (!is.numeric(vals)) vals <- as.numeric(as.character(vals))
-    traits[[pc]] <- vals[match(meta$sample_id, dal_meta$Col_ID)]
-  }
+for (pc in intersect(pheno_cols, names(dal_meta))) {
+  vals <- dal_meta[[pc]]
+  if (!is.numeric(vals)) vals <- as.numeric(as.character(vals))
+  traits[[pc]] <- meta[[pc]] <- vals[match(meta$sample_id, dal_meta$Col_ID)]
 }
 
-trait_cols <- c("age_num", "time_num", "interaction", pheno_cols)
-trait_cols <- intersect(trait_cols, names(traits))
+trait_cols <- intersect(c("age_num", "time_num", "interaction", pheno_cols), names(traits))
 traits_mat <- as.data.frame(traits[, trait_cols])
 rownames(traits_mat) <- meta$sample_id
-
 traits_mat <- traits_mat[rownames(datExpr), ]
 
 MEs <- moduleEigengenes(datExpr, colors = module_colors)$eigengenes
 MEs <- orderMEs(MEs)
 
 module_trait_cor <- cor(MEs, traits_mat, use = "pairwise.complete.obs")
-n_per_trait <- colSums(!is.na(traits_mat[rownames(datExpr), , drop = FALSE]))
+n_per_trait <- colSums(!is.na(traits_mat))
 module_trait_pval <- module_trait_cor
 for (j in seq_len(ncol(module_trait_cor))) {
   module_trait_pval[, j] <- corPvalueStudent(module_trait_cor[, j], n_per_trait[j])
 }
-pval_vec <- as.vector(module_trait_pval)
-pval_bh_vec <- p.adjust(pval_vec, method = "BH")
-module_trait_pval_bh <- matrix(pval_bh_vec,
-  nrow = nrow(module_trait_pval),
-  ncol = ncol(module_trait_pval)
+module_trait_pval_bh <- matrix(p.adjust(as.vector(module_trait_pval), method = "BH"),
+  nrow = nrow(module_trait_pval), dimnames = dimnames(module_trait_pval)
 )
-rownames(module_trait_pval_bh) <- rownames(module_trait_pval)
-colnames(module_trait_pval_bh) <- colnames(module_trait_pval)
 
-trait_cor_df <- as.data.frame(module_trait_cor) |>
-  rownames_to_column("module")
-write_csv(trait_cor_df, file.path(DATA_DIR, "wgcna_module_trait_correlations.csv"))
-
-pval_bh_df <- as.data.frame(module_trait_pval_bh) |>
-  rownames_to_column("module")
-write_csv(pval_bh_df, file.path(DATA_DIR, "wgcna_module_trait_pvalues_bh.csv"))
+write_csv(
+  as.data.frame(module_trait_cor) |> rownames_to_column("module"),
+  file.path(DATA_DIR, "wgcna_module_trait_correlations.csv")
+)
+write_csv(
+  as.data.frame(module_trait_pval_bh) |> rownames_to_column("module"),
+  file.path(DATA_DIR, "wgcna_module_trait_pvalues_bh.csv")
+)
 
 kME <- signedKME(datExpr, MEs)
 
@@ -249,10 +232,7 @@ cor <- stats::cor # restore after WGCNA computations
 bg_genes <- ann$gene[ann$uniprot_id %in% colnames(datExpr)]
 bg_genes <- unique(bg_genes[!is.na(bg_genes) & bg_genes != ""])
 
-pw_collection <- build_pathway_collection(
-  min_size = 15, max_size = 500,
-  include_goslim = FALSE
-)
+pw_collection <- build_pathway_collection(min_size = 15, include_goslim = FALSE)
 
 ora_results_list <- list()
 
@@ -264,13 +244,8 @@ for (mod in unique_modules) {
 
   ora_res <- tryCatch(
     run_ora_deduplicated(
-      genes = mod_genes,
-      universe = bg_genes,
-      pathways = pw_collection,
-      em_cutoff = 0.5,
-      min_size = 15,
-      max_size = 500,
-      padj_cutoff = 0.10
+      genes = mod_genes, universe = bg_genes, pathways = pw_collection,
+      min_size = 15, padj_cutoff = 0.10
     ),
     error = function(e) {
       warning(sprintf("ORA failed for '%s': %s", mod, e$message))
@@ -281,9 +256,7 @@ for (mod in unique_modules) {
   if (!is.null(ora_res) && nrow(ora_res) > 0) {
     ora_res$module <- mod
     ora_res$Description <- clean_pathway_name(ora_res$pathway)
-    ora_res$geneID <- vapply(ora_res$overlapGenes, function(g) {
-      paste(g, collapse = "/")
-    }, character(1))
+    ora_res$geneID <- vapply(ora_res$overlapGenes, paste, character(1), collapse = "/")
     ora_res$Count <- ora_res$overlap
     ora_res$p.adjust <- ora_res$padj
     ora_res$ID <- ora_res$pathway
@@ -304,6 +277,7 @@ key_mod_counts <- enrich_df |>
   head(5) |>
   pull(module)
 writeLines(key_mod_counts, file.path(DATA_DIR, "key_modules.txt"))
+writeLines(key_mod_counts[nzchar(trimws(key_mod_counts))], file.path(PANEL_DIR, "key_modules.txt"))
 
 sft_summary <- tibble(
   selected_power    = soft_power,
@@ -314,46 +288,35 @@ sft_summary <- tibble(
 )
 write_csv(sft_summary, file.path(DATA_DIR, "wgcna_sft_summary.csv"))
 
-PANEL_DIR <- "04_Figures/F05/c_data"
-dir.create(PANEL_DIR, recursive = TRUE, showWarnings = FALSE)
-
 meta$group <- factor(meta$group,
   levels = c("Young_Pre", "Young_Post", "Old_Pre", "Old_Post")
 )
 
-pheno_cols_panel <- c(
-  "VL_thick_cm", "DXA_LBM_kg", "BMI",
-  "Type_I_fCSA", "Type_II_fCSA", "deadlift_1rm_kg"
-)
-for (pc in pheno_cols_panel) {
-  if (pc %in% names(dal_meta) && !(pc %in% names(meta))) {
-    vals <- dal_meta[[pc]]
-    if (!is.numeric(vals)) vals <- as.numeric(as.character(vals))
-    meta[[pc]] <- vals[match(meta$sample_id, dal_meta$Col_ID)]
-  }
-}
-
 mod_sizes <- sort(table(module_colors[module_colors != "grey"]), decreasing = TRUE)
 
-# Every module name is two halves, "what the module is made of | what its
-# enrichment says it does", and the halves come from different evidence on
-# purpose. Both are derived in 04_Figures/F05/a_script/_module_labels.R and
-# travel with the figure as sheets WGCNA_module_core and WGCNA_module_ora.
+# Every module label is two halves from different evidence on purpose,
+# "<enrichment term> | <hub family>", derived in _module_labels.R and shipped as
+# sheets WGCNA_module_core and WGCNA_module_ora (where abbreviations such as
+# "PMF" or "Gluc." resolve). One label per module, used unchanged on the figure
+# and in the manuscript; it is authored here because no trimming rule knows
+# that "60S" is the half of "60S Ribosome" worth keeping.
 #
-# The first half is the largest protein family among the proteins with
+# The hub half is the largest protein family among the proteins with
 # kME >= 0.6, the module's own definition of a core. It ranges from a
 # 48-of-74 respiratory chain in green to a 6-of-53 20S proteasome in brown, and
-# the percentage is on the sheet so a thin one reads as thin.
+# the percentage is on the sheet so a thin one reads as thin. Families are
+# broad, not gene symbols: "eEF1A" named two of black's ten hubs and reads as
+# eIF1A, a different protein in another module.
 #
-# The second half is a GO:BP term, but not the module's top one. The top term
-# puts annotation artifacts on the figure: red's is "Negative Regulation Of
-# Syncytium Formation" at padj 9.6e-41, whose whole overlap is ribosomal
-# proteins, and blue's is "The Role Of GTSE1 In G2/M Progression", whose overlap
-# is tubulins and proteasome subunits. So each module's significant terms are
-# first rolled up to a shared GO:BP ancestor, which picks the branch the module
-# actually sits on and leaves the artifacts off it, and the label then takes the
-# most significant term beneath that ancestor. The ancestor itself was tried as
-# the label and climbed too far -- blue reached "Macromolecule Metabolic
+# The enrichment half is a GO:BP term, but not the module's top one. The top
+# term puts annotation artefacts on the figure: red's is "Negative Regulation
+# Of Syncytium Formation" at padj 9.6e-41, whose whole overlap is ribosomal
+# proteins, and blue's is "The Role Of GTSE1 In G2/M Progression", whose
+# overlap is tubulins and proteasome subunits; neither happens in post-mitotic
+# muscle. So each module's significant terms are first rolled up to a shared
+# GO:BP ancestor, which picks the branch the module sits on, and the label
+# takes the most significant term beneath it. The ancestor itself was tried as
+# the label and climbed too far: blue reached "Macromolecule Metabolic
 # Process", brown stopped one step from the GO root.
 #
 # Three labels are not what the most-significant-term rule alone returns, and
@@ -372,43 +335,18 @@ mod_sizes <- sort(table(module_colors[module_colors != "grey"]), decreasing = TR
 # a threshold that would hide it.
 #
 # ora_label, the top over-representation term, stays in the table below. It is
-# no longer on the figure but it is the thing the roll-up is being preferred to,
-# and a reader checking the choice needs to see both.
+# off the figure, but it is what the roll-up is preferred to, and a reader
+# checking the choice needs both. If the evidence column stops matching
+# bio_label, the modules have moved (colours follow size rank; see above).
 #
-# Colours are not stable identities: WGCNA names modules by size rank at every
-# refit, which is why module_colors is matched against the submitted network
-# above. If the evidence column stops matching bio_label, the modules have moved.
-# One label per module, used unchanged on the figure and in the manuscript.
-# There used to be two -- a full name and a trimmed one for the count bars --
-# and they drifted apart, which is the defect class this whole pass exists to
-# close. The shorthand is authored here rather than derived from the full terms
-# by string surgery, because no trimming rule knows that "60S" is the half of
-# "60S Ribosome" worth keeping. The full terms stay in S6 Table, sheets
-# WGCNA_module_core and WGCNA_module_ora, which is where a reader resolves
-# "PMF" or "Gluc.".
+# The order is load-bearing: with interchangeable halves black led with
+# "Transl. Fact.", a biology its enrichment never shows, resting on three
+# proteins, over the glycolysis term that ranked first. The convention is stated
+# in the panel subtitle rather than prefixed onto all nine labels.
 #
-# Panel A wraps each label to max(10, round(1.25 * sqrt(n_proteins)))
-# characters, so the widest bar has 23 and the narrowest 10; five of these fit
-# on one line and four break at the vertical rule.
-# Each label is <enrichment term> | <hub family>. The convention is stated in
-# the panel subtitle rather than prefixed onto all nine, which cost more width
-# than it bought. The order is load-bearing: the halves used to be
-# interchangeable, which let black lead with "Transl. Fact." -- a biology its
-# enrichment never shows, resting on three proteins -- over the glycolysis term
-# that ranked first. Now the enrichment always leads and the hubs follow, so
-# black reads "Glycolysis | Transl. Factors" and the tension is on the figure.
-#
-# wrap_at_rule() splits at the pipe, so each half is its own line inside the
-# bar and fits max(10, 1.25 * sqrt(n)) characters on its own; magenta binds.
-#
-# Hub families are broad, not gene symbols: "eEF1A" named two of black's ten
-# hubs and reads as eIF1A, which is a different protein in another module.
-#
-# Blue and red do not use their literal top term. Blue's is "GTSE1 in G2/M"
-# and red's "Negative Regulation of Syncytium Formation": both are annotation
-# artefacts -- mitotic sets carried by chaperones and tubulins, ribosomal
-# proteins annotated to myoblast fusion -- and neither happens in post-mitotic
-# muscle. They take the defensible term from their own evidence list instead.
+# Panel A's wrap_at_rule() splits at the pipe and wraps each half to
+# max(10, round(1.25 * sqrt(n_proteins))) characters, 23 on the widest bar and
+# 10 on the narrowest; magenta binds.
 #
 # Blue's hub half is the weakest claim here. Its membership is 25 chaperones,
 # but five of its top ten hubs are cytoskeletal (MSN, DYNC1H1, TUBB, TUBA1B,
@@ -516,24 +454,25 @@ group_z <- vapply(
 )
 saveRDS(group_z, file.path(PANEL_DIR, "group_z.rds"))
 
-pre_meta <- meta |> filter(time == "Pre")
-post_meta <- meta |> filter(time == "Post")
+pre_meta <- meta |>
+  filter(time == "Pre") |>
+  mutate(subject_key = sub("_(Pre|Post)$", "", sample_id))
+post_meta <- meta |>
+  filter(time == "Post") |>
+  mutate(subject_key = sub("_(Pre|Post)$", "", sample_id))
 
 me_pre_raw <- MEs[pre_meta$sample_id, , drop = FALSE]
 me_post_raw <- MEs[post_meta$sample_id, , drop = FALSE]
-pre_subjects <- sub("_(Pre|Post)$", "", pre_meta$sample_id)
-post_subjects <- sub("_(Pre|Post)$", "", post_meta$sample_id)
+pre_subjects <- pre_meta$subject_key
 rownames(me_pre_raw) <- pre_subjects
-rownames(me_post_raw) <- post_subjects
+rownames(me_post_raw) <- post_meta$subject_key
 
 common_subj <- intersect(rownames(me_pre_raw), rownames(me_post_raw))
 me_pre <- me_pre_raw[common_subj, , drop = FALSE]
 me_post <- me_post_raw[common_subj, , drop = FALSE]
 delta_me <- me_post - me_pre
 
-pheno_pre <- meta |>
-  filter(time == "Pre") |>
-  mutate(subject_key = sub("_(Pre|Post)$", "", sample_id)) |>
+pheno_pre <- pre_meta |>
   dplyr::select(
     subject_key, VL_thick_cm, DXA_LBM_kg, BMI,
     deadlift_1rm_kg, Type_I_fCSA, Type_II_fCSA
@@ -543,9 +482,7 @@ pheno_pre <- meta |>
     DL_Pre = deadlift_1rm_kg, T1_Pre = Type_I_fCSA, T2_Pre = Type_II_fCSA
   )
 
-pheno_post <- meta |>
-  filter(time == "Post") |>
-  mutate(subject_key = sub("_(Pre|Post)$", "", sample_id)) |>
+pheno_post <- post_meta |>
   dplyr::select(
     subject_key, VL_thick_cm, DXA_LBM_kg,
     deadlift_1rm_kg, Type_I_fCSA, Type_II_fCSA
@@ -565,15 +502,9 @@ pheno_wide <- inner_join(pheno_pre, pheno_post, by = "subject_key") |>
   ) |>
   filter(subject_key %in% common_subj)
 
-subj_age <- meta |>
-  filter(time == "Pre") |>
-  mutate(subject_key = sub("_(Pre|Post)$", "", sample_id)) |>
+subj_age <- pre_meta |>
   dplyr::select(subject_key, age) |>
   distinct()
-
-pre_expr <- datExpr[pre_meta$sample_id, , drop = FALSE]
-rownames(pre_expr) <- pre_subjects
-pre_expr <- pre_expr[common_subj, , drop = FALSE]
 
 delta_vl_vec <- pheno_wide$delta_VL[match(common_subj, pheno_wide$subject_key)]
 delta_lbm_vec <- pheno_wide$delta_LBM[match(common_subj, pheno_wide$subject_key)]
@@ -584,149 +515,83 @@ delta_t2_vec <- pheno_wide$delta_T2[match(common_subj, pheno_wide$subject_key)]
 pred_cor <- tibble(module = colnames(me_pre)) |>
   rowwise() |>
   mutate(
-    r_vl = cor(me_pre[common_subj, module],
-      pheno_wide$delta_VL[match(common_subj, pheno_wide$subject_key)],
-      use = "complete.obs"
-    ),
-    r_lbm = cor(me_pre[common_subj, module],
-      pheno_wide$delta_LBM[match(common_subj, pheno_wide$subject_key)],
-      use = "complete.obs"
-    ),
-    r_dl = cor(me_pre[common_subj, module],
-      pheno_wide$delta_DL[match(common_subj, pheno_wide$subject_key)],
-      use = "complete.obs"
-    ),
-    r_t1 = cor(me_pre[common_subj, module],
-      pheno_wide$delta_T1[match(common_subj, pheno_wide$subject_key)],
-      use = "complete.obs"
-    ),
-    r_t2 = cor(me_pre[common_subj, module],
-      pheno_wide$delta_T2[match(common_subj, pheno_wide$subject_key)],
-      use = "complete.obs"
-    ),
+    r_vl = cor(me_pre[common_subj, module], delta_vl_vec, use = "complete.obs"),
+    r_lbm = cor(me_pre[common_subj, module], delta_lbm_vec, use = "complete.obs"),
     max_r = max(abs(r_vl), abs(r_lbm), na.rm = TRUE)
   ) |>
-  ungroup() |>
-  mutate(across(c(r_vl, r_lbm, r_dl, r_t1, r_t2, max_r), as.numeric))
+  ungroup()
 
 top3 <- pred_cor |>
   arrange(desc(max_r)) |>
   head(3) |>
   pull(module)
 
-KEY_MODULES <- readLines(file.path(DATA_DIR, "key_modules.txt"))
-KEY_MODULES <- KEY_MODULES[nzchar(trimws(KEY_MODULES))]
-writeLines(KEY_MODULES, file.path(PANEL_DIR, "key_modules.txt"))
-
 all_mods <- colnames(me_pre_raw)
 
-bl_meta <- meta |>
-  filter(time == "Pre") |>
-  mutate(subject_key = sub("_(Pre|Post)$", "", sample_id))
-
 baseline_traits <- data.frame(
-  BMI_Pre = bl_meta$BMI[match(pre_subjects, bl_meta$subject_key)],
-  VL_Pre = bl_meta$VL_thick_cm[match(pre_subjects, bl_meta$subject_key)],
-  LBM_Pre = bl_meta$DXA_LBM_kg[match(pre_subjects, bl_meta$subject_key)],
+  BMI_Pre = pre_meta$BMI[match(pre_subjects, pre_meta$subject_key)],
+  VL_Pre = pre_meta$VL_thick_cm[match(pre_subjects, pre_meta$subject_key)],
+  LBM_Pre = pre_meta$DXA_LBM_kg[match(pre_subjects, pre_meta$subject_key)],
   row.names = pre_subjects
 )
-
-bl_cor_mat <- cor(me_pre_raw[pre_subjects, all_mods, drop = FALSE],
-  baseline_traits,
-  use = "pairwise.complete.obs"
-)
-bl_pval_mat <- matrix(NA_real_,
-  nrow = length(all_mods), ncol = ncol(baseline_traits),
-  dimnames = list(all_mods, colnames(baseline_traits))
-)
-for (trait in colnames(baseline_traits)) {
-  n_ok <- sum(!is.na(baseline_traits[pre_subjects, trait]))
-  bl_pval_mat[, trait] <- corPvalueStudent(bl_cor_mat[, trait], n_ok)
-}
-
 change_traits <- data.frame(
-  delta_VL  = pheno_wide$delta_VL[match(common_subj, pheno_wide$subject_key)],
-  delta_LBM = pheno_wide$delta_LBM[match(common_subj, pheno_wide$subject_key)],
+  delta_VL  = delta_vl_vec,
+  delta_LBM = delta_lbm_vec,
   row.names = common_subj
 )
 
-ch_cor_mat <- cor(delta_me[common_subj, all_mods, drop = FALSE],
-  change_traits,
-  use = "pairwise.complete.obs"
-)
-ch_pval_mat <- matrix(NA_real_,
-  nrow = length(all_mods), ncol = ncol(change_traits),
-  dimnames = list(all_mods, colnames(change_traits))
-)
-for (trait in colnames(change_traits)) {
-  n_ok <- sum(!is.na(change_traits[common_subj, trait]))
-  ch_pval_mat[, trait] <- corPvalueStudent(ch_cor_mat[, trait], n_ok)
+# Eigengene-trait Pearson r and Student p over the given subjects. stats::cor
+# (restored above), pairwise-complete, with each trait's own non-missing n.
+cor_p <- function(me, traits) {
+  r <- cor(me, traits, use = "pairwise.complete.obs")
+  p <- matrix(NA_real_,
+    nrow = ncol(me), ncol = ncol(traits),
+    dimnames = list(colnames(me), colnames(traits))
+  )
+  for (trait in colnames(traits)) {
+    p[, trait] <- corPvalueStudent(r[, trait], sum(!is.na(traits[[trait]])))
+  }
+  list(r = r, p = p)
 }
 
-# Stratified (Young vs Old)
+bl_all <- cor_p(me_pre_raw[pre_subjects, all_mods, drop = FALSE], baseline_traits)
+bl_cor_mat <- bl_all$r
+bl_pval_mat <- bl_all$p
+ch_all <- cor_p(delta_me[common_subj, all_mods, drop = FALSE], change_traits)
+ch_cor_mat <- ch_all$r
+ch_pval_mat <- ch_all$p
+
 young_pre_subj <- subj_age$subject_key[subj_age$age == "Young"]
 old_pre_subj <- subj_age$subject_key[subj_age$age == "Old"]
 
 bl_subj_y <- intersect(pre_subjects, young_pre_subj)
-bl_traits_y <- baseline_traits[bl_subj_y, , drop = FALSE]
-me_pre_y <- me_pre_raw[bl_subj_y, all_mods, drop = FALSE]
-bl_cor_young <- cor(me_pre_y, bl_traits_y, use = "pairwise.complete.obs")
-bl_pval_young <- matrix(NA_real_,
-  nrow = length(all_mods), ncol = ncol(bl_traits_y),
-  dimnames = list(all_mods, colnames(bl_traits_y))
-)
-for (trait in colnames(bl_traits_y)) {
-  n_ok <- sum(!is.na(bl_traits_y[bl_subj_y, trait]))
-  bl_pval_young[, trait] <- corPvalueStudent(bl_cor_young[, trait], n_ok)
-}
+bl_y <- cor_p(me_pre_raw[bl_subj_y, all_mods, drop = FALSE], baseline_traits[bl_subj_y, , drop = FALSE])
+bl_cor_young <- bl_y$r
+bl_pval_young <- bl_y$p
 
 bl_subj_o <- intersect(pre_subjects, old_pre_subj)
-bl_traits_o <- baseline_traits[bl_subj_o, , drop = FALSE]
-me_pre_o <- me_pre_raw[bl_subj_o, all_mods, drop = FALSE]
-bl_cor_old <- cor(me_pre_o, bl_traits_o, use = "pairwise.complete.obs")
-bl_pval_old <- matrix(NA_real_,
-  nrow = length(all_mods), ncol = ncol(bl_traits_o),
-  dimnames = list(all_mods, colnames(bl_traits_o))
-)
-for (trait in colnames(bl_traits_o)) {
-  n_ok <- sum(!is.na(bl_traits_o[bl_subj_o, trait]))
-  bl_pval_old[, trait] <- corPvalueStudent(bl_cor_old[, trait], n_ok)
-}
+bl_o <- cor_p(me_pre_raw[bl_subj_o, all_mods, drop = FALSE], baseline_traits[bl_subj_o, , drop = FALSE])
+bl_cor_old <- bl_o$r
+bl_pval_old <- bl_o$p
 
 common_young <- intersect(common_subj, young_pre_subj)
-ch_traits_y <- change_traits[common_young, , drop = FALSE]
-dme_y <- delta_me[common_young, all_mods, drop = FALSE]
-ch_cor_young <- cor(dme_y, ch_traits_y, use = "pairwise.complete.obs")
-ch_pval_young <- matrix(NA_real_,
-  nrow = length(all_mods), ncol = ncol(ch_traits_y),
-  dimnames = list(all_mods, colnames(ch_traits_y))
-)
-for (trait in colnames(ch_traits_y)) {
-  n_ok <- sum(!is.na(ch_traits_y[common_young, trait]))
-  ch_pval_young[, trait] <- corPvalueStudent(ch_cor_young[, trait], n_ok)
-}
+ch_y <- cor_p(delta_me[common_young, all_mods, drop = FALSE], change_traits[common_young, , drop = FALSE])
+ch_cor_young <- ch_y$r
+ch_pval_young <- ch_y$p
 
 common_old <- intersect(common_subj, old_pre_subj)
-ch_traits_o <- change_traits[common_old, , drop = FALSE]
-dme_o <- delta_me[common_old, all_mods, drop = FALSE]
-ch_cor_old <- cor(dme_o, ch_traits_o, use = "pairwise.complete.obs")
-ch_pval_old <- matrix(NA_real_,
-  nrow = length(all_mods), ncol = ncol(ch_traits_o),
-  dimnames = list(all_mods, colnames(ch_traits_o))
-)
-for (trait in colnames(ch_traits_o)) {
-  n_ok <- sum(!is.na(ch_traits_o[common_old, trait]))
-  ch_pval_old[, trait] <- corPvalueStudent(ch_cor_old[, trait], n_ok)
-}
+ch_o <- cor_p(delta_me[common_old, all_mods, drop = FALSE], change_traits[common_old, , drop = FALSE])
+ch_cor_old <- ch_o$r
+ch_pval_old <- ch_o$p
 
 message(sprintf(
   "  Stratified: Young baseline n=%d, Old baseline n=%d, Young change n=%d, Old change n=%d",
   length(bl_subj_y), length(bl_subj_o), length(common_young), length(common_old)
 ))
 
-# LMM contrasts model the repeated measures: eigengene ~ group + (1|subject)
-lmm_data <- meta |>
-  mutate(group = factor(group, levels = c("Young_Pre", "Young_Post", "Old_Pre", "Old_Post")))
+# LMM contrasts model the repeated measures: eigengene ~ group + (1|subject).
+# meta$group is already a factor in design order.
+lmm_data <- meta
 
 lmm_contrast_list <- list(
   Aging          = c(-1, 0, 1, 0),
@@ -741,9 +606,7 @@ for (mod in all_mods) {
 
   fit <- tryCatch(
     suppressWarnings(
-      lmer(as.formula(paste0("`", mod, "` ~ group + (1 | subject)")),
-        data = lmm_data, REML = TRUE
-      )
+      lmer(as.formula(paste0("`", mod, "` ~ group + (1 | subject)")), data = lmm_data)
     ),
     error = function(e) {
       warning(sprintf("LMM failed for %s: %s", mod, e$message))
@@ -758,24 +621,16 @@ for (mod in all_mods) {
   emm <- emmeans(fit, ~group)
 
   for (cname in names(lmm_contrast_list)) {
-    ctr <- contrast(emm, list(ctr = lmm_contrast_list[[cname]]))
-    s <- summary(ctr, ddf = "Kenward-Roger")
-    est <- s$estimate
-    se <- s$SE
-    df_k <- s$df
-    tval <- s$t.ratio
-    praw <- s$p.value
-    r_equiv <- sign(est) * sqrt(tval^2 / (tval^2 + df_k))
-
+    s <- summary(contrast(emm, list(ctr = lmm_contrast_list[[cname]])), ddf = "Kenward-Roger")
     lmm_rows <- c(lmm_rows, list(tibble(
       module   = mod,
       contrast = cname,
-      estimate = round(est, 5),
-      SE       = round(se, 5),
-      df       = round(df_k, 2),
-      t_ratio  = round(tval, 4),
-      p_raw    = praw,
-      r_equiv  = round(r_equiv, 4),
+      estimate = round(s$estimate, 5),
+      SE       = round(s$SE, 5),
+      df       = round(s$df, 2),
+      t_ratio  = round(s$t.ratio, 4),
+      p_raw    = s$p.value,
+      r_equiv  = round(sign(s$estimate) * sqrt(s$t.ratio^2 / (s$t.ratio^2 + s$df)), 4),
       singular = singular
     )))
   }
@@ -791,11 +646,8 @@ message(sprintf(
 lmm_df$p_bh <- p.adjust(lmm_df$p_raw, method = "BH")
 
 per_col_bh <- function(pmat) {
-  bh_mat <- pmat
-  for (j in seq_len(ncol(pmat))) {
-    bh_mat[, j] <- p.adjust(pmat[, j], method = "BH")
-  }
-  bh_mat
+  for (j in seq_len(ncol(pmat))) pmat[, j] <- p.adjust(pmat[, j], method = "BH")
+  pmat
 }
 bl_pval_bh_young <- per_col_bh(bl_pval_young)
 bl_pval_bh_old <- per_col_bh(bl_pval_old)
@@ -832,20 +684,15 @@ for (age_grp in c("Young", "Old")) {
 
     fit_s <- tryCatch(
       suppressWarnings(
-        lmer(me_val ~ time + (1 | subject), data = strat_data, REML = TRUE)
+        lmer(me_val ~ time + (1 | subject), data = strat_data)
       ),
       error = function(e) NULL
     )
     if (is.null(fit_s)) next
 
-    sing_s <- isSingular(fit_s)
-    emm_s <- emmeans(fit_s, ~time)
-    ctr_s <- contrast(emm_s, list(training = c(-1, 1)))
-    s_s <- summary(ctr_s, ddf = "Kenward-Roger")
+    s_s <- summary(contrast(emmeans(fit_s, ~time), list(training = c(-1, 1))), ddf = "Kenward-Roger")
     t_s <- s_s$t.ratio
     df_s <- s_s$df
-    r_eq_s <- sign(s_s$estimate) * sqrt(t_s^2 / (t_s^2 + df_s))
-
     strat_rows <- c(strat_rows, list(tibble(
       age_group = age_grp,
       module    = mod,
@@ -854,8 +701,8 @@ for (age_grp in c("Young", "Old")) {
       df        = round(df_s, 2),
       t_ratio   = round(t_s, 4),
       p_raw     = s_s$p.value,
-      r_equiv   = round(r_eq_s, 4),
-      singular  = sing_s
+      r_equiv   = round(sign(s_s$estimate) * sqrt(t_s^2 / (t_s^2 + df_s)), 4),
+      singular  = isSingular(fit_s)
     )))
   }
 }
@@ -867,15 +714,14 @@ message(sprintf(
   nrow(strat_df), length(all_mods), 2
 ))
 
-bl_cor_df <- as.data.frame(bl_cor_mat) |> rownames_to_column("module")
-bl_pval_df <- as.data.frame(bl_pval_bh) |> rownames_to_column("module")
-write_csv(bl_cor_df, file.path(DATA_DIR, "wgcna_baseline_trait_correlations.csv"))
-write_csv(bl_pval_df, file.path(DATA_DIR, "wgcna_baseline_trait_pvalues_bh.csv"))
-
-ch_cor_df <- as.data.frame(ch_cor_mat) |> rownames_to_column("module")
-ch_pval_df <- as.data.frame(ch_pval_bh) |> rownames_to_column("module")
-write_csv(ch_cor_df, file.path(DATA_DIR, "wgcna_change_trait_correlations.csv"))
-write_csv(ch_pval_df, file.path(DATA_DIR, "wgcna_change_trait_pvalues_bh.csv"))
+for (out in list(
+  list(bl_cor_mat, "wgcna_baseline_trait_correlations.csv"),
+  list(bl_pval_bh, "wgcna_baseline_trait_pvalues_bh.csv"),
+  list(ch_cor_mat, "wgcna_change_trait_correlations.csv"),
+  list(ch_pval_bh, "wgcna_change_trait_pvalues_bh.csv")
+)) {
+  write_csv(as.data.frame(out[[1]]) |> rownames_to_column("module"), file.path(DATA_DIR, out[[2]]))
+}
 
 # Per-module pick of the strongest BH-significant trait association across:
 # simple correlation (all samples), delta correlation (paired all/young/old),

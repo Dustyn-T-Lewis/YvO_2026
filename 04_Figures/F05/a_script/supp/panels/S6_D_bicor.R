@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# S6 Figure D: Pearson against bicor module overlap.
-# Bicor sensitivity analysis: compares Pearson (main) vs biweight midcorrelation module overlap.
+# S6 Figure D: bicor sensitivity, the overlap between the main Pearson modules
+# and a network rebuilt on biweight midcorrelation.
 
 setwd(here::here())
 
@@ -15,13 +15,9 @@ BASE <- "04_Figures/F05"
 
 DATA_FILE    <- "02_imputation/c_data/01_imputed.csv"
 PEARSON_MODS <- file.path(BASE, "c_data", "wgcna", "wgcna_module_assignments.csv")
-RPT_PNG      <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF      <- file.path(BASE, "b_reports", "supp", "panels")
+RPT          <- file.path(BASE, "b_reports", "supp", "panels")
 DAT_OUT      <- file.path(BASE, "c_data", "supp")
-
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
+for (d in c(RPT, DAT_OUT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 stopifnot(file.exists(DATA_FILE), file.exists(PEARSON_MODS))
 
@@ -64,7 +60,6 @@ net_bicor <- blockwiseModules(
   mergeCutHeight    = 0.25,
   numericLabels     = TRUE,
   pamRespectsDendro = FALSE,
-  saveTOMs          = FALSE,
   verbose           = 3
 )
 
@@ -108,13 +103,12 @@ matched <- tibble(
   n_bicor        = integer()
 )
 
-jac_temp <- jaccard_mat
 used_p <- character()
 used_b <- character()
 
 while (TRUE) {
-  remaining <- jac_temp[!rownames(jac_temp) %in% used_p,
-                        !colnames(jac_temp) %in% used_b, drop = FALSE]
+  remaining <- jaccard_mat[!rownames(jaccard_mat) %in% used_p,
+                           !colnames(jaccard_mat) %in% used_b, drop = FALSE]
   if (nrow(remaining) == 0 || ncol(remaining) == 0) break
   best_idx <- which(remaining == max(remaining), arr.ind = TRUE)[1, ]
   best_pm  <- rownames(remaining)[best_idx[1]]
@@ -173,12 +167,10 @@ p <- ggplot(jac_long, aes(bicor_module, pearson_module, fill = jaccard)) +
         plot.title    = element_text(size = 13, face = "bold"),
         plot.subtitle = element_text(size = 10))
 
-pdf_device <- get_pdf_device()
-
-ggsave(file.path(RPT_PNG, "S6_D_bicor.png"), p,
+ggsave(file.path(RPT, "S6_D_bicor.png"), p,
        width = 180, height = 140, units = "mm", dpi = 300)
-ggsave(file.path(RPT_PDF, "S6_D_bicor.pdf"), p,
-       width = 180, height = 140, units = "mm", device = pdf_device)
+ggsave(file.path(RPT, "S6_D_bicor.pdf"), p,
+       width = 180, height = 140, units = "mm", device = get_pdf_device())
 
 message("  Bicor sensitivity analysis complete.")
 

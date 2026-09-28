@@ -9,13 +9,9 @@ pacman::p_load(readr, dplyr, tidyr, stringr, ggplot2, patchwork)
 
 BASE <- "04_Figures/F05"
 
-RPT_SUPP_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_SUPP_PDF <- file.path(BASE, "b_reports", "supp", "panels")
+RPT_SUPP <- file.path(BASE, "b_reports", "supp", "panels")
 DAT <- file.path(BASE, "c_data")
-dir.create(RPT_SUPP_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_SUPP_PDF, recursive = TRUE, showWarnings = FALSE)
-
-pdf_device <- get_pdf_device()
+dir.create(RPT_SUPP, recursive = TRUE, showWarnings = FALSE)
 
 message("Panel B: WGCNA per-module triptych...")
 
@@ -36,16 +32,14 @@ stopifnot(
     file.exists(file.path(DAT, "wgcna/wgcna_lmm_stratified_check.csv"))
 )
 
-mod_assign_raw <- read_csv(file.path(DAT, "wgcna/wgcna_module_assignments.csv"))
-mod_size_order <- mod_assign_raw |>
+mod_assign <- read_csv(file.path(DAT, "wgcna/wgcna_module_assignments.csv"))
+KEY_MODULES <- mod_assign |>
   filter(module_color != "grey") |>
   count(module_color, sort = TRUE) |>
   pull(module_color)
-KEY_MODULES <- mod_size_order
 
 message("  Generating triptych data for: ", paste(KEY_MODULES, collapse = ", "))
 
-mod_assign <- mod_assign_raw
 ann <- read_csv(file.path(DAT, "imp_annotations.csv"))
 group_z <- readRDS(file.path(DAT, "group_z.rds"))
 MEs <- readRDS(file.path(DAT, "MEs.rds"))
@@ -79,7 +73,7 @@ message(
   n_distinct(me_long$module), " modules"
 )
 
-pw_collection <- build_pathway_collection(min_size = 15, max_size = 500)
+pw_collection <- build_pathway_collection(min_size = 15)
 universe <- unique(mod_assign$gene)
 
 enrich_list <- lapply(KEY_MODULES, function(mod) {
@@ -91,9 +85,7 @@ enrich_list <- lapply(KEY_MODULES, function(mod) {
     return(NULL)
   }
   res <- tryCatch(
-    run_ora_deduplicated(mod_genes, universe, pw_collection,
-      min_size = 15, max_size = 500, padj_cutoff = 1.0
-    ),
+    run_ora_deduplicated(mod_genes, universe, pw_collection, min_size = 15, padj_cutoff = 1.0),
     error = function(e) {
       message("    ORA failed for ", mod, ": ", e$message)
       NULL
@@ -113,16 +105,8 @@ message(
   n_distinct(enrich_all$module), " modules"
 )
 
-z_scores <- z_long
-me_data <- me_long
-enrich <- enrich_all
 mod_bio <- read_csv(file.path(DAT, "mod_bio_labels.csv"))
 lmm_audit <- read_csv(file.path(DAT, "wgcna/wgcna_lmm_contrast_check.csv"))
-
-if (!"display_label" %in% colnames(mod_bio)) {
-  mod_bio <- mod_bio |>
-    mutate(display_label = paste0(bio_label, " (", str_to_title(module_color), ")"))
-}
 mod_labels <- setNames(mod_bio$display_label, mod_bio$module_color)
 
 lmm_interp <- lmm_audit |>
@@ -138,9 +122,6 @@ lmm_interp <- lmm_audit |>
 interp_map <- setNames(lmm_interp$interp, lmm_interp$mod_color)
 
 PB_W <- 280
-PB_H <- 300
-
-txt_heat <- scale_text(BASE_GENE, PB_W) * 0.7
 txt_axis <- scale_text(BASE_STAT, PB_W) * 1.0
 txt_title <- scale_text(BASE_GENE, PB_W) * 1.3
 txt_bar <- scale_text(BASE_GENE, PB_W) * 0.95
@@ -158,13 +139,13 @@ lmm_stats <- lmm_audit |>
 
 triptych_row <- function(mod, show_xlab = FALSE) {
   label <- mod_labels[mod]
-  n_mod <- z_scores |>
+  n_mod <- z_long |>
     filter(module == mod) |>
     distinct(gene) |>
     nrow()
   title_txt <- paste0(label, " (n=", n_mod, ")")
 
-  z_mod <- z_scores |>
+  z_mod <- z_long |>
     filter(module == mod) |>
     mutate(group = factor(group, levels = group_order))
 
@@ -197,33 +178,22 @@ triptych_row <- function(mod, show_xlab = FALSE) {
       plot.margin = margin(2, 1, 2, 2)
     )
 
-  me_mod <- me_data |>
+  me_mod <- me_long |>
     filter(module == mod) |>
     mutate(
       time = factor(time, levels = c("Pre", "Post")),
       age = factor(age, levels = c("Young", "Old"))
     )
 
-  p_ty <- lmm_stats |>
-    filter(module == mod, contrast == "Training_Young") |>
-    pull(p_bh)
-  p_to <- lmm_stats |>
-    filter(module == mod, contrast == "Training_Old") |>
-    pull(p_bh)
-  p_ag <- lmm_stats |>
-    filter(module == mod, contrast == "Aging") |>
-    pull(p_bh)
-
-  fmt_sig <- function(p) {
+  # Significance stars for this module's BH p on one LMM contrast.
+  sig_of <- function(ctr) {
+    p <- lmm_stats$p_bh[which(lmm_stats$module == mod & lmm_stats$contrast == ctr)]
     if (length(p) == 0 || is.na(p)) {
       return("ns")
     }
     if (p < 0.001) "***" else if (p < 0.01) "**" else if (p < 0.05) "*" else "ns"
   }
 
-  me_means <- me_mod |>
-    group_by(age, time) |>
-    summarise(mean_me = mean(eigengene, na.rm = TRUE), .groups = "drop")
   n_young_pairs <- n_distinct(me_mod$subject[me_mod$age == "Young"])
   n_old_pairs <- n_distinct(me_mod$subject[me_mod$age == "Old"])
   n_all <- nrow(me_mod)
@@ -235,17 +205,17 @@ triptych_row <- function(mod, show_xlab = FALSE) {
     scale_color_manual(values = AGE_COLORS, guide = "none") +
     annotate("text",
       x = 1.5, y = max(me_mod$eigengene) * 0.95,
-      label = paste0(fmt_sig(p_ty), " (n=", n_young_pairs, ")"),
+      label = paste0(sig_of("Training_Young"), " (n=", n_young_pairs, ")"),
       size = txt_sig, fontface = "bold", color = AGE_COLORS["Young"]
     ) +
     annotate("text",
       x = 1.5, y = min(me_mod$eigengene) * 0.95,
-      label = paste0(fmt_sig(p_to), " (n=", n_old_pairs, ")"),
+      label = paste0(sig_of("Training_Old"), " (n=", n_old_pairs, ")"),
       size = txt_sig, fontface = "bold", color = AGE_COLORS["Old"]
     ) +
     annotate("text",
       x = 0.65, y = mean(c(max(me_mod$eigengene), min(me_mod$eigengene))),
-      label = paste0(fmt_sig(p_ag), " (", n_all, ")"),
+      label = paste0(sig_of("Aging"), " (", n_all, ")"),
       size = txt_sig, fontface = "bold", color = "grey40", angle = 90
     ) +
     labs(y = "Eigengene", x = NULL) +
@@ -259,7 +229,7 @@ triptych_row <- function(mod, show_xlab = FALSE) {
       plot.margin = margin(2, 1, 2, 1)
     )
 
-  bar_data <- enrich |>
+  bar_data <- enrich_all |>
     filter(module == mod, padj < 0.05) |>
     arrange(padj) |>
     head(5) |>
@@ -291,9 +261,7 @@ triptych_row <- function(mod, show_xlab = FALSE) {
         fontface = "bold", color = "grey20"
       ) +
       scale_fill_identity() +
-      # Headroom on the right, because the term prints inside its own bar and
-      # the longest ones are wider than the bar they sit in. Without it the
-      # panel clipped them mid-word -- "Metabolism Of Carbo".
+      # Headroom on the right for the terms printed beyond the bars.
       scale_x_continuous(
         expand = expansion(mult = c(0, 1.8)),
         breaks = scales::breaks_pretty(n = 3),
@@ -331,13 +299,10 @@ z_legend <- ggplot(
   theme_void() +
   theme(legend.position = "bottom", legend.text = element_text(size = txt_axis * 0.7))
 
-supp_letters <- setNames(LETTERS[seq_along(KEY_MODULES)], KEY_MODULES)
-
 SINGLE_W <- 280
 SINGLE_H <- 110 # single row + legend
 
 triptych_panel <- function(mod, name) {
-  letter <- supp_letters[mod]
   row <- triptych_row(mod, show_xlab = TRUE)
 
   interp_text <- if (mod %in% names(interp_map)) interp_map[mod] else ""
@@ -355,11 +320,11 @@ triptych_panel <- function(mod, name) {
       )
     )
 
-  ggsave(file.path(RPT_SUPP_PNG, paste0(name, ".png")), single,
+  ggsave(file.path(RPT_SUPP, paste0(name, ".png")), single,
     width = SINGLE_W, height = SINGLE_H, units = "mm", dpi = 300
   )
-  ggsave(file.path(RPT_SUPP_PDF, paste0(name, ".pdf")), single,
-    width = SINGLE_W, height = SINGLE_H, units = "mm", device = pdf_device
+  ggsave(file.path(RPT_SUPP, paste0(name, ".pdf")), single,
+    width = SINGLE_W, height = SINGLE_H, units = "mm", device = get_pdf_device()
   )
   message(sprintf("  Saved %s (%s: %s)", name, mod, interp_text))
   invisible(single)

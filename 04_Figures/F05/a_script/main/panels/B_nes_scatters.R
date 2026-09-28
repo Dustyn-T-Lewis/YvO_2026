@@ -12,11 +12,9 @@ pacman::p_load(readr, dplyr, tidyr, tibble, stringr, patchwork, cowplot, ggrepel
 
 BASE <- "04_Figures/F05"
 
-RPT_PNG <- file.path(BASE, "b_reports", "main", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "main", "panels")
+RPT <- file.path(BASE, "b_reports", "main", "panels")
 DAT <- file.path(BASE, "c_data")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
+dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 
 stopifnot(
   "DEP results missing: 03_DEP/c_data/03_combined_results.csv" =
@@ -95,13 +93,13 @@ fgsea_wide <- fgsea_wide |>
 # different scales, so equal printed type needs unequal canvas type. Panel A is
 # 400 mm wide in a 0.60 x 470 = 282 mm box and is width-limited, so it is drawn
 # at 282/400 = 0.705; panel B is PB_W x PB_H in a 0.55 x 470 by
-# (grid_top - grid_bot) x 300 = 258.5 x 158.46 mm box and is height-limited, so
+# (GRID_TOP - GRID_BOT) x 300 = 258.5 x 158.46 mm box and is height-limited, so
 # it is drawn at 158.46/270 = 0.5869. Both then shrink by the same 165.1/371.3
 # at print, which cancels, leaving panel B's type a factor 1.2013 larger on its
 # own canvas. Panel A's count-bar ticks and axis title are 13.531 and 15.764 pt,
 # printing at 4.242 and 4.942 pt; the three sizes below match that. The box
 # height feeds back: changing them moves panel B's own panel borders, so
-# grid_top and grid_bot in F05.R have to be re-solved afterwards.
+# GRID_TOP and GRID_BOT in F05.R have to be re-solved afterwards.
 PB_AXIS_TEXT <- 16.25
 PB_AXIS_TITLE <- 18.94
 # The quadrant names are furniture and the module names are the data, so the
@@ -142,28 +140,31 @@ build_scatter <- function(df, x_col, y_col, x_lab, y_lab, quad_labels) {
   x_vals <- df[[x_col]]
   y_vals <- df[[y_col]]
 
-  q_tr <- sum(x_vals > 0 & y_vals > 0, na.rm = TRUE)
-  q_bl <- sum(x_vals < 0 & y_vals < 0, na.rm = TRUE)
-  q_tl <- sum(x_vals < 0 & y_vals > 0, na.rm = TRUE)
-  q_br <- sum(x_vals > 0 & y_vals < 0, na.rm = TRUE)
+  # Quadrants in the order top-right, bottom-left, bottom-right, top-left,
+  # matching quad_labels. sx and sy are the signs of x and y in each.
+  sx <- c(1, -1, 1, -1)
+  sy <- c(1, -1, -1, 1)
+  q_n <- vapply(1:4, \(i) sum(sx[i] * x_vals > 0 & sy[i] * y_vals > 0, na.rm = TRUE), integer(1))
+  quad_rect <- lapply(1:4, \(i) {
+    annotate("rect",
+      xmin = min(0, sx[i] * Inf), xmax = max(0, sx[i] * Inf),
+      ymin = min(0, sy[i] * Inf), ymax = max(0, sy[i] * Inf),
+      fill = quad_labels$fill[i], alpha = QUAD_ALPHA
+    )
+  })
+  quad_label <- lapply(1:4, \(i) {
+    annotate("label",
+      x = sx[i] * nes_lim, y = sy[i] * nes_lim,
+      label = sprintf("%s\nn=%d", quad_labels$label[i], q_n[i]),
+      hjust = (sx[i] + 1) / 2, vjust = (sy[i] + 1) / 2,
+      size = PB_QUAD_MM, fontface = "bold", lineheight = 0.9,
+      color = quad_labels$text_col[i], fill = scales::alpha("white", 0.92),
+      label.padding = unit(1.5, "pt")
+    )
+  })
 
   ggplot(df, aes(x = .data[[x_col]], y = .data[[y_col]])) +
-    annotate("rect",
-      xmin = 0, xmax = Inf, ymin = 0, ymax = Inf,
-      fill = quad_labels$fill[1], alpha = QUAD_ALPHA
-    ) +
-    annotate("rect",
-      xmin = -Inf, xmax = 0, ymin = -Inf, ymax = 0,
-      fill = quad_labels$fill[2], alpha = QUAD_ALPHA
-    ) +
-    annotate("rect",
-      xmin = 0, xmax = Inf, ymin = -Inf, ymax = 0,
-      fill = quad_labels$fill[3], alpha = QUAD_ALPHA
-    ) +
-    annotate("rect",
-      xmin = -Inf, xmax = 0, ymin = 0, ymax = Inf,
-      fill = quad_labels$fill[4], alpha = QUAD_ALPHA
-    ) +
+    quad_rect +
     geom_hline(yintercept = 0, color = "grey60", linewidth = 0.2) +
     geom_vline(xintercept = 0, color = "grey60", linewidth = 0.2) +
     geom_abline(
@@ -193,34 +194,7 @@ build_scatter <- function(df, x_col, y_col, x_lab, y_lab, quad_labels) {
       xlim = c(-nes_lim * 0.95, nes_lim * 0.95),
       ylim = c(-nes_lim * 0.88, nes_lim * 0.88)
     ) +
-    annotate("label",
-      x = nes_lim, y = nes_lim,
-      label = sprintf("%s\nn=%d", quad_labels$label[1], q_tr),
-      hjust = 1, vjust = 1, size = PB_QUAD_MM, fontface = "bold", lineheight = 0.9,
-      color = quad_labels$text_col[1], fill = scales::alpha("white", 0.92),
-      label.padding = unit(1.5, "pt")
-    ) +
-    annotate("label",
-      x = -nes_lim, y = -nes_lim,
-      label = sprintf("%s\nn=%d", quad_labels$label[2], q_bl),
-      hjust = 0, vjust = 0, size = PB_QUAD_MM, fontface = "bold", lineheight = 0.9,
-      color = quad_labels$text_col[2], fill = scales::alpha("white", 0.92),
-      label.padding = unit(1.5, "pt")
-    ) +
-    annotate("label",
-      x = nes_lim, y = -nes_lim,
-      label = sprintf("%s\nn=%d", quad_labels$label[3], q_br),
-      hjust = 1, vjust = 0, size = PB_QUAD_MM, fontface = "bold", lineheight = 0.9,
-      color = quad_labels$text_col[3], fill = scales::alpha("white", 0.92),
-      label.padding = unit(1.5, "pt")
-    ) +
-    annotate("label",
-      x = -nes_lim, y = nes_lim,
-      label = sprintf("%s\nn=%d", quad_labels$label[4], q_tl),
-      hjust = 0, vjust = 1, size = PB_QUAD_MM, fontface = "bold", lineheight = 0.9,
-      color = quad_labels$text_col[4], fill = scales::alpha("white", 0.92),
-      label.padding = unit(1.5, "pt")
-    ) +
+    quad_label +
     scale_size_continuous(
       range = c(4.5, 12), name = "Proteins",
       breaks = c(50, 100, 200, 300)
@@ -231,9 +205,7 @@ build_scatter <- function(df, x_col, y_col, x_lab, y_lab, quad_labels) {
     scale_y_continuous(
       breaks = seq(-6, 6, 3), expand = expansion(0, 0)
     ) +
-    coord_fixed(
-      ratio = 1, xlim = c(-nes_lim, nes_lim), ylim = c(-nes_lim, nes_lim)
-    ) +
+    coord_fixed(xlim = c(-nes_lim, nes_lim), ylim = c(-nes_lim, nes_lim)) +
     labs(title = NULL, subtitle = NULL, x = x_lab, y = y_lab) +
     FIG_THEME +
     theme(
@@ -275,10 +247,10 @@ scatters_panel <- (p_top / p_bottom) +
 PB_W <- 220
 PB_H <- 270
 
-ggsave(file.path(RPT_PNG, "B_nes_scatters.png"), scatters_panel,
+ggsave(file.path(RPT, "B_nes_scatters.png"), scatters_panel,
   width = PB_W, height = PB_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "B_nes_scatters.pdf"), scatters_panel,
+ggsave(file.path(RPT, "B_nes_scatters.pdf"), scatters_panel,
   width = PB_W, height = PB_H, units = "mm", device = get_pdf_device()
 )
 
@@ -302,7 +274,7 @@ p_legend_src <- p_top +
 legend_grob <- cowplot::get_plot_component(p_legend_src, "guide-box-bottom", return_all = FALSE)
 p_legend <- cowplot::ggdraw(legend_grob)
 
-ggsave(file.path(RPT_PNG, "B_nes_scatters_legend.png"), p_legend,
+ggsave(file.path(RPT, "B_nes_scatters_legend.png"), p_legend,
   width = 90, height = 16, units = "mm", dpi = 300
 )
 
