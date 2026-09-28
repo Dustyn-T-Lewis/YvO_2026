@@ -1,6 +1,6 @@
 # F01
 
-Draws Figure 1, the training volume and hypertrophy panels, and S2 Figure, and writes Table 1 and S2 Table.
+Draws Figure 1 (training volume and hypertrophy) and S2 Figure, and writes Table 1 and S2 Table.
 
 ## Reads
 
@@ -8,12 +8,8 @@ Draws Figure 1, the training volume and hypertrophy panels, and S2 Figure, and w
 
 ## Writes
 
-- `b_reports/main/F01.pdf`, `F01.png`: Figure 1, double-column width
-- `b_reports/main/F01_single_col.pdf`, `F01_single_col.png`: Figure 1 at single-column width, from the same panels
-- `b_reports/supp/S2.pdf`, `S2.png`: S2 Figure
-- `b_reports/supp/S2_Figure.pdf`: S2 Figure with its legend, the official supplementary file
-- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script
-- `c_data/F01_table_1a_characteristics.csv`, `F01_table_1b_pre_post.csv`, `F01_table_1c_composition.csv`: Table 1
+- `b_reports/main/` and `b_reports/supp/`: the composites and their `panels/`, listed in the table below, plus `F01_single_col.pdf` and `.png`, Figure 1 at single-column width
+- `c_data/F01_table_1*.csv`: Table 1
 - `c_data/F01_data.xlsx`: S2 Table
 
 ## Run
@@ -24,13 +20,13 @@ Rscript 04_Figures/F01/a_script/main/F01.R
 Rscript 04_Figures/F01/a_script/F01_data.R
 ```
 
-Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. `_prepost.R` holds the pre/post panel and its 2 x 2 mixed ANOVA, shared by every panel except A, and is only sourced. `04_phenotype_table.R` builds Table 1; `F01_data.R` sources it.
+`_prepost.R` holds the pre/post panel and its 2 x 2 mixed ANOVA, used by every panel except A. `04_phenotype_table.R` builds Table 1 and is sourced by `F01_data.R`.
 
 ## Order
 
-`F01_data.R` runs last. Table 1B is assembled from the summary CSVs the panels leave in `c_data/`, so a table cell and a figure p-value come from one calculation, and the script stops on any missing summary. It then folds the tables and panel CSVs into the workbook and deletes the panel CSVs.
+`F01_data.R` runs last. It builds Table 1B from the summary CSVs the panels leave in `c_data/`, so each table cell and figure p-value come from one calculation, and stops if any is missing. It then folds tables and panel CSVs into the workbook and deletes the panel CSVs.
 
-The panels jitter their points. Panels A, S2 A and S2 D set the seed. The others draw from the stream the panel before them leaves, so they match the composites only when run through `F01.R` and `S2.R`, in the order those scripts source them.
+Panels A, S2 A and S2 D seed their jitter; the others continue the previous panel's random stream, so they match the composites only when run through `F01.R` and `S2.R`.
 
 ## Outputs and manuscript items
 

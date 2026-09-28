@@ -1,6 +1,6 @@
 # YvO_2026
 
-Analysis code for the skeletal muscle proteome response to resistance training in younger and older adults. Vastus lateralis biopsies came from 32 participants before and after training, 64 samples, quantified by DIA mass spectrometry. After removing the two consensus outlier samples, `Y_S05_Pre` and `Y_S07_Post`, the analysed matrix is 2,106 proteins across 62 samples. limma tests four contrasts: Aging, Training_Young, Training_Old and Interaction. At FDR < 0.05 they give 278, 135, 0 and 1 proteins.
+Analysis code for the skeletal muscle proteome response to resistance training in younger and older adults: vastus lateralis biopsies from 32 participants before and after training, 64 samples, quantified by DIA mass spectrometry. Without the two consensus outliers, `Y_S05_Pre` and `Y_S07_Post`, the matrix is 2,106 proteins by 62 samples. limma's four contrasts, Aging, Training_Young, Training_Old and Interaction, give 278, 135, 0 and 1 proteins at FDR < 0.05.
 
 ```sh
 Rscript setup.R      # once after cloning
@@ -21,15 +21,15 @@ Rscript run_all.R    # every step, each in its own R session
   shared/          code the figure scripts source
 ```
 
-Each stage and figure directory has a `README.md`, and the same shape: `a_script/` for code, `b_reports/` for renders, `c_data/` for tables. A figure directory splits code and renders into `main/` for its main figure and `supp/` for its supplementary figures, each with a `panels/` folder holding one script, or one render, per panel. Each composite is named after the manuscript item it draws. Every supplementary figure also gets `<item>_Figure.pdf`, the figure with its legend from `04_Figures/shared/supp_legends.txt`; those are the official supplementary files. Files starting with `_` hold code that other scripts source.
+Every stage and figure directory has a `README.md`, `a_script/` for code, `b_reports/` for renders and `c_data/` for tables. Figure directories split code and renders into `main/` and `supp/`, each with a `panels/` folder of one script or render per panel; every panel script also runs on its own. Composites are named after the manuscript item they draw. Each supplementary figure also gets `<item>_Figure.pdf`, the official file, with its legend from `04_Figures/shared/supp_legends.txt`. Files starting with `_` are only sourced.
 
-Git tracks the renders and workbooks the manuscript cites, and the tables each stage writes. Panel renders, stage reports and intermediate R objects are ignored; a run rewrites them.
+Git tracks the cited renders and workbooks and each stage's tables; a run rewrites the ignored panel renders, reports and R objects.
 
 ## Reproducing
 
-`setup.R` calls `renv::restore()`, which installs every package at the version in `renv.lock`: CRAN, Bioconductor, and proteoDA, RRHO2 and DreamAI from GitHub.
+`setup.R` runs `renv::restore()`, installing each package at its `renv.lock` version, including proteoDA, RRHO2 and DreamAI from GitHub.
 
-`run_all.R` runs each step as a separate `Rscript` and logs to `.runlogs/`. A full run takes about 22 minutes on an Apple silicon Mac. Most of that is `F05_data.R`, `F06_data.R` and the effect-size bootstrap in `03_DEP/a_script/supp/01`.
+`run_all.R` runs each step as a separate `Rscript` and logs to `.runlogs/`. A full run takes about 22 minutes on an Apple silicon Mac, mostly `F05_data.R`, `F06_data.R` and the effect-size bootstrap in `03_DEP/a_script/supp/01`.
 
 ## Manuscript items
 
@@ -66,17 +66,17 @@ Git tracks the renders and workbooks the manuscript cites, and the tables each s
 | S9 Table | `02_imputation` | `c_data/02_imputation.xlsx` |
 | S10 Table | `03_DEP` | `c_data/03_DEP_results.xlsx` |
 
-Each figure has a PNG beside its PDF, and each supplementary figure also keeps its PDF without the legend. S8 and S9 Figures follow S7 rather than their stages so that citations to S6 Figure and S10 Table did not move.
+Each figure has a PNG beside its PDF, and each supplementary figure a PDF without its legend. S8 and S9 Figures are numbered after S7, not by stage, so citations to S6 Figure and S10 Table kept their numbers.
 
 ## Known limitations
 
 - `F05/a_script/YvO_WGCNA_run.R:91` reads `sft$fitIndices$slope` by position, not by power. It is right only because `powers` is `1:20`.
-- The scale-free slope at power 12 is -2.43, outside the -1 to -2 range the code comment gives. The check warns only above -1, so a steeper slope passes without a note. R-squared is 0.877.
-- `F02/a_script/main/panels/A_pca.R:30` runs PERMANOVA with permutations blocked by subject. No permutation changes a subject's age group, so the age p-value is not a permutation test. Its R-squared is still a valid description.
-- `F06/a_script/_supp_prepare_roc.R` uses 200 permutations, so its smallest possible p is 0.005. A reported p of 0.005 is that floor.
-- `cor <- WGCNA::cor` is set in `YvO_WGCNA_run.R` and `supp/panels/S6_D_bicor.R` and never restored. No code after either calls bare `cor()`, so nothing is affected yet.
+- The scale-free slope at power 12 is -2.43 (R-squared 0.877), outside the commented -1 to -2 range. The check warns only above -1, so it passes silently.
+- `F02/a_script/main/panels/A_pca.R:30` blocks PERMANOVA permutations by subject. No permutation changes a subject's age group, so the age p-value is not a permutation test; its R-squared still describes the data.
+- `F06/a_script/_supp_prepare_roc.R` uses 200 permutations, so a reported p of 0.005 is the floor.
+- `cor <- WGCNA::cor` is set in `YvO_WGCNA_run.R` and `supp/panels/S6_D_bicor.R` and never restored; no later code calls bare `cor()`.
 - `shared/print_scale_apply.R` changes `style.R`'s size globals and does not restore them; see `04_Figures/shared/README.md`.
 
 ## Citation
 
-Archived on Zenodo, concept DOI [10.5281/zenodo.19886624](https://doi.org/10.5281/zenodo.19886624); see `CITATION.cff`. The code is MIT licensed (`LICENSE`), except the vendored GSimp source in `02_imputation/a_script/benchmark/methods/gsimp_source/`, which is GPL-3.
+Zenodo concept DOI [10.5281/zenodo.19886624](https://doi.org/10.5281/zenodo.19886624); see `CITATION.cff`. MIT licensed (`LICENSE`), except the vendored GPL-3 GSimp source in `02_imputation/a_script/benchmark/methods/gsimp_source/`.

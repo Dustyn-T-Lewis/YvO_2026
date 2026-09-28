@@ -1,6 +1,6 @@
 # F05
 
-Fits the WGCNA co-expression network and draws Figure 5, the module-trait heatmap and module NES scatters, and S6 and S8 Figures.
+Fits the WGCNA co-expression network and draws Figure 5 (module-trait heatmap and module NES scatters) and S6 and S8 Figures.
 
 ## Reads
 
@@ -13,17 +13,12 @@ Fits the WGCNA co-expression network and draws Figure 5, the module-trait heatma
 
 ## Writes
 
-- `b_reports/main/F05.pdf`, `F05.png`: Figure 5
-- `b_reports/supp/S6.pdf`, `S6.png`: S6 Figure
-- `b_reports/supp/S6_Figure.pdf`: S6 Figure with its legend, the official supplementary file
-- `b_reports/supp/S8.pdf`, `S8.png`: S8 Figure
-- `b_reports/supp/S8_Figure.pdf`: S8 Figure with its legend, the official supplementary file
-- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script, and a triptych for each of the five modules S8 Figure leaves out
+- `b_reports/main/` and `b_reports/supp/`: the composites and their `panels/`, listed in the table below, plus a triptych for each of the five modules S8 Figure leaves out
 - `c_data/F05_data.xlsx`: S6 Table
-- `c_data/wgcna/`, `c_data/*.rds`, `mod_bio_labels.csv`, `wgcna_kme_all.csv` and the other network outputs, from `YvO_WGCNA_run.R`
-- `c_data/wgcna_string_clusters.csv`: the STRING cluster cache, from `shared/build_string_cluster_cache.R`, which `F05_data.R` sources
-- `c_data/modulePreservation_cache.rds`: `modulePreservation` at 200 permutations, reused while it is newer than `datExpr.rds` and `module_colors.rds`
-- `c_data/03_panel_B_eigengene_data.csv` and `03_panel_B_triptych_enrichment.csv`, from `panels/_triptych.R`
+- `c_data/wgcna/`, `c_data/*.rds`, `mod_bio_labels.csv`, `wgcna_kme_all.csv` and the other network outputs of `YvO_WGCNA_run.R`
+- `c_data/wgcna_string_clusters.csv`: the STRING cluster cache, from `shared/build_string_cluster_cache.R`, sourced by `F05_data.R`
+- `c_data/modulePreservation_cache.rds`: `modulePreservation` at 200 permutations, reused while newer than `datExpr.rds` and `module_colors.rds`
+- `c_data/03_panel_B_eigengene_data.csv`, `03_panel_B_triptych_enrichment.csv`: from `panels/_triptych.R`
 
 F06 reads `datExpr.rds`, `me_pre.rds`, `me_post.rds`, `module_colors.rds` and `F05_data.xlsx`. `shared/build_string_cluster_cache.R` reads `mod_bio_labels.csv` and `wgcna/wgcna_module_assignments.csv`.
 
@@ -37,13 +32,13 @@ Rscript 04_Figures/F05/a_script/supp/S8.R
 Rscript 04_Figures/F05/a_script/F05_data.R
 ```
 
-Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. Files starting with `_` hold code shared by several scripts and are only sourced. In `a_script/`, `_module_labels.R`, `_supp_mod_hub.R` and `_supp_preservation.R` compute S6 Table sheets and draw nothing; `F05_data.R` sources them.
+`_module_labels.R`, `_supp_mod_hub.R` and `_supp_preservation.R` in `a_script/` compute S6 Table sheets for `F05_data.R` and draw nothing.
 
 ## Order
 
-Stages 02 and 03 run first. `YvO_WGCNA_run.R` runs next, before the composites here and before F06. It is single-threaded and seeded, so the network is reproducible. `F05_data.R` runs last: it folds the CSVs the three composites leave in `c_data/` into the workbook and deletes them.
+Stages 02 and 03 run first, then `YvO_WGCNA_run.R` (single-threaded and seeded, so reproducible), before the composites and F06. `F05_data.R` runs last, folding the composites' CSVs into the workbook and deleting them.
 
-`S6_C_compartment.R` reads module assignments and labels from `F05_data.xlsx`, which `F05_data.R` writes afterwards. Each run therefore reads the workbook the previous run left. Both sheets are copies of `c_data/wgcna/wgcna_module_assignments.csv` and `c_data/mod_bio_labels.csv`, so S6 Figure C lags by one run only when `YvO_WGCNA_run.R` has changed those files since the last workbook.
+`S6_C_compartment.R` reads module assignments and labels from the `F05_data.xlsx` left by the previous run. Both sheets copy `c_data/wgcna/wgcna_module_assignments.csv` and `c_data/mod_bio_labels.csv`, so S6 Figure C lags one run only when `YvO_WGCNA_run.R` has changed them.
 
 ## Outputs and manuscript items
 
