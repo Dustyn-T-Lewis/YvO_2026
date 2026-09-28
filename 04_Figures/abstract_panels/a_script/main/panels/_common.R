@@ -20,16 +20,12 @@ source(here::here("04_Figures", "shared", "devices.R"))
 # which is why it can be sourced where style.R cannot.
 source(here::here("04_Figures", "shared", "module_palette.R"))
 
-# The base pdf device drops Greek, Delta and rho -- devices.R records the
-# measurement -- and these cards carry all three. get_pdf_device()'s quartz
-# fallback drops its dots, so bg cannot travel through it, and the cards are
-# drawn on a transparent ground. Resolved once at load rather than per save.
+# The base pdf device drops Greek, Delta and rho (devices.R records the
+# measurement) and these cards carry all three. quartz comes first, as in
+# get_pdf_device(), but is called here so bg can be transparent; cairo sets
+# text narrower than the PNGs. Resolved once at load rather than per save.
 panel_pdf <- local({
-  if (probe_device(function() cairo_pdf(tempfile()))) {
-    function(path, width, height) {
-      cairo_pdf(path, width = width, height = height, bg = "transparent")
-    }
-  } else if (probe_device(function() {
+  if (probe_device(function() {
     quartz(type = "pdf", file = tempfile(fileext = ".pdf"))
   })) {
     function(path, width, height) {
@@ -37,6 +33,10 @@ panel_pdf <- local({
         file = path, type = "pdf", width = width, height = height,
         bg = "transparent"
       )
+    }
+  } else if (probe_device(function() cairo_pdf(tempfile()))) {
+    function(path, width, height) {
+      cairo_pdf(path, width = width, height = height, bg = "transparent")
     }
   } else {
     function(path, width, height) {
