@@ -1,6 +1,6 @@
 # F02
 
-Draws Figure 2, the proteome overview and differential expression results, and S3 Figure, the coefficient-of-variation diagnostics.
+Draws Figure 2 (proteome overview and differential expression) and S3 Figure (coefficient-of-variation diagnostics).
 
 ## Reads
 
@@ -13,10 +13,7 @@ Draws Figure 2, the proteome overview and differential expression results, and S
 
 ## Writes
 
-- `b_reports/main/F02.pdf`, `F02.png`: Figure 2
-- `b_reports/supp/S3.pdf`, `S3.png`: S3 Figure
-- `b_reports/supp/S3_Figure.pdf`: S3 Figure with its legend, the official supplementary file
-- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script
+- `b_reports/main/` and `b_reports/supp/`: the composites and their `panels/`, listed in the table below
 - `c_data/F02_data.xlsx`: S3 Table
 
 ## Run
@@ -27,11 +24,9 @@ Rscript 04_Figures/F02/a_script/supp/S3.R
 Rscript 04_Figures/F02/a_script/F02_data.R
 ```
 
-Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. Files starting with `_` hold code shared by several panels and are only sourced.
-
 ## Order
 
-Stage 03 runs first. `F02_data.R` runs last: it folds the CSVs the two composites leave in `c_data/` into the workbook and deletes them. The workbook takes its sheets from a glob of `c_data/`, so sheet order follows the file names.
+Stage 03 runs first. `F02_data.R` runs last, folding the CSVs the composites leave in `c_data/` into the workbook, in file-name order, and deleting them.
 
 ## Outputs and manuscript items
 

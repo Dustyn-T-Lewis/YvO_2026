@@ -1,6 +1,6 @@
 # F00
 
-Draws the pipeline QC figures S1a and S1b and writes S1 Table. F00 has no main figure.
+Draws the pipeline QC figures S1a and S1b and writes S1 Table.
 
 ## Reads
 
@@ -11,11 +11,7 @@ Draws the pipeline QC figures S1a and S1b and writes S1 Table. F00 has no main f
 
 ## Writes
 
-- `b_reports/supp/S1a.pdf`, `S1a.png`: S1a Figure
-- `b_reports/supp/S1a_Figure.pdf`: S1a Figure with its legend, the official supplementary file
-- `b_reports/supp/S1b.pdf`, `S1b.png`: S1b Figure
-- `b_reports/supp/S1b_Figure.pdf`: S1b Figure with its legend, the official supplementary file
-- `b_reports/supp/panels/`: each panel on its own, named after its script
+- `b_reports/supp/`: the composites and their `panels/`, listed in the table below
 - `c_data/F00_data.xlsx`: S1 Table
 
 ## Run
@@ -26,15 +22,13 @@ Rscript 04_Figures/F00/a_script/supp/S1b.R
 Rscript 04_Figures/F00/a_script/F00_data.R
 ```
 
-Each panel script in `a_script/supp/panels/` also runs on its own. `_inputs.R` loads the stage 01 and 02 intermediates for every panel and is only sourced.
+`_inputs.R` loads the stage 01 and 02 intermediates for every panel.
 
 ## Order
 
-Stages 01 to 03 run first. `F00_data.R` runs last: it folds the data frames the panels leave in `c_data/sheets/` into the workbook and deletes them.
+Stages 01 to 03 run first. `F00_data.R` runs last, folding the data frames the panels leave in `c_data/sheets/` into the workbook and deleting them. Panel S1b J stops if the opt-in benchmark ranking is missing.
 
-Panel S1b J stops if the benchmark ranking is missing. That file comes from an opt-in script.
-
-Panel S1a F jitters its points, and ggplot2 draws a new jitter seed at every render. The panel sets `set.seed(42)` before the plot and again before its PDF, so the composite always starts from the same state. The S1a PDF and PNG show different jitter.
+Panel S1a F jitters its points, drawing a new jitter at every render. It calls `set.seed(42)` before the plot and before its PDF, so the composite always starts from the same state, but the S1a PDF and PNG differ in jitter.
 
 ## Outputs and manuscript items
 

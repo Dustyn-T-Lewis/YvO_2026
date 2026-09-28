@@ -1,6 +1,6 @@
 # F04
 
-Draws Figure 4, the training-response concordance between age groups, and S5a and S5b Figures, and writes S5 Table.
+Draws Figure 4 (training-response concordance between age groups) and S5a and S5b Figures, and writes S5 Table.
 
 ## Reads
 
@@ -12,12 +12,7 @@ Draws Figure 4, the training-response concordance between age groups, and S5a an
 
 ## Writes
 
-- `b_reports/main/F04.pdf`, `F04.png`: Figure 4
-- `b_reports/supp/S5a.pdf`, `S5a.png`: S5a Figure
-- `b_reports/supp/S5a_Figure.pdf`: S5a Figure with its legend, the official supplementary file
-- `b_reports/supp/S5b.pdf`, `S5b.png`: S5b Figure
-- `b_reports/supp/S5b_Figure.pdf`: S5b Figure with its legend, the official supplementary file
-- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script, and the plots of S5 Table sheets that no figure shows
+- `b_reports/main/` and `b_reports/supp/`: the composites and their `panels/`, listed in the table below, plus the `S5T_` plots of S5 Table sheets that no figure shows
 - `c_data/F04_data.xlsx`: S5 Table
 
 ## Run
@@ -29,15 +24,11 @@ Rscript 04_Figures/F04/a_script/supp/S5b.R
 Rscript 04_Figures/F04/a_script/F04_data.R
 ```
 
-Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. Files starting with `_` hold code shared by panels and are only sourced. `S5T_` scripts plot S5 Table sheets that no figure shows. `F04_data.R` runs them.
-
 ## Order
 
-Stage 03, F02 and F03 run first. `F04_data.R` runs last: it runs the six `S5T_` scripts, folds the CSVs they and the three composites leave in `c_data/` into the workbook, and deletes them. It stops without writing the workbook if any of those CSVs is missing.
+Stage 03, F02 and F03 run first. `F04_data.R` runs last. It runs the six `S5T_` scripts, folds their CSVs and the composites' into the workbook and deletes them, and stops without writing if any CSV is missing. A panel run on its own leaves CSVs that the next `F04_data.R` removes.
 
-A panel script run on its own leaves its CSVs in `c_data/`. The next `F04_data.R` removes them.
-
-Panels D and E share one engine that writes fixed file names, and each renames its outputs after the engine returns. Do not run the two at the same time.
+Panels D and E share an engine that writes fixed file names, which each renames afterwards, so never run the two at once.
 
 ## Outputs and manuscript items
 

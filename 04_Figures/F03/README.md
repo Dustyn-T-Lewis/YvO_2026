@@ -1,6 +1,6 @@
 # F03
 
-Draws Figure 3, the volcano rings for the four contrasts, and S4a and S4b Figures.
+Draws Figure 3 (volcano rings for the four contrasts) and S4a and S4b Figures.
 
 ## Reads
 
@@ -10,12 +10,7 @@ Draws Figure 3, the volcano rings for the four contrasts, and S4a and S4b Figure
 
 ## Writes
 
-- `b_reports/main/F03.pdf`, `F03.png`: Figure 3
-- `b_reports/supp/S4a.pdf`, `S4a.png`: S4a Figure
-- `b_reports/supp/S4a_Figure.pdf`: S4a Figure with its legend, the official supplementary file
-- `b_reports/supp/S4b.pdf`: S4b Figure, four pages; `S4b_A.png` to `S4b_D.png`, one per page
-- `b_reports/supp/S4b_Figure.pdf`: S4b Figure with its legend, the official supplementary file
-- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script
+- `b_reports/main/` and `b_reports/supp/`: the composites and their `panels/`, listed in the table below; S4b is four pages, with one PNG per page, `S4b_A.png` to `S4b_D.png`
 - `c_data/F03_data.xlsx`: S4 Table
 
 ## Run
@@ -27,11 +22,9 @@ Rscript 04_Figures/F03/a_script/supp/S4b.R
 Rscript 04_Figures/F03/a_script/F03_data.R
 ```
 
-Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. Files starting with `_` hold code shared by several panels and are only sourced.
-
 ## Order
 
-Stage 03 runs first. `F03_data.R` runs last: it folds the CSVs the three composites leave in `c_data/` into the workbook and deletes them.
+Stage 03 runs first. `F03_data.R` runs last, folding the CSVs the composites leave in `c_data/` into the workbook and deleting them.
 
 ## Outputs and manuscript items
 

@@ -1,6 +1,6 @@
 # abstract_panels
 
-Draws the cards behind the graphical abstract, in the 2 x 4 grid the published abstract was built from and in a one-row backup layout.
+Draws the graphical abstract cards, in the 2 x 4 grid the published abstract was built from and in a one-row backup layout.
 
 ## Reads
 
@@ -12,11 +12,8 @@ Draws the cards behind the graphical abstract, in the 2 x 4 grid the published a
 
 ## Writes
 
-- `b_reports/main/abstract.pdf`, `abstract.png`: graphical abstract, cards A to E
-- `b_reports/main/abstract_concise.pdf`, `abstract_concise.png`: the backup one-row layout, cards A C B F D E; not in the manuscript
-- `b_reports/main/panels/`: each card on its own, named after its script
-- `c_data/abstract_data.xlsx`: source data for the graphical abstract
-- `c_data/abstract_concise_data.xlsx`: source data for the backup layout
+- `b_reports/main/`: `abstract.pdf` and `.png` (cards A to E), the backup one-row layout `abstract_concise.pdf` and `.png` (cards A C B F D E, not in the manuscript), and `panels/`
+- `c_data/abstract_data.xlsx`, `abstract_concise_data.xlsx`: source data for each layout
 
 ## Run
 
@@ -25,15 +22,15 @@ Rscript 04_Figures/abstract_panels/a_script/main/abstract.R
 Rscript 04_Figures/abstract_panels/a_script/main/abstract_concise.R
 ```
 
-Each card script in `a_script/main/panels/` also runs on its own. `_common.R` holds the theme, palettes, layout helpers and data accessors all cards share, and is only sourced. It reads `shared/style.R` as text and does not source it, because sourcing runs `devices.R` and defines size globals that `print_scale_apply.R` changes in place. `assert_style()` checks the local palette against `style.R` at the top of each composite.
+`_common.R` holds the theme, palettes, layout helpers and data accessors the cards share. It reads `shared/style.R` as text rather than sourcing it, which would run `devices.R` and define the size globals `print_scale_apply.R` changes; `assert_style()` checks the local palette against `style.R` in each composite.
 
 ## Order
 
-F01, F04 and F06 run first, because the cards read their workbooks. The two composites can run in either order. Each writes its own workbook, so there is no separate data script.
+F01, F04 and F06 run first, since the cards read their workbooks. The two composites run in either order and each writes its own workbook.
 
 ## Outputs and manuscript items
 
-`Figure_abstract.pdf` in the manuscript package was finished by hand in BioRender from `abstract.pdf`. Card F appears only in the backup layout.
+`Figure_abstract.pdf` in the manuscript package was finished by hand in BioRender from `abstract.pdf`.
 
 | File | Manuscript item |
 |---|---|
@@ -49,4 +46,4 @@ F01, F04 and F06 run first, because the cards read their workbooks. The two comp
 | `c_data/abstract_data.xlsx`, sheets `panel_A_hypertrophy` to `panel_E_modules` | Graphical abstract, source data for each card |
 | `c_data/abstract_concise_data.xlsx` | none; backup layout source data |
 
-The workbooks keep the sheet names and the `script` column they were first written with, so they name the cards `panel_A_hypertrophy` and so on.
+The workbooks keep their original sheet names and `script` column, so cards appear as `panel_A_hypertrophy` and so on.

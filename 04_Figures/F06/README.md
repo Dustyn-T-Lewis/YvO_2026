@@ -1,6 +1,6 @@
 # F06
 
-Draws Figure 6, the module ROCs and the module-phenotype coupling grid, and S7 Figure, and writes S7 Table.
+Draws Figure 6 (module ROCs and the module-phenotype coupling grid) and S7 Figure, and writes S7 Table.
 
 ## Reads
 
@@ -11,10 +11,7 @@ Draws Figure 6, the module ROCs and the module-phenotype coupling grid, and S7 F
 
 ## Writes
 
-- `b_reports/main/F06.pdf`, `F06.png`: Figure 6
-- `b_reports/supp/S7.pdf`, `S7.png`: S7 Figure
-- `b_reports/supp/S7_Figure.pdf`: S7 Figure with its legend, the official supplementary file
-- `b_reports/main/panels/`, `b_reports/supp/panels/`: each panel on its own, named after its script
+- `b_reports/main/` and `b_reports/supp/`: the composites and their `panels/`, listed in the table below
 - `c_data/F06_data.xlsx`: S7 Table
 
 ## Run
@@ -25,15 +22,11 @@ Rscript 04_Figures/F06/a_script/supp/S7.R
 Rscript 04_Figures/F06/a_script/F06_data.R
 ```
 
-Each panel script in `a_script/main/panels/` and `a_script/supp/panels/` also runs on its own. Files starting with `_` hold code shared by several scripts and are only sourced.
-
 ## Order
 
-F05 runs first. `A_age_roc.R` and `B_training_roc.R` draw from the module grid that `S7_A_module_grid.R` writes, and run it first when the grid is missing. `S7_B_full_sweep.R` draws from the 180-test screen that `C_hero_grid.R` writes, and runs it first when the screen is missing.
+F05 runs first. `A_age_roc.R` and `B_training_roc.R` draw from the module grid of `S7_A_module_grid.R`, and `S7_B_full_sweep.R` from the 180-test screen of `C_hero_grid.R`; each runs its source first when that output is missing.
 
-`F06_data.R` runs last. It runs the four analysis steps in `a_script/` that compute sheets but draw nothing: `_supp_prepare_roc.R`, `_supp_multivariate.R`, `_supp_loso_sensitivity.R` and `_supp_loso_wgcna_refit.R`. It then folds their CSVs and the ones the two composites leave in `c_data/` into the workbook and deletes them. `_loocv.R` holds the nested LOOCV classifier the first two share. `_panel_selection.R` names the cells Figure 6A and 6B draw, for the ROC panels and the two LOSO steps.
-
-`_supp_loso_wgcna_refit.R` refits the network on each of 30 leave-one-subject-out folds with no cache, which makes `F06_data.R` the slowest step in this directory.
+`F06_data.R` runs last. It runs the four sheet-only steps in `a_script/`, `_supp_prepare_roc.R`, `_supp_multivariate.R`, `_supp_loso_sensitivity.R` and `_supp_loso_wgcna_refit.R`, then folds their CSVs and the composites' into the workbook and deletes them. `_loocv.R` holds the nested LOOCV classifier the first two share; `_panel_selection.R` names the Figure 6A and 6B cells for the ROC panels and both LOSO steps. `_supp_loso_wgcna_refit.R` refits the network on 30 leave-one-subject-out folds without a cache, making `F06_data.R` the slowest step here.
 
 ## Outputs and manuscript items
 
