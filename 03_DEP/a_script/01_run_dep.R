@@ -52,10 +52,8 @@ if (file.exists(XLSX) && !nzchar(Sys.getenv("YVO_PIPELINE_RUN"))) {
   }
 }
 
-# Load from Stage 01
-# Read numeric matrix from CSV for cross-pipeline float reproducibility
-# (RDS binary doubles differ at ~1e-15 from CSV round-trip).
-
+# The matrix is read from CSV, not RDS, for float reproducibility across the
+# pipeline: RDS doubles differ from the CSV round-trip at ~1e-15.
 df <- readr::read_csv("01_normalization/c_data/02_normalized.csv",
   show_col_types = FALSE
 )
@@ -80,8 +78,6 @@ message(sprintf(
   nrow(mat), ncol(mat), 100 * mean(is.na(mat))
 ))
 
-# Build DAList
-
 meta_df <- as.data.frame(meta)
 rownames(meta_df) <- meta$sample_id
 
@@ -90,16 +86,13 @@ dal <- DAList(
   tags = list(normalized = TRUE, norm_method = "cycloess")
 )
 
-# Design + contrasts + fit
-#
 # Do not add supplement here. No parent trial spans both age groups, so arm is
-# confounded with age by recruitment. Three arm labels do appear in both --
-# Placebo, Peanut protein, Control -- but NORE's placebo is nitrate-depleted
+# confounded with age by recruitment. Three arm labels (Placebo, Peanut
+# protein, Control) do appear in both, but NORE's placebo is nitrate-depleted
 # beetroot juice in older adults and EAA's is a different placebo in younger
 # men, with no participant shared. The model therefore fits at full rank while
-# still being confounded, and forcing it in cuts Aging from 278 to 84 proteins.
-# See 03_DEP/a_script/supp/02_supplement_covariate.R, which measures this rather than asserting it.
-
+# still confounded, and forcing it in cuts Aging from 278 to 84 proteins.
+# supp/02_supplement_covariate.R measures this rather than asserting it.
 dal <- add_design(dal, "~ 0 + group + (1 | subject)")
 
 stopifnot(
@@ -147,19 +140,17 @@ dal <- extract_DA_results(dal,
 
 within_cor <- dal$eBayes_fit$correlation %||%
   dal$tags$duplicate_correlation %||% NA_real_
-if (!is.na(within_cor)) message(sprintf("Within-subject correlation: %.3f", within_cor))
+if (!is.na(within_cor)) {
+  message(sprintf("Within-subject correlation: %.3f", within_cor))
+}
 
 saveRDS(dal, file.path(DAT, "01_limma_DAList.rds"))
-
-# proteoDA reports
 
 write_limma_plots(dal,
   grouping_column = "group", output_dir = PDA,
   table_columns = c("uniprot_id", "gene", "protein"),
   title_column = "gene", overwrite = TRUE
 )
-
-# Extract results + Pi-score
 
 contrast_names <- names(dal$results)
 ann_df <- as.data.frame(dal$annotation)
@@ -184,12 +175,9 @@ results_list <- lapply(contrast_names, \(cname) {
 })
 names(results_list) <- contrast_names
 
-# Combined results (wide format)
-
-data_df <- as.data.frame(dal$data)
 base_df <- bind_cols(
   ann_df |> select(any_of(c("uniprot_id", "protein", "gene", "description"))),
-  data_df
+  as.data.frame(dal$data)
 )
 
 for (cname in contrast_names) {
@@ -204,37 +192,26 @@ for (cname in contrast_names) {
 
 readr::write_csv(base_df, file.path(DAT, "03_combined_results.csv"))
 
-# DA summary
-
+# One row each for up, down and nonsig per contrast.
 da_summary <- list_rbind(lapply(contrast_names, \(cname) {
   res <- results_list[[cname]]
-  bind_rows(
-    tibble(
-      contrast = cname, type = "up",
-      sig.PVal = sum(res$P.Value < PVAL_THRESH & res$logFC > 0, na.rm = TRUE),
-      sig.FDR = sum(res$adj.P.Val < PVAL_THRESH & res$logFC > 0, na.rm = TRUE),
-      sig.Pi = sum(res$sig_pi == 1, na.rm = TRUE),
-      sig.FDR.05 = sum(res$adj.P.Val < 0.05 & res$logFC > 0, na.rm = TRUE)
-    ),
-    tibble(
-      contrast = cname, type = "down",
-      sig.PVal = sum(res$P.Value < PVAL_THRESH & res$logFC < 0, na.rm = TRUE),
-      sig.FDR = sum(res$adj.P.Val < PVAL_THRESH & res$logFC < 0, na.rm = TRUE),
-      sig.Pi = sum(res$sig_pi == -1, na.rm = TRUE),
-      sig.FDR.05 = sum(res$adj.P.Val < 0.05 & res$logFC < 0, na.rm = TRUE)
-    ),
-    tibble(
-      contrast = cname, type = "nonsig",
-      sig.PVal = sum(res$P.Value >= PVAL_THRESH, na.rm = TRUE),
-      sig.FDR = sum(res$adj.P.Val >= PVAL_THRESH, na.rm = TRUE),
-      sig.Pi = sum(res$sig_pi == 0, na.rm = TRUE),
-      sig.FDR.05 = sum(res$adj.P.Val >= 0.05, na.rm = TRUE)
+  count_dir <- function(p, thresh) {
+    c(
+      sum(p < thresh & res$logFC > 0, na.rm = TRUE),
+      sum(p < thresh & res$logFC < 0, na.rm = TRUE),
+      sum(p >= thresh, na.rm = TRUE)
     )
+  }
+  tibble(
+    contrast = cname, type = c("up", "down", "nonsig"),
+    sig.PVal = count_dir(res$P.Value, PVAL_THRESH),
+    sig.FDR = count_dir(res$adj.P.Val, PVAL_THRESH),
+    sig.Pi = vapply(
+      c(1L, -1L, 0L), \(s) sum(res$sig_pi == s, na.rm = TRUE), integer(1)
+    ),
+    sig.FDR.05 = count_dir(res$adj.P.Val, 0.05)
   )
 }))
-
-# Build xlsx
-
 
 wb <- createWorkbook()
 write_sheet(wb, "combined_results", base_df)

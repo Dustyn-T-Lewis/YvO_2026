@@ -22,8 +22,6 @@ results_list <- lapply(contrast_names, \(cn) {
 })
 names(results_list) <- contrast_names
 
-# Blunting diagnostics
-
 # Join on uniprot_id, never by row position: 01_run_dep.R sorts each contrast
 # sheet by its own pi_score, so the same row holds a different protein in each.
 # Only 2 of 2106 positions happen to agree, which made every paired statistic
@@ -73,8 +71,6 @@ message(sprintf(
   ks_res$p.value, cliff, cliff_mag
 ))
 
-# Bootstrap CI (median |logFC|, BCa, 10k reps)
-
 boot_df <- list_rbind(lapply(contrast_names, \(cname) {
   vals <- abs(results_list[[cname]]$logFC)
   vals <- vals[!is.na(vals)]
@@ -82,17 +78,15 @@ boot_df <- list_rbind(lapply(contrast_names, \(cname) {
   ci <- tryCatch(boot.ci(b, type = "bca"),
     error = \(e) boot.ci(b, type = "perc")
   )
-  ci_lo <- if (!is.null(ci$bca)) ci$bca[4] else ci$percent[4]
-  ci_hi <- if (!is.null(ci$bca)) ci$bca[5] else ci$percent[5]
+  ci_int <- if (!is.null(ci$bca)) ci$bca else ci$percent
   tibble(
     contrast = cname, median_absLFC = median(vals),
-    ci_lower = ci_lo, ci_upper = ci_hi,
+    ci_lower = ci_int[4], ci_upper = ci_int[5],
     boot_se = sd(b$t), n_proteins = length(vals)
   )
 }))
 
-# Power analysis (min detectable logFC at 80% power)
-
+# Minimum detectable logFC at 80% power.
 fit <- dal$eBayes_fit
 within_cor <- fit$correlation %||% dal$tags$duplicate_correlation %||% NA_real_
 sigma_res <- sqrt(mean(fit$sigma^2, na.rm = TRUE))
@@ -125,8 +119,6 @@ power_df <- list_rbind(lapply(contrast_names, \(cname) {
   )
 }))
 
-# Imputation sensitivity
-
 IMP_RDS <- "02_imputation/c_data/01_DAList_imputed.rds"
 sens_df <- tibble(
   contrast = character(), spearman_rho = numeric(),
@@ -137,11 +129,9 @@ if (file.exists(IMP_RDS)) {
   dal_imp_raw <- readRDS(IMP_RDS)
   imp_mat <- as.matrix(dal_imp_raw$data)
 
-  # Align imp_mat rows to the DEP annotation row order. The imputed RDS row
-  # order (gene_order alphabetical) differs from the DEP DAList annotation
-  # order (normalization order). DAList() silently re-labels rownames(data)
-  # to match annotation while leaving values in place. Without this match()
-  # protein labels detach from intensities.
+  # The imputed rows are in gene order, the DEP annotation in normalization
+  # order, and DAList() silently relabels rownames(data) to the annotation while
+  # leaving values in place. Without this match() labels detach from values.
   ann_dep <- as.data.frame(dal$annotation)
   ord <- match(ann_dep$uniprot_id, rownames(imp_mat))
   if (any(is.na(ord))) {
@@ -207,10 +197,10 @@ if (file.exists(IMP_RDS)) {
   message("Imputed DAList not found — skipping sensitivity")
 }
 
-# Add robustness sheets to xlsx
-
 wb <- loadWorkbook(XLSX)
-robustness_sheets <- c("blunting", "bootstrap_ci", "power_analysis", "imputation_sensitivity")
+robustness_sheets <- c(
+  "blunting", "bootstrap_ci", "power_analysis", "imputation_sensitivity"
+)
 for (s in intersect(robustness_sheets, names(wb))) removeWorksheet(wb, s)
 write_sheet(wb, "blunting", blunt_diag)
 write_sheet(wb, "bootstrap_ci", boot_df)
@@ -218,10 +208,9 @@ write_sheet(wb, "power_analysis", power_df)
 if (nrow(sens_df) > 0) {
   write_sheet(wb, "imputation_sensitivity", sens_df)
 }
-# The Overview index is built by 03_DEP/a_script/supp/02_supplement_covariate.R, the
-# last script to write this workbook. Re-running this script alone leaves the
-# existing index in place with stale row counts for these four sheets; the next
-# full run refreshes them.
+# The Overview index is built by supp/02_supplement_covariate.R, the last script
+# to write this workbook. Re-running this script alone leaves the index with
+# stale row counts for these four sheets; the next full run refreshes them.
 saveWorkbook(wb, XLSX, overwrite = TRUE)
 
 message("Done: robustness analyses added to ", basename(XLSX))

@@ -19,7 +19,7 @@
 # selection computed only in the aging half (N = 500). The limma-coefficient
 # correlation on the actual FDR set is reported as descriptive only.
 
-pacman::p_load(withr, readr, dplyr, tibble)
+pacman::p_load(readr, dplyr)
 
 withr::local_dir(here::here())
 
@@ -53,7 +53,9 @@ n_sel <- nrow(aging_set)
 desc_df <- aging_set |>
   filter(!is.na(logFC_Training_Old))
 desc_r <- cor(desc_df$logFC_Aging, desc_df$logFC_Training_Old)
-desc_opposite <- mean(sign(desc_df$logFC_Aging) != sign(desc_df$logFC_Training_Old))
+desc_opposite <- mean(
+  sign(desc_df$logFC_Aging) != sign(desc_df$logFC_Training_Old)
+)
 
 sel_top <- function(aging_axis) {
   order(-abs(aging_axis))[seq_len(n_sel)]

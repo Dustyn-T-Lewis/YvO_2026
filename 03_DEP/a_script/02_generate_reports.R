@@ -4,7 +4,10 @@
 
 withr::local_dir(here::here())
 
-pacman::p_load(dplyr, tidyr, tibble, purrr, readxl, openxlsx, ggplot2, ggrepel, patchwork, gridExtra, limma)
+pacman::p_load(
+  dplyr, tidyr, tibble, purrr, readxl, openxlsx, ggplot2, ggrepel, patchwork,
+  gridExtra, limma
+)
 
 # ggrepel places labels by a stochastic search, so an unseeded render puts
 # them somewhere new each time. run_all.R runs each script in its own
@@ -19,7 +22,7 @@ dir.create(SUM, recursive = TRUE, showWarnings = FALSE)
 
 XLSX <- file.path(DAT, "03_DEP_results.xlsx")
 
-theme_dep <- theme_bw(base_size = 11) +
+theme_dep <- theme_bw() +
   theme(
     plot.title = element_text(face = "bold", size = 12),
     legend.position = "bottom"
@@ -36,7 +39,23 @@ names(results_list) <- contrast_names
 
 da_summary <- as.data.frame(read_excel(XLSX, sheet = "DA_summary"))
 
-# Per-contrast volcano + top-25 table
+make_vol <- function(df, ycol, ylab, thresh, top_n = 10) {
+  top <- slice_min(df, .data[[ycol]] * -1, n = top_n, with_ties = FALSE)
+  ggplot(df, aes(logFC, .data[[ycol]], color = dir_pi)) +
+    geom_point(alpha = 0.35, size = 1) +
+    geom_hline(
+      yintercept = thresh, linetype = "dashed", color = "grey40",
+      linewidth = 0.4
+    ) +
+    geom_text_repel(
+      data = top, aes(label = gene), size = 2.5,
+      max.overlaps = 15, show.legend = FALSE, seed = 42
+    ) +
+    scale_color_manual(values = pal_dir, drop = FALSE) +
+    labs(x = expression(log[2] ~ FC), y = ylab) +
+    theme_dep +
+    theme(legend.position = "none")
+}
 
 for (cname in contrast_names) {
   res <- results_list[[cname]] |>
@@ -52,36 +71,11 @@ for (cname in contrast_names) {
       )
     )
 
-  make_vol <- function(df, ycol, ylab, top_n, thresh) {
-    top <- slice_min(df, .data[[ycol]] * -1, n = top_n, with_ties = FALSE)
-    ggplot(df, aes(logFC, .data[[ycol]], color = dir_pi)) +
-      geom_point(alpha = 0.35, size = 1) +
-      geom_hline(
-        yintercept = thresh, linetype = "dashed", color = "grey40",
-        linewidth = 0.4
-      ) +
-      geom_text_repel(
-        data = top, aes(label = gene), size = 2.5,
-        max.overlaps = 15, show.legend = FALSE, seed = 42
-      ) +
-      scale_color_manual(values = pal_dir, drop = FALSE) +
-      labs(x = expression(log[2] ~ FC), y = ylab) +
-      theme_dep +
-      theme(legend.position = "none")
-  }
-
-  p1 <- make_vol(
-    res, "nlog10_pval", expression(-log[10](P)), 10,
-    -log10(0.01)
-  ) + ggtitle("Nominal P < 0.01")
-  p2 <- make_vol(
-    res, "nlog10_adj", expression(-log[10](FDR)), 10,
-    -log10(0.05)
-  ) + ggtitle("FDR < 0.05")
-  p3 <- make_vol(
-    res, "nlog10_pi", expression(-log[10](Pi)), 10,
-    -log10(0.05)
-  ) +
+  p1 <- make_vol(res, "nlog10_pval", expression(-log[10](P)), -log10(0.01)) +
+    ggtitle("Nominal P < 0.01")
+  p2 <- make_vol(res, "nlog10_adj", expression(-log[10](FDR)), -log10(0.05)) +
+    ggtitle("FDR < 0.05")
+  p3 <- make_vol(res, "nlog10_pi", expression(-log[10](Pi)), -log10(0.05)) +
     ggtitle("Π < 0.05") + theme(legend.position = "right") + labs(color = NULL)
 
   tbl_data <- res |>
@@ -126,8 +120,6 @@ for (cname in contrast_names) {
   message(sprintf("  %s: FDR<0.10=%d, Pi<0.05=%d", cname, n_fdr, n_pi))
 }
 
-# Overview bar chart
-
 sc <- list_rbind(lapply(contrast_names, \(cname) {
   res <- results_list[[cname]]
   bind_rows(
@@ -168,15 +160,15 @@ p_bar <- ggplot(sc, aes(contrast, signed, fill = direction)) +
   theme_dep +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
-# Outlier sensitivity: pre- vs post-outlier-removal cohort
-
+# Outlier sensitivity: the pre- vs post-outlier-removal cohort.
 run_limma_sens <- function(mat, meta) {
   meta$Group_Time <- factor(meta$Group_Time,
     levels = c("Young_Pre", "Young_Post", "Old_Pre", "Old_Post")
   )
   design <- model.matrix(~ 0 + Group_Time, data = meta)
   colnames(design) <- gsub("^Group_Time", "", colnames(design))
-  block_id <- sub("_(Pre|Post)$", "", meta$Col_ID) # group-prefixed: Young_S01 ≠ Old_S01
+  # group-prefixed: Young_S01 ≠ Old_S01
+  block_id <- sub("_(Pre|Post)$", "", meta$Col_ID)
   corfit <- duplicateCorrelation(mat, design, block = block_id)
   fit <- lmFit(mat, design,
     block = block_id,
@@ -195,8 +187,11 @@ run_limma_sens <- function(mat, meta) {
 int <- readRDS("01_normalization/c_data/00_report_intermediates.rds")
 dal_norm <- readRDS("01_normalization/c_data/03_DAList_normalized.rds")
 
-# Both cohorts through one normalization so the comparison isolates outlier removal, not method.
-norm_cyclo <- function(m) normalizeBetweenArrays(log2(m + 1), method = "cyclicloess")
+# Both cohorts go through one normalization so the comparison isolates outlier
+# removal, not method.
+norm_cyclo <- function(m) {
+  normalizeBetweenArrays(log2(m + 1), method = "cyclicloess")
+}
 kept_cols <- colnames(dal_norm$data)
 
 full_mat <- norm_cyclo(int$data_pre_outlier)
@@ -224,7 +219,6 @@ sens_compare <- list_rbind(lapply(contrast_names, \(cname) {
   )
 }))
 
-# Add sensitivity sheet to xlsx
 wb <- loadWorkbook(XLSX)
 write_sheet_simple <- function(wb, name, data) {
   if (name %in% names(wb)) removeWorksheet(wb, name)
@@ -237,8 +231,6 @@ write_sheet_simple <- function(wb, name, data) {
 }
 write_sheet_simple(wb, "outlier_sensitivity", sens_compare)
 saveWorkbook(wb, XLSX, overwrite = TRUE)
-
-# Assemble overview PDF
 
 sens_display <- sens_compare |>
   mutate(across(c(Pearson_r, Spearman_rho), \(x) sprintf("%.3f", x)))
