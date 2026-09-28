@@ -1,8 +1,7 @@
-# Runs the pipeline end to end. Each script runs in its own R session so a
-# stage cannot inherit objects, masked functions or a stale working directory
-# from the one before it. Every script also runs on its own: each sets
-# its own working directory and loads its own packages, so this file is a
-# convenience, not a dependency.
+# Runs the pipeline end to end, each script in its own R session so no stage
+# inherits objects, masked functions or a stale working directory from the one
+# before. Every script also sets its own working directory and loads its own
+# packages, so this file is a convenience, not a dependency.
 #
 # Not --vanilla: that implies --no-init-file, which skips .Rprofile and so
 # never activates renv, leaving every step on whatever the system library
@@ -80,8 +79,7 @@ timings <- data.frame(step = steps, seconds = NA_real_, status = NA_character_)
 for (i in seq_along(steps)) {
   step <- steps[i]
   message(sprintf("[%d/%d] %s", i, length(steps), step))
-  log_name <- paste0(sprintf("%02d_", i), basename(step), ".log")
-  log_file <- file.path(log_dir, log_name)
+  log_file <- file.path(log_dir, sprintf("%02d_%s.log", i, basename(step)))
   t0 <- Sys.time()
   status <- system2("Rscript", c("--no-save", "--no-restore", shQuote(step)),
     stdout = log_file, stderr = log_file
