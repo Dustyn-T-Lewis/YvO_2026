@@ -35,16 +35,14 @@ source("04_Figures/shared/build_string_cluster_cache.R")
 DAT <- file.path(BASE, "c_data")
 f06 <- function(p) file.path(DAT, p)
 
-# RDS matrix files converted to data frames for Excel embedding
 .shared <- readRDS(f06("shared_objects.rds"))
 .MEs <- matrix_to_df(as.matrix(readRDS(f06("MEs.rds"))), "sample_id")
 .me_pre <- matrix_to_df(as.matrix(readRDS(f06("me_pre.rds"))), "subject_key")
 .me_post <- matrix_to_df(as.matrix(readRDS(f06("me_post.rds"))), "subject_key")
 .delta_me <- matrix_to_df(as.matrix(readRDS(f06("delta_me.rds"))), "subject_key")
 
-# Consolidate redundant cohort/metric/mode/check splits into long sheets
-# Folds 22 sheets into 5 long-format sheets, while preserving sheet names that
-# downstream consumers (notably F06 panels and supp scripts) read directly.
+# Folds 22 cohort/metric/mode/check splits into 5 long sheets, keeping the
+# sheet names F06 panels and supp scripts read directly.
 .read_long <- function(path, cohort, metric) {
   df <- safe_read(path)
   if (is.null(df) || nrow(df) == 0) {
@@ -71,7 +69,6 @@ f06 <- function(p) file.path(DAT, p)
 .baseline_trait_assoc <- .collect("baseline")
 .change_trait_assoc <- .collect("change")
 
-# Module-trait associations (main combined design): combine cor + pval_bh
 .mt_cor <- safe_read(f06("wgcna/wgcna_module_trait_correlations.csv"))
 .mt_bh <- safe_read(f06("wgcna/wgcna_module_trait_pvalues_bh.csv"))
 .module_trait_assoc <- rbind(
@@ -84,14 +81,12 @@ f06 <- function(p) file.path(DAT, p)
 )
 .module_trait_assoc <- .module_trait_assoc[, c("module", "trait", "metric", "value")]
 
-# Module enrichment: strict + relaxed (+ mode)
 .enr_strict <- safe_read(f06("wgcna/wgcna_module_enrichment.csv"))
 .enr_relaxed <- safe_read(f06("03_panel_B_triptych_enrichment.csv"))
 if (!is.null(.enr_strict)) .enr_strict$mode <- "strict"
 if (!is.null(.enr_relaxed)) .enr_relaxed$mode <- "relaxed"
 .module_enrichment <- dplyr::bind_rows(.enr_strict, .enr_relaxed)
 
-# LMM diagnostics: contrast + stratified (+ check)
 .lmm_c <- safe_read(f06("wgcna/wgcna_lmm_contrast_check.csv"))
 .lmm_s <- safe_read(f06("wgcna/wgcna_lmm_stratified_check.csv"))
 if (!is.null(.lmm_c)) {
@@ -249,7 +244,6 @@ build_workbook(
   sheet_specs = f06_specs
 )
 cleanup_after_workbook(f06_specs,
-  extra_subdirs = character(0),
   preserve_patterns = c(
     "^00_input/", "^01_normalization/", "^02_imputation/", "^03_DEP/",
     "^04_Figures/shared/",

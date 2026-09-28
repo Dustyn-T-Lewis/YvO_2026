@@ -20,8 +20,7 @@ for (f in c("S8_A_turquoise.R", "S8_B_black.R", "S8_C_yellow.R", "S8_D_blue.R"))
 source(file.path(PANELS, "other_triptychs.R"), local = new.env())
 
 MOD_SRC <- file.path(BASE, "b_reports", "supp", "panels")
-MOD_PDF <- file.path(BASE, "b_reports", "supp")
-MOD_PNG <- file.path(BASE, "b_reports", "supp")
+MOD_RPT <- file.path(BASE, "b_reports", "supp")
 
 # The three age-associated modules first, then the training-associated one,
 # which is the order the Discussion takes them in. Every statistic is read from
@@ -38,10 +37,7 @@ mod_rows <- tibble::tribble(
   "blue", "D", "Training_Young", "training in the young"
 )
 
-.lmm <- read_csv(
-  file.path(BASE, "c_data", "wgcna", "wgcna_lmm_contrast_check.csv"),
-  show_col_types = FALSE
-)
+.lmm <- read_csv(file.path(BASE, "c_data", "wgcna", "wgcna_lmm_contrast_check.csv"), show_col_types = FALSE)
 
 mod_rows$assoc <- vapply(seq_len(nrow(mod_rows)), function(i) {
   hit <- .lmm[
@@ -58,10 +54,7 @@ mod_rows$assoc <- vapply(seq_len(nrow(mod_rows)), function(i) {
   )
 }, character(1))
 
-.mod_lab <- read_csv(
-  file.path(BASE, "c_data", "mod_bio_labels.csv"),
-  show_col_types = FALSE
-)
+.mod_lab <- read_csv(file.path(BASE, "c_data", "mod_bio_labels.csv"), show_col_types = FALSE)
 
 read_mod_panel <- function(tag, module) {
   path <- file.path(MOD_SRC, sprintf("S8_%s_%s.png", tag, module))
@@ -113,18 +106,16 @@ for (i in seq_len(nrow(mod_rows))) {
     )
 }
 
-mod_device <- get_raster_pdf_device()
-
-ggsave(file.path(MOD_PDF, "S8.pdf"), modules_fig,
+ggsave(file.path(MOD_RPT, "S8.pdf"), modules_fig,
   width = MOD_W, height = MOD_H, units = "mm",
-  device = mod_device, limitsize = FALSE
+  device = get_raster_pdf_device(), limitsize = FALSE
 )
-embed_pdf_fonts(file.path(MOD_PDF, "S8.pdf"))
-ggsave(file.path(MOD_PNG, "S8.png"), modules_fig,
+embed_pdf_fonts(file.path(MOD_RPT, "S8.pdf"))
+ggsave(file.path(MOD_RPT, "S8.png"), modules_fig,
   width = MOD_W, height = MOD_H, units = "mm",
   dpi = 300, limitsize = FALSE
 )
 
-caption_supp(modules_fig, "S8", MOD_W, MOD_H, MOD_PDF)
+caption_supp(modules_fig, "S8", MOD_W, MOD_H, MOD_RPT)
 
 message("S8 done")

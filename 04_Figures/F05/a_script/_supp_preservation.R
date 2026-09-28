@@ -46,7 +46,6 @@ if (fresh) {
   mp <- modulePreservation(
     multiExpr,
     multiColor,
-    referenceNetworks = 1,
     testNetworks      = 2,
     nPermutations     = 200,
     randomSeed        = 42,

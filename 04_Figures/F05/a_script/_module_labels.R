@@ -157,10 +157,7 @@ descend_to_ancestor <- function(cover, n_terms) {
 # relaxed GO:BP sets hold the same pathways with the same adjusted p-values in
 # all nine modules. Relaxed is the superset of terms *tested*, and is what the
 # triptych panels already draw on.
-.enrich_relaxed <- read_csv(
-  f06("03_panel_B_triptych_enrichment.csv"),
-  show_col_types = FALSE
-)
+.enrich_relaxed <- read_csv(f06("03_panel_B_triptych_enrichment.csv"), show_col_types = FALSE)
 
 # Largest protein family in each module's core, read off the KME_CORE lists on
 # 2026-09-16. Curated rather than matched by symbol prefix: the ribosomal,
@@ -260,10 +257,11 @@ ORA_TIE_RATIO <- 1.1
 LABEL_OVERRIDE <- c(turquoise = "Tricarboxylic Acid Cycle")
 
 .module_ora <- local({
-  sig <- .enrich_relaxed |>
-    filter(database == "GO:BP", padj < 0.05) |>
+  go_bp <- .enrich_relaxed |>
+    filter(database == "GO:BP") |>
     mutate(go_id = unname(.msigdb_to_go[pathway])) |>
     filter(!is.na(go_id))
+  sig <- filter(go_bp, padj < 0.05)
 
   # Black returns nothing at padj < 0.05. That is the module's result and not a
   # gap to paper over -- an 11-protein core that fails to reform in most LOSO
@@ -274,15 +272,13 @@ LABEL_OVERRIDE <- c(turquoise = "Tricarboxylic Acid Cycle")
     if (nrow(s) > 0L) {
       return(s)
     }
-    .enrich_relaxed |>
-      filter(module == m, database == "GO:BP") |>
-      mutate(go_id = unname(.msigdb_to_go[pathway])) |>
-      filter(!is.na(go_id)) |>
+    go_bp |>
+      filter(module == m) |>
       arrange(padj, desc(go_depth_of(go_id))) |>
       slice_head(n = 10)
   }
 
-  prepared <- lapply(.mod_labels$module_color, function(m) {
+  prepared <- setNames(lapply(.mod_labels$module_color, function(m) {
     s <- module_terms(m)
     anc_head <- descend_to_ancestor(ancestor_coverage(s$go_id, s$padj), nrow(s))
     under <- filter(
@@ -290,14 +286,11 @@ LABEL_OVERRIDE <- c(turquoise = "Tricarboxylic Acid Cycle")
     )
     pool <- if (m %in% VETO_OWN_BRANCH) s[0, ] else under
     list(module = m, terms = s, anc = anc_head, under = under, pool = pool)
-  })
-  names(prepared) <- .mod_labels$module_color
+  }), .mod_labels$module_color)
 
   # A shared term goes to the module that scores better on it, so the modules
   # are resolved best-p-value first and each claim is final.
-  best_p <- vapply(prepared, function(x) {
-    min(c(x$pool$padj, x$terms$padj))
-  }, numeric(1))
+  best_p <- vapply(prepared, \(x) min(c(x$pool$padj, x$terms$padj)), numeric(1))
 
   taken <- character(0)
   chosen <- list()
@@ -325,18 +318,12 @@ LABEL_OVERRIDE <- c(turquoise = "Tricarboxylic Acid Cycle")
         paste0("outside ", title_case_term(x$anc$term))
       },
       n_terms_rolled_up = paste0(x$anc$n_covered, "/", nrow(x$terms)),
-      top_descendant_terms = paste(
-        head(x$under$Description, 3),
-        collapse = "; "
-      )
+      top_descendant_terms = paste(head(x$under$Description, 3), collapse = "; ")
     )
   }
 
   bind_rows(chosen) |>
-    left_join(
-      .mod_labels[, c("module_color", "module_id")],
-      by = "module_color"
-    ) |>
+    left_join(.mod_labels[, c("module_color", "module_id")], by = "module_color") |>
     arrange(module_id) |>
     transmute(
       module_color, module_id,

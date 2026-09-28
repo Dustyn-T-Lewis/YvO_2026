@@ -23,8 +23,7 @@ pacman::p_load(patchwork, cowplot, png, grid)
 set.seed(42)
 
 RPT_SRC <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp")
-RPT_PNG <- file.path(BASE, "b_reports", "supp")
+RPT <- file.path(BASE, "b_reports", "supp")
 
 read_panel <- function(file, dir = RPT_SRC) {
   path <- file.path(dir, file)
@@ -40,15 +39,9 @@ pD <- read_panel("S6_D_bicor.png")
 bottom_row <- wrap_elements(full = pC) + wrap_elements(full = pD) +
   plot_layout(widths = c(1, 1))
 
-composite <- wrap_elements(full = pA) /
-  wrap_elements(full = pB) /
-  bottom_row +
+composite <- wrap_elements(full = pA) / wrap_elements(full = pB) / bottom_row +
   plot_layout(heights = c(0.30, 0.35, 0.35)) +
-  plot_annotation(
-    theme = theme(
-      plot.margin = margin(4, 6, 4, 6)
-    )
-  )
+  plot_annotation(theme = theme(plot.margin = margin(4, 6, 4, 6)))
 
 COMP_W <- 250
 COMP_H <- 330
@@ -61,18 +54,16 @@ composite <- ggdraw(composite) +
   draw_label("C", x = 0.02, y = 0.320, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
   draw_label("D", x = 0.52, y = 0.320, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1)
 
-pdf_device <- get_raster_pdf_device()
-
-ggsave(file.path(RPT_PDF, "S6.pdf"), composite,
+ggsave(file.path(RPT, "S6.pdf"), composite,
   width = COMP_W, height = COMP_H, units = "mm",
-  device = pdf_device, limitsize = FALSE
+  device = get_raster_pdf_device(), limitsize = FALSE
 )
-embed_pdf_fonts(file.path(RPT_PDF, "S6.pdf"))
-ggsave(file.path(RPT_PNG, "S6.png"), composite,
+embed_pdf_fonts(file.path(RPT, "S6.pdf"))
+ggsave(file.path(RPT, "S6.png"), composite,
   width = COMP_W, height = COMP_H, units = "mm",
   dpi = 300, limitsize = FALSE
 )
 
-caption_supp(composite, "S6", COMP_W, COMP_H, RPT_PDF)
+caption_supp(composite, "S6", COMP_W, COMP_H, RPT)
 
 message("S6 done")

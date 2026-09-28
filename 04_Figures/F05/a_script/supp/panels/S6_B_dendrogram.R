@@ -9,14 +9,10 @@ pacman::p_load(readr, dplyr, tibble, WGCNA, png)
 
 BASE <- "04_Figures/F05"
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-DAT     <- file.path(BASE, "c_data")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
+RPT <- file.path(BASE, "b_reports", "supp", "panels")
+DAT <- file.path(BASE, "c_data")
+dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
-
-pdf_device <- get_pdf_device()
 
 net           <- readRDS(file.path(DAT, "wgcna/wgcna_network.rds"))
 module_colors <- readRDS(file.path(DAT, "module_colors.rds"))
@@ -27,7 +23,6 @@ PA_W <- 240
 PA_H <- 120
 
 txt_title <- scale_text(BASE_STAT, PA_W)
-txt_sub   <- scale_text(BASE_GENE, PA_W)
 
 sft_csv <- read.csv(file.path(DAT, "wgcna/wgcna_sft_summary.csv"))
 soft_power <- sft_csv$selected_power[1]
@@ -66,11 +61,7 @@ tryCatch({
   message("Supplementary dendrogram render failed: ", e$message)
 })
 
-if (file.exists(dendro_tmp) && file.size(dendro_tmp) > 0) {
-  dendro_img <- readPNG(dendro_tmp)
-} else {
-  dendro_img <- NULL
-}
+dendro_img <- if (file.exists(dendro_tmp) && file.size(dendro_tmp) > 0) readPNG(dendro_tmp)
 
 subtitle_text <- sprintf(
   "Signed network | power = %d | %d modules | %s proteins (%d unassigned)",
@@ -101,10 +92,10 @@ dendro_data <- tibble(
 )
 write_csv(dendro_data, file.path(DAT, "asupp_B_QC_dendrogram_SUPP_data.csv"))
 
-ggsave(file.path(RPT_PNG, "S6_B_dendrogram.png"), pA,
+ggsave(file.path(RPT, "S6_B_dendrogram.png"), pA,
        width = PA_W, height = PA_H, units = "mm", dpi = 300)
-ggsave(file.path(RPT_PDF, "S6_B_dendrogram.pdf"), pA,
-       width = PA_W, height = PA_H, units = "mm", device = pdf_device)
+ggsave(file.path(RPT, "S6_B_dendrogram.pdf"), pA,
+       width = PA_W, height = PA_H, units = "mm", device = get_pdf_device())
 
 message("  Supplementary dendrogram saved")
 

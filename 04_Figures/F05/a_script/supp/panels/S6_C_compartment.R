@@ -15,13 +15,10 @@ pacman::p_load(tidyverse)
 
 BASE <- "04_Figures/F05"
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
+RPT <- file.path(BASE, "b_reports", "supp", "panels")
 DAT_OUT <- file.path(BASE, "c_data", "supp")
-DAT     <- file.path(BASE, "c_data")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
+DAT <- file.path(BASE, "c_data")
+for (d in c(RPT, DAT_OUT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 hpa <- read.delim("00_input/HPA_skeletal_muscle_annotations.tsv",
                    stringsAsFactors = FALSE)
@@ -43,15 +40,10 @@ hpa_long <- hpa_sub |>
   separate_rows(location, sep = ",\\s*") |>
   filter(location != "")
 
+# Cytoskeleton pools microtubules, actin and intermediate filaments.
 COMPARTMENTS <- c(
-  "Mitochondria",
-  "Cytosol",
-  "Nucleoplasm",
-  "Plasma membrane",
-  "Endoplasmic reticulum",
-  "Golgi apparatus",
-  "Vesicles",
-  "Cytoskeleton"  # aggregates: Microtubules, Actin filaments, Intermediate filaments
+  "Mitochondria", "Cytosol", "Nucleoplasm", "Plasma membrane",
+  "Endoplasmic reticulum", "Golgi apparatus", "Vesicles", "Cytoskeleton"
 )
 
 hpa_long <- hpa_long |>
@@ -142,12 +134,6 @@ validate("black",     "Nucleoplasm")
 validate("turquoise", "Mitochondria")
 
 if (!is.null(bio_labels)) {
-  if (!"display_label" %in% colnames(bio_labels)) {
-    bio_labels <- bio_labels |>
-      mutate(display_label = ifelse(is.na(bio_label),
-                                    stringr::str_to_title(module_color),
-                                    paste0(bio_label, " (", stringr::str_to_title(module_color), ")")))
-  }
   label_map <- setNames(bio_labels$display_label, bio_labels$module_color)
   enrich <- enrich |>
     mutate(module_label = ifelse(module %in% names(label_map),
@@ -191,12 +177,10 @@ p <- ggplot(enrich, aes(compartment, module_label, fill = neg_log10_p)) +
         plot.title    = element_text(size = 13, face = "bold"),
         plot.subtitle = element_text(size = 10))
 
-pdf_device <- get_pdf_device()
-
-ggsave(file.path(RPT_PNG, "S6_C_compartment.png"), p,
+ggsave(file.path(RPT, "S6_C_compartment.png"), p,
        width = 180, height = 130, units = "mm", dpi = 300)
-ggsave(file.path(RPT_PDF, "S6_C_compartment.pdf"), p,
-       width = 180, height = 130, units = "mm", device = pdf_device)
+ggsave(file.path(RPT, "S6_C_compartment.pdf"), p,
+       width = 180, height = 130, units = "mm", device = get_pdf_device())
 
 message("  Compartment enrichment complete.")
 

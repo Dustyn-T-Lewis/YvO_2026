@@ -9,18 +9,12 @@ pacman::p_load(readr, dplyr, tidyr, tibble, stringr, patchwork, ggnewscale)
 
 BASE <- "04_Figures/F05"
 
-RPT_PNG <- file.path(BASE, "b_reports", "main", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "main", "panels")
+RPT <- file.path(BASE, "b_reports", "main", "panels")
 DAT <- file.path(BASE, "c_data")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
+dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
 
-pdf_device <- get_pdf_device()
-
-lmm_audit <- read_csv(file.path(DAT, "wgcna/wgcna_lmm_contrast_check.csv"),
-  show_col_types = FALSE
-)
+lmm_audit <- read_csv(file.path(DAT, "wgcna/wgcna_lmm_contrast_check.csv"), show_col_types = FALSE)
 lmm_wide <- function(value_col) {
   lmm_audit |>
     dplyr::select(module, contrast, all_of(value_col)) |>
@@ -32,32 +26,7 @@ lmm_r <- lmm_wide("r_equiv")
 lmm_p <- lmm_wide("p_bh")
 lmm_praw <- lmm_wide("p_raw")
 
-strat_audit <- read_csv(file.path(DAT, "wgcna/wgcna_lmm_stratified_check.csv"),
-  show_col_types = FALSE
-)
-
-read_matrix <- function(rel) {
-  read_csv(file.path(DAT, rel), show_col_types = FALSE) |>
-    column_to_rownames("module") |>
-    as.matrix()
-}
-bl_cor_young_full <- read_matrix("wgcna/wgcna_baseline_trait_correlations_young.csv")
-bl_pval_young_full <- read_matrix("wgcna/wgcna_baseline_trait_pvalues_bh_young.csv")
-bl_cor_old_full <- read_matrix("wgcna/wgcna_baseline_trait_correlations_old.csv")
-bl_pval_old_full <- read_matrix("wgcna/wgcna_baseline_trait_pvalues_bh_old.csv")
-ch_cor_young_full <- read_matrix("wgcna/wgcna_change_trait_correlations_young.csv")
-ch_pval_young_full <- read_matrix("wgcna/wgcna_change_trait_pvalues_bh_young.csv")
-ch_cor_old_full <- read_matrix("wgcna/wgcna_change_trait_correlations_old.csv")
-ch_pval_old_full <- read_matrix("wgcna/wgcna_change_trait_pvalues_bh_old.csv")
-
-# Uncorrected p alongside the corrected one, for every block. Five cells survive
-# BH and ten more are nominal; the panel used to render those ten as
-# unremarkable, which is where the Ox. Phos. | ETC module's two near-misses
-# (Training-in-Young and delta-VL, both BH = 0.058) were being lost.
-bl_praw_young_full <- read_matrix("wgcna/wgcna_baseline_trait_pvalues_raw_young.csv")
-bl_praw_old_full <- read_matrix("wgcna/wgcna_baseline_trait_pvalues_raw_old.csv")
-ch_praw_young_full <- read_matrix("wgcna/wgcna_change_trait_pvalues_raw_young.csv")
-ch_praw_old_full <- read_matrix("wgcna/wgcna_change_trait_pvalues_raw_old.csv")
+strat_audit <- read_csv(file.path(DAT, "wgcna/wgcna_lmm_stratified_check.csv"), show_col_types = FALSE)
 
 module_df <- read_csv(file.path(DAT, "wgcna/wgcna_module_assignments.csv"))
 MEs <- readRDS(file.path(DAT, "MEs.rds"))
@@ -66,12 +35,14 @@ mod_bio_labels <- read_csv(file.path(DAT, "mod_bio_labels.csv"))
 
 non_grey <- rownames(lmm_r)[rownames(lmm_r) != "MEgrey"]
 
-mod_size <- module_df |>
+mod_counts <- module_df |>
   filter(module_color != "grey") |>
   count(module_color, name = "n_proteins") |>
   mutate(module = paste0("ME", module_color)) |>
   filter(module %in% non_grey)
-mod_order <- mod_size$module[order(mod_size$n_proteins)]
+mod_order <- mod_counts$module[order(mod_counts$n_proteins)]
+mod_counts <- mod_counts |>
+  mutate(module = factor(module, levels = mod_order), x_sqrt = sqrt(n_proteins))
 
 # Labels sit inside the count bars, whose width is the protein count, so the
 # smallest modules have the least room. Nothing is shortened here any more:
@@ -100,17 +71,6 @@ wrap_at_rule <- function(x, width) {
 }
 
 key_mods_me <- paste0("ME", readLines(file.path(DAT, "key_modules.txt")))
-key_mods_me <- key_mods_me[nzchar(trimws(key_mods_me))]
-
-mod_counts <- module_df |>
-  filter(module_color != "grey") |>
-  count(module_color, name = "n_proteins") |>
-  mutate(module = paste0("ME", module_color)) |>
-  filter(module %in% mod_order) |>
-  mutate(
-    module = factor(module, levels = mod_order),
-    x_sqrt = sqrt(n_proteins)
-  )
 
 mod_counts$pathway_label <- pathway_label_map[as.character(mod_counts$module)]
 mod_counts$pathway_label[is.na(mod_counts$pathway_label)] <- "N/A"
@@ -424,7 +384,6 @@ for (i in seq_len(nrow(strat_audit))) {
   strat_mat_praw[mod, col] <- strat_audit$p_raw[i]
 }
 
-# Aging by timepoint (computed above)
 aging_mat_r <- matrix(NA,
   nrow = length(non_grey), ncol = 2,
   dimnames = list(non_grey, c("Aging_Pre", "Aging_Post"))
@@ -441,35 +400,37 @@ fill_aging <- function(df, col) {
 fill_aging(aging_pre, "Aging_Pre")
 fill_aging(aging_post, "Aging_Post")
 
-subset_suffix <- function(m, suffix) {
-  m <- m[non_grey, , drop = FALSE]
-  colnames(m) <- paste0(colnames(m), suffix)
-  m
+# The per-age baseline and change blocks, in column order baseline Y, baseline
+# O, change Y, change O, each suffixed with its age group. The uncorrected p
+# rides alongside the corrected one: five cells survive BH and ten more are
+# nominal, including the Ox. Phos. | ETC module's two near-misses
+# (Training-in-Young and delta-VL, both BH = 0.058).
+age_blocks <- function(kind) {
+  blocks <- list()
+  for (stage in c("baseline", "change")) {
+    for (age in c("young", "old")) {
+      m <- read_csv(
+        file.path(DAT, sprintf("wgcna/wgcna_%s_trait_%s_%s.csv", stage, kind, age)),
+        show_col_types = FALSE
+      ) |>
+        column_to_rownames("module") |>
+        as.matrix()
+      m <- m[non_grey, , drop = FALSE]
+      colnames(m) <- paste0(colnames(m), if (age == "young") "_Y" else "_O")
+      blocks <- c(blocks, list(m))
+    }
+  }
+  do.call(cbind, blocks)
 }
-bl_cor_y <- subset_suffix(bl_cor_young_full, "_Y")
-bl_pval_y <- subset_suffix(bl_pval_young_full, "_Y")
-bl_cor_o <- subset_suffix(bl_cor_old_full, "_O")
-bl_pval_o <- subset_suffix(bl_pval_old_full, "_O")
-ch_cor_y <- subset_suffix(ch_cor_young_full, "_Y")
-ch_pval_y <- subset_suffix(ch_pval_young_full, "_Y")
-ch_cor_o <- subset_suffix(ch_cor_old_full, "_O")
-ch_pval_o <- subset_suffix(ch_pval_old_full, "_O")
-bl_praw_y <- subset_suffix(bl_praw_young_full, "_Y")
-bl_praw_o <- subset_suffix(bl_praw_old_full, "_O")
-ch_praw_y <- subset_suffix(ch_praw_young_full, "_Y")
-ch_praw_o <- subset_suffix(ch_praw_old_full, "_O")
 
 cor_mat <- cbind(
-  lmm_r[non_grey, , drop = FALSE], strat_mat_r, aging_mat_r,
-  bl_cor_y, bl_cor_o, ch_cor_y, ch_cor_o
+  lmm_r[non_grey, , drop = FALSE], strat_mat_r, aging_mat_r, age_blocks("correlations")
 )
 pval_mat <- cbind(
-  lmm_p[non_grey, , drop = FALSE], strat_mat_p, aging_mat_p,
-  bl_pval_y, bl_pval_o, ch_pval_y, ch_pval_o
+  lmm_p[non_grey, , drop = FALSE], strat_mat_p, aging_mat_p, age_blocks("pvalues_bh")
 )
 praw_mat <- cbind(
-  lmm_praw[non_grey, , drop = FALSE], strat_mat_praw, aging_mat_praw,
-  bl_praw_y, bl_praw_o, ch_praw_y, ch_praw_o
+  lmm_praw[non_grey, , drop = FALSE], strat_mat_praw, aging_mat_praw, age_blocks("pvalues_raw")
 )
 
 trait_order <- colnames(cor_mat)
@@ -511,7 +472,6 @@ for (s in seq_along(section_sizes)) {
 }
 trait_xpos <- setNames(xpos, trait_order)
 
-# Build heat_df
 heat_df <- expand.grid(
   module = non_grey, trait = trait_order,
   stringsAsFactors = FALSE
@@ -542,16 +502,8 @@ txt_bar_label <- (BASE_COUNT * sqrt(PA_W / PANEL_MD) * 0.85 * 1.25 + 2.0) * 0.80
 xmin_all <- min(xpos) - 0.55
 xmax_all <- max(xpos) + 0.55
 
-section_breaks <- tibble(
-  x = c(
-    (xpos[4] + xpos[5]) / 2,
-    (xpos[6] + xpos[7]) / 2,
-    (xpos[8] + xpos[9]) / 2,
-    (xpos[11] + xpos[12]) / 2,
-    (xpos[14] + xpos[15]) / 2,
-    (xpos[16] + xpos[17]) / 2
-  )
-)
+sec_end <- head(cumsum(section_sizes), -1)
+section_breaks <- tibble(x = (xpos[sec_end] + xpos[sec_end + 1]) / 2)
 
 # Every n in the bracket headers is read off meta, so a re-run on a different
 # sample set cannot leave a stale count on the figure. The LMM is fitted on all
@@ -605,11 +557,7 @@ brackets <- tribble(
 
 p_brackets <- build_brackets(brackets, xmin_all, xmax_all, txt_brack)
 p_counts <- build_count_bars(txt_count, txt_cell, txt_bar_label)
-p_heat <- build_heatmap(
-  heat_df, col_labels, trait_order,
-  xmin_all, xmax_all, txt_cell
-)
-p_heat <- p_heat +
+p_heat <- build_heatmap(heat_df, col_labels, trait_order, xmin_all, xmax_all, txt_cell) +
   geom_vline(
     data = section_breaks, aes(xintercept = x),
     color = "grey55", linewidth = 0.35, linetype = "solid"
@@ -634,13 +582,13 @@ fig_A <- assemble_figure(
 
 write_csv(heat_df, file.path(DAT, "01_panel_A_heatmap_data.csv"))
 
-ggsave(file.path(RPT_PNG, "A_module_trait_heatmap.png"), fig_A,
+ggsave(file.path(RPT, "A_module_trait_heatmap.png"), fig_A,
   width = PA_W, height = PA_H, units = "mm",
   dpi = 300, limitsize = FALSE
 )
-ggsave(file.path(RPT_PDF, "A_module_trait_heatmap.pdf"), fig_A,
+ggsave(file.path(RPT, "A_module_trait_heatmap.pdf"), fig_A,
   width = PA_W, height = PA_H, units = "mm",
-  device = pdf_device, limitsize = FALSE
+  device = get_pdf_device(), limitsize = FALSE
 )
 
 message(sprintf("  Panel A saved: %d x %d mm (%d columns)", PA_W, PA_H, n_cols))
