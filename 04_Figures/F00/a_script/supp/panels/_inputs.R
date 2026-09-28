@@ -2,7 +2,7 @@
 # panels A-N. Each panel saves its render to b_reports/panels and the data
 # behind it to c_data/sheets, which F00_data.R folds into S1 Table.
 
-pacman::p_load(dplyr, tibble, tidyr, readr, readxl, ggplot2, scales, stringr)
+pacman::p_load(dplyr, tidyr, readr, readxl, ggplot2, scales)
 
 source("04_Figures/shared/style.R")
 
