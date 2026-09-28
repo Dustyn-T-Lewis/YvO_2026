@@ -10,7 +10,6 @@ method_files <- sort(list.files("02_imputation/a_script/benchmark/methods",
 imp_list <- list()
 
 for (f in method_files) {
-  # Source the file and find the impute_* function it defines
   env_before <- ls(envir = .GlobalEnv)
   source(f, local = FALSE)
   env_after <- ls(envir = .GlobalEnv)

@@ -15,7 +15,6 @@ source("04_Figures/shared/devices.R")
 
 DAT <- "02_imputation/c_data"
 RPT <- "02_imputation/b_reports"
-
 dir.create(RPT, showWarnings = FALSE, recursive = TRUE)
 
 rpt <- readRDS(file.path(DAT, "00_report_intermediates.rds"))
@@ -26,13 +25,15 @@ rpt <- readRDS(file.path(DAT, "00_report_intermediates.rds"))
 list2env(rpt, envir = environment())
 
 bm_path <- file.path(DAT, "benchmark", "04_composite_ranking.csv")
-stopifnot("Benchmark ranking missing — run 02_imputation/a_script/01_impute.R benchmark first" =
-  file.exists(bm_path))
+stopifnot(
+  "Benchmark ranking missing: run 02_imputation/a_script/benchmark/_run_all.R" =
+    file.exists(bm_path)
+)
 bm <- read_csv(bm_path, show_col_types = FALSE)
 
-mc <- miss_class  # alias for brevity
+mc <- miss_class
 
-THM <- theme_minimal(base_size = 11) +
+THM <- theme_minimal() +
   theme(plot.title = element_text(face = "bold", size = 12),
         panel.grid.minor = element_blank())
 
@@ -41,8 +42,6 @@ PAL_BENCH <- setNames(
   c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#A65628",
     "#F781BF", "#999999")[seq_along(bench_classes)],
   bench_classes)
-
-# Report 1: Missingness (1 page)
 
 p_miss_hist <- mc |>
   filter(classification != "Complete") |>
@@ -98,9 +97,6 @@ print(
 dev.off()
 message("Saved: ", file.path(RPT, "01_missingness_report.pdf"))
 
-# Report 2: Imputation quality (2 pages)
-
-# Page 1: Benchmark
 top10 <- bm |> slice_min(rank, n = 10)
 p_bench_rank <- top10 |>
   mutate(method = factor(method, levels = rev(method)),
@@ -133,17 +129,15 @@ page1 <- (p_bench_rank | p_bench_scatter) +
                        bm$method[2], bm$composite[2], oob_error),
     theme = theme(plot.title = element_text(face = "bold", size = 14)))
 
-# Page 2: Quality
-obs_vals <- as.numeric(mat[!was_na])
-imp_vals <- as.numeric(mat_imp[was_na])
 dens_df <- bind_rows(
-  tibble(value = obs_vals, type = "Observed"),
-  tibble(value = imp_vals, type = "Imputed"))
+  tibble(value = as.numeric(mat[!was_na]), type = "Observed"),
+  tibble(value = as.numeric(mat_imp[was_na]), type = "Imputed"))
+dens_cols <- c(Observed = "#377EB8", Imputed = "#E41A1C")
 
 p_dens <- ggplot(dens_df, aes(value, fill = type, color = type)) +
   geom_density(alpha = 0.4) +
-  scale_fill_manual(values = c(Observed = "#377EB8", Imputed = "#E41A1C"), name = NULL) +
-  scale_color_manual(values = c(Observed = "#377EB8", Imputed = "#E41A1C"), name = NULL) +
+  scale_fill_manual(values = dens_cols, name = NULL) +
+  scale_color_manual(values = dens_cols, name = NULL) +
   labs(title = "A. Observed vs imputed distributions",
        x = "log2 intensity", y = "Density") +
   THM + theme(legend.position = "top")

@@ -70,7 +70,6 @@ for (mname in eval_methods) {
     mm_mnar <- norm_mat
     mm_mnar[mnar_mask] <- NA
 
-    # Re-impute masked data
     imp_mcar <- tryCatch(
       fn(mat = mm_mcar, meta = meta, is_mnar = is_mnar_use),
       error = function(e) NULL)

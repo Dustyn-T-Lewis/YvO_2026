@@ -20,7 +20,6 @@ for (nm in names(imp_list)) {
   cat(sprintf("  %-25s  %dx%d  NAs=%d\n", nm, nrow(m), ncol(m), sum(is.na(m))))
 }
 
-# Run comparisons
 cat("\n--- Reconstruction metrics ---\n")
 source("02_imputation/a_script/benchmark/compare/01_reconstruct.R")
 

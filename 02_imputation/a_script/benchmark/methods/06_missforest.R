@@ -1,4 +1,3 @@
-# methods/06_missforest.R
 # missForest: random forest iterative imputation
 # Stekhoven & Buhlmann 2012
 # Pure MAR (nonparametric)

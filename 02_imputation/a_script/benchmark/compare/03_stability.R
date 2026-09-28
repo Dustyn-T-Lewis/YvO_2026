@@ -12,7 +12,6 @@ if (!exists("imp_list")) {
 pacman::p_load(limma)
 select <- dplyr::select
 
-#Helper: run limma Aging contrast
 run_limma_aging_quick <- function(mat, meta_df) {
   meta_df$group <- factor(meta_df$Group_Time,
                           levels = c("Young_Pre", "Young_Post", "Old_Pre", "Old_Post"))
@@ -37,21 +36,18 @@ FAST_METHODS <- c("MinProb", "Half_minimum", "Non_imputed")
 meta_df <- as.data.frame(meta)
 rownames(meta_df) <- meta_df$Col_ID
 
-#Compute metrics per method
 stability_rows <- list()
 
 for (mname in names(imp_list)) {
   cat(sprintf("  Stability: %s... ", mname))
   imp_mat <- imp_list[[mname]]
 
-  #Q1/Q4 ratio
   # Classify proteins by median observed intensity quartile
   obs_median <- apply(norm_mat, 1, median, na.rm = TRUE)
   quartiles <- cut(obs_median, breaks = quantile(obs_median, na.rm = TRUE),
                    labels = c("Q1", "Q2", "Q3", "Q4"), include.lowest = TRUE)
   names(quartiles) <- rownames(norm_mat)
 
-  # Run limma for DEP identification
   tt <- tryCatch(run_limma_aging_quick(imp_mat, meta_df),
                   error = function(e) NULL)
   q1q4 <- NA_real_
@@ -62,7 +58,6 @@ for (mname in names(imp_list)) {
     q1q4 <- if (n_q4 > 0) n_q1 / n_q4 else NA_real_
   }
 
-  #KS statistic
   # Per protein: KS test of imputed values vs observed values
   ks_stats <- numeric(0)
   has_na_rows <- which(rowSums(is.na(norm_mat)) > 0 & rowSums(is.na(norm_mat)) < ncol(norm_mat))
@@ -78,7 +73,6 @@ for (mname in names(imp_list)) {
   }
   ks_median <- if (length(ks_stats)) median(ks_stats) else NA_real_
 
-  #Jackknife retention (fast methods only)
   jackknife_rho <- NA_real_
   if (mname %in% FAST_METHODS && !is.null(tt)) {
     full_logfc <- setNames(tt$logFC, rownames(tt))

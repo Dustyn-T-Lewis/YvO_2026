@@ -1,4 +1,3 @@
-# methods/04_mice.R
 # MICE/PMM: predictive mean matching
 # van Buuren & Groothuis-Oudshoorn 2011
 # Pure MAR assumption
@@ -18,12 +17,10 @@ impute_MICE <- function(mat, meta, is_mnar, ...) {
   }
 
   # Precompute correlation of incomplete proteins with complete ones
-  # Use pairwise.complete.obs for correlation
   for (i in has_na) {
     obs_cols <- which(!is.na(mat[i, ]))
     na_cols <- which(is.na(mat[i, ]))
 
-    # Find top 10 most correlated complete proteins
     cors <- cor(mat[i, obs_cols], t(mat[complete, obs_cols, drop = FALSE]),
                 use = "pairwise.complete.obs")
     cors[is.na(cors)] <- 0

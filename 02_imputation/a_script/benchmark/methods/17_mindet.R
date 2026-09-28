@@ -1,4 +1,3 @@
-# methods/17_mindet.R
 # MinDet: deterministic minimum imputation
 # Lazar et al. 2016
 # Pure MNAR; replaces NAs with per-sample minimum detected value

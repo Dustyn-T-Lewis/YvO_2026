@@ -13,8 +13,7 @@ CACHE_RDS <- file.path(BENCH_DIR, "imputed_matrices.rds")
 dal  <- readRDS(DAL_RDS)
 meta <- dal$metadata
 
-# IMPORTANT: 02_normalized.csv has annotation columns (uniprot_id, protein, gene, description).
-# Must drop them to get a numeric matrix.
+# 02_normalized.csv carries four annotation columns; drop them for a numeric matrix.
 raw <- read.csv(NORM_CSV, check.names = FALSE)
 annot_cols <- c("uniprot_id", "protein", "gene", "description")
 num_cols <- setdiff(names(raw), annot_cols)
@@ -26,7 +25,6 @@ cat(sprintf("Loaded: %d proteins x %d samples, %.1f%% missing\n",
             nrow(norm_mat), ncol(norm_mat),
             100 * sum(is.na(norm_mat)) / length(norm_mat)))
 
-# MAR/MNAR classifiers
 # Classifier 1: K-means (current pipeline default)
 mnar_df <- read.csv(MNAR_CSV)
 is_mnar_km <- setNames(mnar_df$classification == "MNAR", mnar_df$gene)
@@ -46,7 +44,6 @@ names(is_mnar_logistic) <- rownames(norm_mat)
 
 CLASSIFIERS <- list(km = is_mnar_km, logistic = is_mnar_logistic)
 
-# Report classifier agreement
 both_incomplete <- incomplete & !is.na(is_mnar_km)
 agree <- mean(is_mnar_km[both_incomplete] == is_mnar_logistic[both_incomplete])
 cat(sprintf("Classifiers: km (%d MNAR) vs logistic (%d MNAR), %.1f%% agreement\n",
@@ -78,7 +75,6 @@ dir.create(file.path(BENCH_DIR, "figures"), showWarnings = FALSE)
 find_method_fn <- function(mname) {
   method_files <- sort(list.files("02_imputation/a_script/benchmark/methods",
                                    pattern = "\\.R$", full.names = TRUE))
-  # Split off classifier suffix
   parts <- strsplit(mname, "_(?=(km|logistic)$)", perl = TRUE)[[1]]
   if (length(parts) == 2) {
     base_method <- parts[1]
@@ -96,7 +92,6 @@ find_method_fn <- function(mname) {
     source(f, local = FALSE)
   }
 
-  # Direct match
   if (exists(target_fn, envir = .GlobalEnv)) {
     return(list(fn_name = target_fn, classifier = classifier))
   }

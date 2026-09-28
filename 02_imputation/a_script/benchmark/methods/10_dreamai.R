@@ -1,11 +1,9 @@
-# methods/10_dreamai.R
 # DreamAI: ensemble imputation (KNN + MissForest + RegImpute)
 # Ma et al. 2021 (PLOS Comp Bio); 3 of 5 paper methods used
 # Full paper ensemble also includes ADMIN + SpectroFM
 
 impute_DreamAI <- function(mat, meta, is_mnar, ...) {
   set.seed(42)
-  # DreamAI ensemble: average of multiple imputation methods
   # If DreamAI package is available, use it; otherwise replicate ensemble logic
   if (requireNamespace("DreamAI", quietly = TRUE)) {
     result <- tryCatch({
