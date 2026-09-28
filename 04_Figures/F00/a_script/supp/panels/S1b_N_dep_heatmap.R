@@ -11,7 +11,6 @@ dep_counts <- da_summ |>
   filter(type %in% c("up", "down")) |>
   summarise(
     `p<0.05` = sum(sig.PVal),
-    `FDR<0.10` = sum(sig.FDR),
     `FDR<0.05` = sum(sig.FDR.05),
     `Pi<0.05` = sum(sig.Pi),
     .by = contrast
@@ -22,7 +21,7 @@ dep_counts <- da_summ |>
       levels = intersect(CONTRAST_ORDER, unique(contrast))
     ),
     threshold = factor(threshold,
-      levels = c("p<0.05", "FDR<0.10", "FDR<0.05", "Pi<0.05")
+      levels = c("p<0.05", "FDR<0.05", "Pi<0.05")
     )
   )
 
