@@ -37,11 +37,7 @@ if (fresh) {
   CTRS <- c("Aging", "Training_Young", "Training_Old", "Interaction")
   dep <- read_csv(STAGE3_CSV, show_col_types = FALSE)
 
-  pw_list <- build_pathway_collection(
-    min_size = MIN_SIZE, max_size = MAX_SIZE,
-    include_goslim = TRUE,
-    exclude_variants = FALSE
-  )
+  pw_list <- build_pathway_collection(min_size = MIN_SIZE, max_size = MAX_SIZE)
 
   # Methods states Benjamini-Hochberg correction per database, so each
   # collection is tested as its own family rather than pooled.
@@ -57,15 +53,14 @@ if (fresh) {
     per_db <- lapply(pw_by_db, \(pw) run_fgsea_deduplicated(
       ranks     = ranks,
       pathways  = pw,
-      em_cutoff = 1, # no-op here -- the cross-database em_dedup_report() call below does the real collapse
+      em_cutoff = 1,
       nperm     = 10000,
       min_size  = MIN_SIZE,
       max_size  = MAX_SIZE
     ))
-    # em_cutoff = 1 above makes run_fgsea_deduplicated()'s own flagging a
-    # no-op, but it still stamps the three dedup columns onto every row --
-    # drop them so the real, cross-database flags below don't collide with
-    # them in the join.
+    # em_cutoff = 1 makes run_fgsea_deduplicated()'s own flagging a no-op; the
+    # cross-database em_dedup_report() below does the real collapse. Its three
+    # dedup columns are dropped so they do not collide in the join.
     res <- bind_rows(per_db) |>
       select(-any_of(c("dedup_status", "merged_into", "overlap_jaccard")))
 

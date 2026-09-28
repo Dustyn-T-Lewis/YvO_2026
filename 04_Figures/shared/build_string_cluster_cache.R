@@ -145,11 +145,7 @@ if (!length(stale_colors)) {
       )
   })
 
-  keep <- if (is.null(cached)) {
-    NULL
-  } else {
-    filter(cached, module_color %in% fresh_colors)
-  }
+  keep <- if (!is.null(cached)) filter(cached, module_color %in% fresh_colors)
 
   cache_df <- bind_rows(keep, bind_rows(fetched)) |>
     mutate(
@@ -172,7 +168,6 @@ if (!length(stale_colors)) {
     "Wrote %d cluster rows for %d modules to %s",
     nrow(cache_df), n_distinct(cache_df$module_color), CACHE_PATH
   ))
-  cached <- cache_df
 }
 
 string_clusters <- read_csv(CACHE_PATH, show_col_types = FALSE)

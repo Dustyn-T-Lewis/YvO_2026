@@ -113,7 +113,7 @@ cleanup_after_workbook <- function(sheet_specs,
                                    extra_files = character(),
                                    preserve_patterns = UPSTREAM_PREFIXES) {
   is_preserved <- function(path) {
-    rel <- sub(paste0("^", "", "/?"), "", path)
+    rel <- sub("^/?", "", path)
     any(vapply(preserve_patterns, function(p) grepl(p, path) || grepl(p, rel), logical(1)))
   }
   removed <- 0L

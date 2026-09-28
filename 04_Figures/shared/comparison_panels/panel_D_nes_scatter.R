@@ -1,4 +1,5 @@
-# Shared NES Scatter Panel: Panel D in F04 (concordance) and F05 (reversal)
+# Shared NES scatter: F04 panels D (concordance) and E (reversal). Sourced
+# local with `cfg` set by the caller.
 
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/print_scale_apply.R")
@@ -54,8 +55,7 @@ fgsea_wide <- fgsea_wide |>
       sig_2 ~ cfg$quadrant_defs$sig_y_label,
       TRUE ~ "NS"
     ) |> factor(levels = names(cfg$sig_colors)),
-    pathway_label = clean_pathway_name(pathway),
-    db_shape = ifelse(database == "Hallmark", 24, 21)
+    pathway_label = clean_pathway_name(pathway)
   )
 
 fgsea_sig <- fgsea_wide |> filter(significance != "NS")
@@ -112,7 +112,7 @@ message(sprintf(
   nes_cor_all$estimate, nes_ci_all[1], nes_ci_all[2]
 ))
 
-txt_pw <- scale_text(BASE_PATHWAY, PG_W) # no multiplier — prevents label overlap in composite
+txt_pw <- scale_text(BASE_PATHWAY, PG_W) # no multiplier: prevents label overlap in composite
 txt_quad <- scale_text(BASE_QUADRANT, PG_W) * 1.15 + 1 / .pt
 
 # 24 pathway names in one square panel only fit in a condensed face; fall back
@@ -220,27 +220,27 @@ subtitle_str <- paste(
 # from A to D or E reads the same pale red as concordant and the same pale blue
 # as discordant. E's corners mean exacerbated/reversed rather than
 # concordant/discordant, and keep the same red/blue assignment.
+quad_rect <- function(b, fill) {
+  annotate("rect",
+    xmin = b[1], xmax = b[2], ymin = b[3], ymax = b[4],
+    fill = fill, alpha = 0.55, color = "grey70", linewidth = 0.2
+  )
+}
+corner_count <- function(x, y, label, n, colour, hjust, vjust) {
+  annotate("label",
+    x = x, y = y,
+    label = sprintf("%s  n = %d", label, n),
+    hjust = hjust, vjust = vjust, size = txt_quad, fontface = "bold",
+    color = colour, fill = alpha("white", 0.92),
+    label.padding = unit(1.5, "pt"), lineheight = 0.9
+  )
+}
+
 pD <- ggplot(mapping = aes(x = .data[[nes_x]], y = .data[[nes_y]])) +
-  annotate("rect",
-    xmin = qd$bg_red_1[1], xmax = qd$bg_red_1[2],
-    ymin = qd$bg_red_1[3], ymax = qd$bg_red_1[4],
-    fill = "#FFE0E0", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = qd$bg_red_2[1], xmax = qd$bg_red_2[2],
-    ymin = qd$bg_red_2[3], ymax = qd$bg_red_2[4],
-    fill = "#FFE0E0", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = qd$bg_blue_1[1], xmax = qd$bg_blue_1[2],
-    ymin = qd$bg_blue_1[3], ymax = qd$bg_blue_1[4],
-    fill = "#DCEEFF", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = qd$bg_blue_2[1], xmax = qd$bg_blue_2[2],
-    ymin = qd$bg_blue_2[3], ymax = qd$bg_blue_2[4],
-    fill = "#DCEEFF", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
+  quad_rect(qd$bg_red_1, "#FFE0E0") +
+  quad_rect(qd$bg_red_2, "#FFE0E0") +
+  quad_rect(qd$bg_blue_1, "#DCEEFF") +
+  quad_rect(qd$bg_blue_2, "#DCEEFF") +
   geom_hline(yintercept = 0, color = "grey60", linewidth = 0.2) +
   geom_vline(xintercept = 0, color = "grey60", linewidth = 0.2) +
   geom_abline(
@@ -285,34 +285,10 @@ pD <- ggplot(mapping = aes(x = .data[[nes_x]], y = .data[[nes_y]])) +
     # off a sweep as the cleanest for their own panel.
     seed = cfg$label_seed %||% 42
   ) +
-  annotate("label",
-    x = nes_lim, y = nes_lim,
-    label = sprintf("%s  n = %d", qd$label_tr, n_q1),
-    hjust = 1, vjust = 1, size = txt_quad, fontface = "bold",
-    color = qd$color_tr, fill = alpha("white", 0.92),
-    label.padding = unit(1.5, "pt"), lineheight = 0.9
-  ) +
-  annotate("label",
-    x = -nes_lim, y = nes_lim,
-    label = sprintf("%s  n = %d", qd$label_tl, n_q2),
-    hjust = 0, vjust = 1, size = txt_quad, fontface = "bold",
-    color = qd$color_tl, fill = alpha("white", 0.92),
-    label.padding = unit(1.5, "pt"), lineheight = 0.9
-  ) +
-  annotate("label",
-    x = -nes_lim, y = -nes_lim,
-    label = sprintf("%s  n = %d", qd$label_bl, n_q3),
-    hjust = 0, vjust = 0, size = txt_quad, fontface = "bold",
-    color = qd$color_bl, fill = alpha("white", 0.92),
-    label.padding = unit(1.5, "pt"), lineheight = 0.9
-  ) +
-  annotate("label",
-    x = nes_lim, y = -nes_lim,
-    label = sprintf("%s  n = %d", qd$label_br, n_q4),
-    hjust = 1, vjust = 0, size = txt_quad, fontface = "bold",
-    color = qd$color_br, fill = alpha("white", 0.92),
-    label.padding = unit(1.5, "pt"), lineheight = 0.9
-  ) +
+  corner_count(nes_lim, nes_lim, qd$label_tr, n_q1, qd$color_tr, 1, 1) +
+  corner_count(-nes_lim, nes_lim, qd$label_tl, n_q2, qd$color_tl, 0, 1) +
+  corner_count(-nes_lim, -nes_lim, qd$label_bl, n_q3, qd$color_bl, 0, 0) +
+  corner_count(nes_lim, -nes_lim, qd$label_br, n_q4, qd$color_br, 1, 0) +
   scale_x_continuous(expand = expansion(0, 0)) +
   scale_y_continuous(expand = expansion(0, 0)) +
   coord_fixed(ratio = 1, xlim = c(-nes_lim, nes_lim), ylim = c(-nes_lim, nes_lim)) +
@@ -383,13 +359,9 @@ if (!is.null(pD_legend_grob)) {
   )
 }
 
-pD_title <- cfg$title
-pD_subtitle <- subtitle_str
-pD_legend <- NULL
-# Strip titles but KEEP legend (legend provides shape/size key for composite)
+# Titles go, the legend stays: it is the shape/size key for the composite.
 pD <- pD + labs(title = NULL, subtitle = NULL, tag = NULL)
 
-pw_conc_frac <- metric_frac # F04
-pw_rev_frac <- metric_frac # F05
+pw_conc_frac <- metric_frac # read by both F04 callers
 
 cat(sprintf("%s Panel D done\n", cfg$fig_id))

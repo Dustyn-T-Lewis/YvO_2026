@@ -6,7 +6,7 @@
 #   run_fgsea_deduplicated()        fgsea + collapsePathways for one contrast
 #   run_enrichment_pipeline()       fGSEA across all contrasts + databases
 #   run_ora_deduplicated()          over-representation, redundancy flagged
-#   classify_database() / classify_pathway_func()  category labels for plotting
+#   classify_database()             database label for each pathway name
 
 source(here::here("04_Figures", "shared", "enrichment_dedup.R"))
 
@@ -71,12 +71,10 @@ deduplicate_enrichment <- function(results, pathways, jaccard_cutoff = 0.5) {
   survivors[order(survivors$padj), ]
 }
 
-
 build_pathway_collection <- function(species = "Homo sapiens",
                                      min_size = 10, max_size = 500,
                                      include_goslim = TRUE,
                                      exclude_variants = FALSE) {
-  requireNamespace("msigdbr", quietly = TRUE)
   stopifnot(
     "msigdbr release differs from the pinned 26.1.0; every enrichment result will move" =
       as.character(packageVersion("msigdbr")) == "26.1.0"
@@ -145,7 +143,6 @@ build_pathway_collection <- function(species = "Homo sapiens",
   pw_list
 }
 
-
 # Official GO Consortium generic slim, checked in from
 # https://current.geneontology.org/ontology/subsets/goslim_generic.obo
 # (data-version go/releases/2026-07-26/subsets/goslim_generic.owl, verified
@@ -179,16 +176,10 @@ parse_goslim_bp_terms <- function(obo_path) {
 build_goslim_gene_sets <- function(species = "Homo sapiens",
                                    min_size = 10, max_size = 500,
                                    obo_path = here::here("04_Figures", "shared", "goslim_generic.obo")) {
-  requireNamespace("GO.db", quietly = TRUE)
-  requireNamespace("org.Hs.eg.db", quietly = TRUE)
-  requireNamespace("AnnotationDbi", quietly = TRUE)
-
   bp_slim <- parse_goslim_bp_terms(obo_path)
 
-  # Get all descendant GO terms for each slim term
   offspring <- as.list(GO.db::GOBPOFFSPRING)
 
-  # Map all BP GO terms -> gene symbols via org.Hs.eg.db
   suppressMessages({
     go_genes <- AnnotationDbi::select(
       org.Hs.eg.db::org.Hs.eg.db,
@@ -200,7 +191,7 @@ build_goslim_gene_sets <- function(species = "Homo sapiens",
   go_bp_genes <- go_genes[!is.na(go_genes$ONTOLOGY) & go_genes$ONTOLOGY == "BP", ]
   go_to_symbols <- split(go_bp_genes$SYMBOL, go_bp_genes$GO)
 
-  # Build gene sets: each slim term + all its descendants
+  # Each slim term's gene set is its own genes plus all its descendants'.
   goslim_sets <- list()
   slim_names <- vapply(bp_slim, function(id) {
     tryCatch(AnnotationDbi::Term(GO.db::GOTERM[[id]]),
@@ -213,7 +204,6 @@ build_goslim_gene_sets <- function(species = "Homo sapiens",
     go_term <- slim_names[i]
     if (is.na(go_term)) next
 
-    # Collect genes from this term + all offspring
     all_terms <- go_id
     desc <- offspring[[go_id]]
     if (!is.null(desc)) all_terms <- c(all_terms, desc)
@@ -235,8 +225,6 @@ build_goslim_gene_sets <- function(species = "Homo sapiens",
   ))
   goslim_sets
 }
-
-
 
 # Redundancy is flagged, not dropped -- matches run_ora_deduplicated(), so a
 # count like "19 significant" and a display of "representatives only" come
@@ -293,7 +281,6 @@ run_fgsea_deduplicated <- function(ranks, pathways, em_cutoff = 0.5,
   rbind(sig_flagged, nonsig)
 }
 
-
 run_enrichment_pipeline <- function(stats_list, pw_list,
                                     jaccard_cutoff = 0.35,
                                     nperm = 10000,
@@ -346,7 +333,6 @@ run_enrichment_pipeline <- function(stats_list, pw_list,
     res$database <- classify_database(res$pathway)
     res$contrast <- ctr
 
-    # Jaccard dedup on remaining sig
     sig_after <- res[!is.na(res$padj) & res$padj < padj_cutoff, ]
     sig_dedup <- deduplicate_enrichment(sig_after, pw_list, jaccard_cutoff)
     n_removed <- nrow(sig_after) - nrow(sig_dedup)
@@ -367,14 +353,11 @@ run_enrichment_pipeline <- function(stats_list, pw_list,
 
   long_df <- dplyr::bind_rows(all_results)
 
-  # Union of surviving sig pathways across all contrasts
   sig_union <- unique(long_df$pathway[!is.na(long_df$padj) & long_df$padj < padj_cutoff])
   message(sprintf("\nUnion of sig pathways: %d", length(sig_union)))
 
-  # Filter to union pathways only
   long_df <- long_df[long_df$pathway %in% sig_union, ]
 
-  # Summary
   for (ctr in names(stats_list)) {
     sub <- long_df[long_df$contrast == ctr, ]
     n_sig <- sum(!is.na(sub$padj) & sub$padj < padj_cutoff)
@@ -385,7 +368,6 @@ run_enrichment_pipeline <- function(stats_list, pw_list,
 
   list(long_df = long_df, sig_union = sig_union)
 }
-
 
 run_ora_deduplicated <- function(genes, universe, pathways,
                                  em_cutoff = 0.5,
@@ -467,7 +449,6 @@ run_ora_deduplicated <- function(genes, universe, pathways,
   tibble::as_tibble(out)
 }
 
-
 classify_database <- function(pathway_names) {
   dplyr::case_when(
     grepl("^HALLMARK_", pathway_names) ~ "Hallmark",
@@ -480,72 +461,3 @@ classify_database <- function(pathway_names) {
   )
 }
 
-
-# MSigDB pathway ID -> 15 consolidated categories (keyword rules)
-CONSOLIDATED_PATHWAY_ORDER <- c(
-  "Muscle & Contractile", "Cytoskeleton & Motility", "ECM & Adhesion",
-  "Lipid Metabolism", "Carbohydrate & Energy Metabolism",
-  "Amino Acid & Cofactor Metabolism",
-  "Mitochondria & Energy", "Protein Homeostasis",
-  "Transport", "Translation & Ribosome", "Transcription & Chromatin",
-  "Immune & Inflammation", "DNA & Cell Cycle", "Circulatory System",
-  "Development", "Other"
-)
-
-CONSOLIDATED_COLORS <- c(
-  "Muscle & Contractile"              = "#E57373",
-  "Cytoskeleton & Motility"           = "#FFB74D",
-  "ECM & Adhesion"                    = "#FFF176",
-  "Lipid Metabolism"                  = "#AED581",
-  "Carbohydrate & Energy Metabolism"  = "#81C784",
-  "Amino Acid & Cofactor Metabolism"  = "#66BB6A",
-  "Mitochondria & Energy"             = "#4DB6AC",
-  "Protein Homeostasis"               = "#4FC3F7",
-  "Transport"                         = "#7986CB",
-  "Translation & Ribosome"            = "#BA68C8",
-  "Transcription & Chromatin"         = "#AB47BC",
-  "Immune & Inflammation"             = "#A1887F",
-  "DNA & Cell Cycle"                  = "#90A4AE",
-  "Circulatory System"                = "#CE93D8",
-  "Development"                       = "#B0BEC5",
-  "Other"                             = "#D0D0D0"
-)
-
-classify_pathway_func <- function(ids) {
-  rules <- list(
-    "Muscle & Contractile"              = "MYOGEN|MYOFIBRIL|SARCOMERE|MUSCLE_|CONTRACTILE|ACTOMYOSIN|MYOSIN|I_BAND",
-    "Cytoskeleton & Motility"           = "CYTOSKELET|ACTIN_BIND|STRUCTURAL_MOLECULE|MOTIL|SUPRAMOLECUL",
-    "ECM & Adhesion"                    = "EXTRACELLULAR_MATRIX|COLLAGEN|BASEMENT_MEMBRANE|ADHESION|APICAL_JUNCTION|EMT|ENCAPSULATING",
-    "Lipid Metabolism"                  = "FATTY_ACID|LIPID|ADIPOGEN|STEROID|SPHINGOLIPID|PHOSPHOLIPID|KETONE",
-    "Carbohydrate & Energy Metabolism"  = "GLYCOLY|GLUCONEO|CARBOHYDRATE|PENTOSE|PRECURSOR_METABOL",
-    "Amino Acid & Cofactor Metabolism"  = "AMINO_ACID|VITAMIN|COFACTOR|NITROGEN|DETOXIF|DIGEST|XENOBIOT",
-    "Mitochondria & Energy"             = "MITOCHOND|OXIDATIVE_PHOSPH|ELECTRON_TRANSFER|RESPIRATORY|OXIDOREDUCT",
-    "Protein Homeostasis"               = "PROTEASOM|UBIQUITIN|AUTOPHAGY|MTORC1|PROTEIN_FOLD",
-    "Transport"                         = "TRANSPORT(?!.*ELECTRON)|VESICLE|ENDOCYT|SECRETI",
-    "Translation & Ribosome"            = "TRANSLAT|RIBOSOM|TRNA|MYC_TARGET",
-    "Transcription & Chromatin"         = "TRANSCRIPT|SPLICEOSOM|E2F_TARGET|CHROMATIN|MRNA_PROC",
-    "Immune & Inflammation"             = "IMMUN|INFLAMMA|INTERFERON|IL2|IL6|TNFA|NF.KB|COMPLEMENT",
-    "DNA & Cell Cycle"                  = "DNA_REPAIR|CELL_CYCLE|MITOTIC|P53_PATHWAY",
-    "Circulatory System"                = "ANGIOGEN|BLOOD_VESSEL|HYPOXIA",
-    "Development"                       = "UV_RESPONSE|GROWTH_FACTOR|WNT|HEDGEHOG|NOTCH|TGF_BETA|KRAS"
-  )
-  vapply(toupper(ids), function(id) {
-    matches <- character(0)
-    for (cat in names(rules)) {
-      if (grepl(rules[[cat]], id, perl = TRUE)) matches <- c(matches, cat)
-    }
-    if (length(matches) > 1) {
-      warning(
-        "classify_pathway_func: '", id, "' matches multiple categories [",
-        paste(matches, collapse = ", "), "]; using first match: ", matches[1]
-      )
-    }
-    if (length(matches) >= 1) {
-      return(matches[1])
-    }
-    if (grepl("METABOL", id, perl = TRUE)) {
-      return("Amino Acid & Cofactor Metabolism")
-    }
-    "Other"
-  }, character(1), USE.NAMES = FALSE)
-}

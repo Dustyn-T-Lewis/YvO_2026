@@ -1,4 +1,5 @@
-# Shared RRHO2 Panel E: used by F04 (concordance) and F05 (reversal)
+# Shared RRHO2 panel: F04 B_rrho2.R (concordance) and S5T_rrho2_aging.R
+# (reversal). Sourced local with `cfg` set by the caller.
 
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/print_scale_apply.R")
@@ -19,12 +20,6 @@ DAT <- cfg$dat
 dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
 dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(DAT, "panel_E"), recursive = TRUE, showWarnings = FALSE)
-
-# Supplementary output dirs (F05 only)
-if (!is.null(cfg$supp)) {
-  dir.create(cfg$supp$rpt_png, recursive = TRUE, showWarnings = FALSE)
-  dir.create(cfg$supp$rpt_pdf, recursive = TRUE, showWarnings = FALSE)
-}
 
 pdf_device <- get_pdf_device()
 
@@ -85,6 +80,7 @@ quad_hyper <- list(
   UU = quadrant_hyper(1, 1), DD = quadrant_hyper(-1, -1),
   UD = quadrant_hyper(1, -1), DU = quadrant_hyper(-1, 1)
 )
+hyper_field <- function(f, type) vapply(quad_hyper, \(q) q[[f]], type)
 
 # The corner labels print a fold-change with no depth attached, so the depth is
 # named here. The figure carries the rule and the caption carries the fact that
@@ -103,10 +99,8 @@ message(sprintf(
   TOP_K,
   paste(sprintf(
     "%s obs=%d exp=%.1f %s p=%.3g", names(quad_hyper),
-    vapply(quad_hyper, \(q) q$observed, numeric(1)),
-    vapply(quad_hyper, \(q) q$expected, numeric(1)),
-    vapply(quad_hyper, \(q) q$direction, character(1)),
-    vapply(quad_hyper, \(q) q$p, numeric(1))
+    hyper_field("observed", numeric(1)), hyper_field("expected", numeric(1)),
+    hyper_field("direction", character(1)), hyper_field("p", numeric(1))
   ), collapse = " | ")
 ))
 
@@ -236,6 +230,17 @@ ql <- list(
   DU = quad_annotated(cfg$quadrant_labels$DU, n_DU, quad_hyper$DU)
 )
 
+corner_label <- function(x, y, label, hjust, vjust) {
+  annotate("label",
+    x = x, y = y,
+    label = label,
+    color = "grey15", fill = LABEL_FILL, linewidth = 0,
+    label.padding = LABEL_PADDING, label.r = unit(0.5, "mm"),
+    fontface = "bold", size = txt_quad,
+    hjust = hjust, vjust = vjust
+  )
+}
+
 # geom_tile rather than geom_raster: a raster is one image, and the quartz PDF
 # device draws rasterGrob vertically mirrored, which silently undid the row
 # reflection above and left the four quadrant labels describing the wrong
@@ -254,38 +259,10 @@ pE_heat <- ggplot(hmat_df, aes(x = row, y = col, fill = neg_log10_p)) +
       title.theme = element_text(size = FIG_LEGEND_TITLE, face = "bold", color = "grey15")
     )
   ) +
-  annotate("label",
-    x = ann_x_up, y = ann_y_up,
-    label = ql$UU,
-    color = "grey15", fill = LABEL_FILL, linewidth = 0,
-    label.padding = LABEL_PADDING, label.r = unit(0.5, "mm"),
-    fontface = "bold", size = txt_quad,
-    hjust = 1, vjust = 1
-  ) +
-  annotate("label",
-    x = ann_x_down, y = ann_y_down,
-    label = ql$DD,
-    color = "grey15", fill = LABEL_FILL, linewidth = 0,
-    label.padding = LABEL_PADDING, label.r = unit(0.5, "mm"),
-    fontface = "bold", size = txt_quad,
-    hjust = 0, vjust = 0
-  ) +
-  annotate("label",
-    x = ann_x_up, y = ann_y_down,
-    label = ql$UD,
-    color = "grey15", fill = LABEL_FILL, linewidth = 0,
-    label.padding = LABEL_PADDING, label.r = unit(0.5, "mm"),
-    fontface = "bold", size = txt_quad,
-    hjust = 1, vjust = 0
-  ) +
-  annotate("label",
-    x = ann_x_down, y = ann_y_up,
-    label = ql$DU,
-    color = "grey15", fill = LABEL_FILL, linewidth = 0,
-    label.padding = LABEL_PADDING, label.r = unit(0.5, "mm"),
-    fontface = "bold", size = txt_quad,
-    hjust = 0, vjust = 1
-  ) +
+  corner_label(ann_x_up, ann_y_up, ql$UU, 1, 1) +
+  corner_label(ann_x_down, ann_y_down, ql$DD, 0, 0) +
+  corner_label(ann_x_up, ann_y_down, ql$UD, 1, 0) +
+  corner_label(ann_x_down, ann_y_up, ql$DU, 0, 1) +
   scale_x_continuous(expand = expansion(mult = 0.015)) +
   scale_y_continuous(expand = expansion(mult = 0.015)) +
   labs(
@@ -392,106 +369,15 @@ ggsave(file.path(RPT_PDF, paste0(file_stem, ".pdf")), pE_heat,
   width = PE_W, height = PE_W, units = "mm", device = pdf_device
 )
 
-MAX_PER_QUAD <- 12
-
-if (!is.null(cfg$supp)) {
-  txt_ora <- scale_text(BASE_STAT, PE_W)
-  ora_all <- bind_rows(ora_group_1, ora_group_2)
-
-  if (nrow(ora_all) > 0) {
-    bar_df <- ora_all |>
-      mutate(
-        neg_log10_padj = -log10(p.adjust),
-        pathway_label  = str_trunc(clean_pathway_name(pathway), 40),
-        quadrant       = factor(quadrant, levels = cfg$supp$ora_quad_order)
-      ) |>
-      filter(!is.na(quadrant)) |>
-      group_by(quadrant, .drop = FALSE) |>
-      arrange(desc(neg_log10_padj)) |>
-      slice_head(n = MAX_PER_QUAD) |>
-      ungroup() |>
-      filter(!is.na(neg_log10_padj)) |>
-      arrange(quadrant, neg_log10_padj) |>
-      mutate(uid = fct_inorder(paste0(pathway_label, "___", quadrant)))
-
-    n_shown <- nrow(bar_df)
-    n_total <- nrow(ora_all)
-
-    pE_ora <- ggplot(bar_df, aes(x = neg_log10_padj, y = uid, fill = quadrant)) +
-      geom_col(width = 0.75) +
-      geom_text(aes(label = overlap),
-        hjust = -0.3, size = txt_ora * 0.7,
-        color = "grey30"
-      ) +
-      scale_y_discrete(labels = function(x) str_remove(x, "___.*$")) +
-      scale_fill_manual(values = cfg$ora_colors, guide = "none") +
-      scale_x_continuous(expand = expansion(mult = c(0, 0))) +
-      facet_grid(quadrant ~ .,
-        scales = "free_y", space = "free_y",
-        labeller = labeller(quadrant = cfg$supp$ora_quad_short)
-      ) +
-      labs(
-        title = cfg$supp$ora_bar_title,
-        subtitle = if (n_shown < n_total) {
-          sprintf("Top %d per quadrant (%d terms total)", MAX_PER_QUAD, n_total)
-        } else {
-          sprintf("%d terms total", n_total)
-        },
-        x = expression(-log[10](p[adj])),
-        y = NULL
-      ) +
-      FIG_THEME +
-      theme(
-        plot.title = element_text(size = 10, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 8, hjust = 0.5),
-        strip.text.y = element_text(size = 7, face = "bold", angle = 0),
-        strip.background = element_rect(fill = "grey95", color = NA),
-        panel.grid.major.y = element_blank(),
-        panel.grid.major.x = element_line(color = "grey92", linewidth = 0.3),
-        panel.grid.minor = element_blank(),
-        axis.text.y = element_text(size = 7),
-        plot.margin = margin(2, 4, 2, 2, "mm")
-      )
-
-    pE_combined <- (pE_heat | pE_ora) + plot_layout(widths = c(1, 1.3))
-
-    ggsave(file.path(cfg$supp$rpt_png, "SUPP_panel_E_rrho2_ora.png"), pE_combined,
-      width = 400, height = 220, units = "mm", dpi = 300
-    )
-    ggsave(file.path(cfg$supp$rpt_pdf, "SUPP_panel_E_rrho2_ora.pdf"), pE_combined,
-      width = 400, height = 220, units = "mm", device = pdf_device
-    )
-  }
-}
-
 sq <- cfg$summary_quadrant_names
-quad_meta <- list(
-  list(name = oq$UU, slug = sq$UU_slug, data = ora_UU, n_hot = n_UU),
-  list(name = oq$DD, slug = sq$DD_slug, data = ora_DD, n_hot = n_DD),
-  list(name = oq$UD, slug = sq$UD_slug, data = ora_UD, n_hot = n_UD),
-  list(name = oq$DU, slug = sq$DU_slug, data = ora_DU, n_hot = n_DU)
-)
-
-for (qm in quad_meta) {
-  if (nrow(qm$data) == 0) next
-  q_df <- qm$data |>
-    mutate(
-      neg_log10_padj = -log10(padj),
-      pathway_label = clean_pathway_name(pathway)
-    ) |>
-    arrange(desc(neg_log10_padj)) |>
-    slice_head(n = MAX_PER_QUAD)
-  message(sprintf("  %s: %d ORA pathways (%d hotspot genes)", qm$slug, nrow(q_df), qm$n_hot))
-}
-
 rrho2_meta <- tibble(
   quadrant = c(sq$UU, sq$DD, sq$UD, sq$DU),
   max_neg_log10_pvalue = round(c(max_UU, max_DD, max_UD, max_DU), 2),
   top_k = TOP_K,
-  top_k_observed = vapply(quad_hyper[c("UU", "DD", "UD", "DU")], \(q) q$observed, numeric(1)),
-  top_k_expected = round(vapply(quad_hyper[c("UU", "DD", "UD", "DU")], \(q) q$expected, numeric(1)), 1),
-  top_k_direction = vapply(quad_hyper[c("UU", "DD", "UD", "DU")], \(q) q$direction, character(1)),
-  top_k_p = signif(vapply(quad_hyper[c("UU", "DD", "UD", "DU")], \(q) q$p, numeric(1)), 3),
+  top_k_observed = hyper_field("observed", numeric(1)),
+  top_k_expected = round(hyper_field("expected", numeric(1)), 1),
+  top_k_direction = hyper_field("direction", character(1)),
+  top_k_p = signif(hyper_field("p", numeric(1)), 3),
   n_hotspot_genes = c(n_UU, n_DD, n_UD, n_DU),
   n_ora_pathways = c(nrow(ora_UU), nrow(ora_DD), nrow(ora_UD), nrow(ora_DU)),
   matrix_rows = nr, matrix_cols = nc, n_shared_genes = n_shared
@@ -506,8 +392,6 @@ if (!is.null(pE_legend_grob)) {
   )
 }
 
-pE_title <- cfg$title
-pE_legend <- NULL
 pE_heat <- pE_heat +
   labs(title = NULL, subtitle = NULL, tag = NULL) +
   coord_fixed(ratio = 1, clip = "off")
