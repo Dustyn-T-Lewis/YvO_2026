@@ -120,4 +120,3 @@ panel_data <- stats |>
   mutate(max_neg_log10_p = max(rrho$hypermat, na.rm = TRUE))
 
 save_card(plots, "D_direction", WIDTH)
-invisible(plots)

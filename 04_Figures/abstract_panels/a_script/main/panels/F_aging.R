@@ -67,4 +67,3 @@ panel_data <- v |>
   select(gene, logFC_aging = lfc, p = p, fdr = fdr, direction = call)
 
 save_card(plots, "F_aging", WIDTH)
-invisible(plots)

@@ -1,6 +1,6 @@
 pacman::p_load(
-  dplyr, tidyr, readr, readxl, stringr, purrr, tibble,
-  ggplot2, ggtext, gridtext, grid, gtable, scales, ragg, openxlsx
+  dplyr, tidyr, readr, readxl, purrr, tibble,
+  ggplot2, ggtext, grid, gtable, scales, ragg, openxlsx
 )
 
 set.seed(42)

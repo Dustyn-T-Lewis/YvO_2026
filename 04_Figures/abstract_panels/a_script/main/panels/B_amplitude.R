@@ -81,4 +81,3 @@ panel_data <- select(
 )
 
 save_card(plots, "B_amplitude", WIDTH)
-invisible(plots)

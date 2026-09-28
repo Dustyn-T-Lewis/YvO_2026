@@ -40,10 +40,10 @@ built <- map(PANELS$script, function(script) {
 # Column 1 holds two scripts of one plot each; every other column holds one
 # script whose two plots stack. Flattening here is what turns five scripts
 # into the eight cells the grid actually draws.
+n_plots <- lengths(map(built, "plots"))
 cells <- tibble(
-  stem = rep(PANELS$stem, lengths(map(built, "plots"))),
-  col = rep(PANELS$col, lengths(map(built, "plots"))),
-  width = rep(map_dbl(built, "width"), lengths(map(built, "plots"))),
+  col = rep(PANELS$col, n_plots),
+  width = rep(map_dbl(built, "width"), n_plots),
   plot = list_flatten(map(built, "plots"))
 ) |>
   mutate(row = row_number(), .by = col) |>
