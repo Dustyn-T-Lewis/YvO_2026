@@ -1,4 +1,3 @@
-# methods/15_impute_pca.R
 # imputePCA: regularized iterative PCA
 # Josse & Husson 2016
 # Pure MAR (low-rank)

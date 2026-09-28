@@ -8,17 +8,14 @@ if (!exists("BENCH_DIR")) {
   source("02_imputation/a_script/benchmark/_common.R")
 }
 
-#Load all metric tables
 recon <- read.csv(file.path(BENCH_DIR, "01_reconstruction.csv"), stringsAsFactors = FALSE)
 down  <- read.csv(file.path(BENCH_DIR, "02_downstream.csv"), stringsAsFactors = FALSE)
 stab  <- read.csv(file.path(BENCH_DIR, "03_stability.csv"), stringsAsFactors = FALSE)
 
-#Merge
 df <- merge(down, stab, by = "method", all = TRUE)
 df <- merge(df, recon, by = "method", all = TRUE)
 
-#Min-max normalize each metric to [0,1]
-# Higher = better for all; invert where lower is better
+# Min-max normalize each metric to [0,1], inverted where lower is better.
 minmax <- function(x) {
   r <- range(x, na.rm = TRUE)
   if (r[2] == r[1]) return(rep(0.5, length(x)))
@@ -48,11 +45,10 @@ if (length(non_imp_dep) == 1) {
   df$norm_dep <- minmax(df$dep_count)
 }
 
-#Composite score
-# Weights: reconstruction 30% (NRMSE only; Procrustes broken), downstream 25%,
-# artifact 20%, discovery 15%, stability/jackknife 10% (only 5/20 have values).
-# Procrustes weight = 0 (raw SS, not M²; unbounded negative values).
-# Jackknife weight = 0 (13/20 methods NA; biases toward the 7 that have values).
+# Weights: reconstruction 40% (NRMSE MCAR + MNAR), downstream 30% (FC and NES
+# rho), artifact 15% (Q1/Q4 10%, KS 5%), discovery 15% (DEP count).
+# Procrustes gets 0: it is raw SS, not M², with unbounded negative values.
+# Jackknife gets 0: NA for 13/20 methods, it would favour the 7 with values.
 df$composite <- (
   0.20 * df$norm_nrmse_mcar +
   0.20 * df$norm_nrmse_mnar +
@@ -68,7 +64,6 @@ df$composite <- (
 df$rank <- rank(-df$composite, ties.method = "first")
 df <- df[order(df$rank), ]
 
-#Add method class
 df$class <- NA_character_
 for (i in seq_len(nrow(df))) {
   m <- df$method[i]
@@ -81,7 +76,6 @@ for (i in seq_len(nrow(df))) {
   }
 }
 
-#Write ranking CSV
 out_cols <- c("rank", "method", "class", "composite",
               "nrmse_mcar", "nrmse_mnar",
               "fc_rho", "nes_rho", "dep_count",
@@ -89,7 +83,6 @@ out_cols <- c("rank", "method", "class", "composite",
 out_cols <- intersect(out_cols, names(df))
 write.csv(df[, out_cols], file.path(BENCH_DIR, "04_composite_ranking.csv"), row.names = FALSE)
 
-#Full report to stdout and file
 report_lines <- character(0)
 add <- function(...) report_lines <<- c(report_lines, sprintf(...))
 
@@ -112,7 +105,6 @@ for (i in seq_len(nrow(df))) {
   add("")
 }
 
-# Unbiased metrics only
 recon_sorted <- df[!is.na(df$nrmse_mcar), ]
 recon_sorted <- recon_sorted[order(recon_sorted$nrmse_mcar), ]
 add("=== UNBIASED METRICS ONLY (reconstruction) ===")

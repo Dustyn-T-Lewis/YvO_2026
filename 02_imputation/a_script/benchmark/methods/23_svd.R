@@ -1,4 +1,3 @@
-# methods/23_svd.R
 # SVD imputation: singular value decomposition
 # Troyanskaya et al. 2001
 # Pure MAR; low-rank via pcaMethods

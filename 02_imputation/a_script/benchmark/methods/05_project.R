@@ -1,4 +1,3 @@
-# methods/05_project.R
 # ProJect: correlation-weighted skew-normal prediction (Webb-Robertson 2015)
 # Model-free; no MAR/MNAR assumption
 #

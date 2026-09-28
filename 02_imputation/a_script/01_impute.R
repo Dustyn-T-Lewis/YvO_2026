@@ -20,8 +20,7 @@ dir.create(DAT, showWarnings = FALSE, recursive = TRUE)
 
 MISS_UNRELIABLE <- 50 # % missing above which imputation is flagged unreliable
 
-# Palettes (passed to reports via intermediates)
-
+# Passed to the reports via the intermediates.
 PAL_GT <- c(
   Young_Pre = scales::alpha("#4393C3", 0.5), Young_Post = "#4393C3",
   Old_Pre = scales::alpha("#D6604D", 0.5), Old_Post = "#D6604D"
@@ -29,11 +28,8 @@ PAL_GT <- c(
 PAL_MAR <- c(MAR = "#4393C3", MNAR = "#D6604D")
 PAL_CLASS <- c(Complete = "#4DAF4A", MAR = "#4393C3", MNAR = "#D6604D")
 
-# Load from Stage 01
-# Read numeric matrix from CSV (text-serialized) for cross-pipeline
-# reproducibility; RDS binary doubles differ at machine-epsilon from CSV
-# round-trip, which shifts missForest tree splits.
-
+# The matrix is read from CSV, not RDS: RDS doubles differ from the CSV
+# round-trip at machine epsilon, which shifts missForest tree splits.
 df <- readr::read_csv("01_normalization/c_data/02_normalized.csv",
   show_col_types = FALSE
 )
@@ -53,8 +49,6 @@ meta <- as_tibble(dal_norm$metadata) |>
 stopifnot(setequal(meta$Col_ID, colnames(mat)))
 message(sprintf("Loaded: %d proteins x %d samples", nrow(mat), ncol(mat)))
 
-# Missingness profiling
-
 prot_miss <- rowSums(is.na(mat))
 prot_pct <- prot_miss / ncol(mat) * 100
 obs_means <- rowMeans(mat, na.rm = TRUE)
@@ -65,18 +59,14 @@ miss_by_group <- sapply(unique(meta$Group_Time), \(g) {
   rowSums(is.na(mat[, cols, drop = FALSE])) / length(cols) * 100
 })
 
-# MAR/MNAR classification
-#
-# One rule, k-means on (mean intensity, % missing). MNAR is the cluster with
-# the lower mean intensity: a protein missing because it sits near the
-# detection limit. This replaced a "3-method consensus" on 2026-09-08 in which
-# two of the three votes were forced median splits and so labelled exactly
-# 49.96% of incomplete proteins MNAR whatever the data showed. The logistic
-# classifier fitted P(missing | intensity) with one continuous predictor and
-# thresholded at the median of its own fitted values, which is algebraically a
-# median split on intensity -- identical on all 1151 incomplete proteins. The
-# left-tail classifier thresholded at its own median too. Only this one
-# responds to structure in the data.
+# MAR/MNAR: k-means on (mean intensity, % missing); MNAR is the cluster with
+# the lower mean intensity, i.e. missing because near the detection limit.
+# This replaced a "3-method consensus" on 2026-09-08 in which two of the three
+# votes were forced median splits and so labelled exactly 49.96% of incomplete
+# proteins MNAR whatever the data showed. The logistic classifier thresholded
+# P(missing | intensity) at the median of its own fitted values, algebraically
+# a median split on intensity (identical on all 1151 incomplete proteins), and
+# the left-tail classifier thresholded at its own median too.
 
 has_na <- which(prot_miss > 0 & prot_miss < ncol(mat))
 inc_mean <- obs_means[has_na]
@@ -129,9 +119,9 @@ mar_vals <- sum(miss_class$n_miss[miss_class$classification == "MAR"])
 mnar_vals <- sum(miss_class$n_miss[miss_class$classification == "MNAR"])
 total_vals <- mar_vals + mnar_vals
 
-message(sprintf("Classification: MAR %d | MNAR %d | Complete %d", n_mar, n_mnar, n_comp))
-
-# missForest imputation
+message(sprintf(
+  "Classification: MAR %d | MNAR %d | Complete %d", n_mar, n_mnar, n_comp
+))
 
 message("Imputing with missForest...")
 gene_order <- order(rownames(mat))
@@ -146,8 +136,6 @@ stopifnot(sum(is.na(mat_imp)) == 0)
 oob <- as.numeric(mf$OOBerror[1])
 message(sprintf("OOB error: %.4f", oob))
 
-# MNAR audit
-
 was_na <- is.na(mat)
 
 mnar_audit <- tibble(
@@ -160,9 +148,6 @@ mnar_audit <- tibble(
   effect_d = (post_mean - pre_mean) / pre_sd,
   imputation_reliable = prot_pct[mnar_genes] < MISS_UNRELIABLE
 )
-
-# Build xlsx
-
 
 imp_df <- bind_cols(ann, as_tibble(mat_imp))
 mask_df <- bind_cols(tibble(gene = rownames(was_na)), as_tibble(was_na + 0L))
@@ -211,9 +196,9 @@ saveWorkbook(wb, file.path(DAT, "02_imputation.xlsx"), overwrite = TRUE)
 
 # CSVs for benchmark infrastructure and downstream figures
 readr::write_csv(imp_df, file.path(DAT, "01_imputed.csv"))
-readr::write_csv(as.data.frame(miss_class), file.path(DAT, "02_mar_mnar_classification.csv"))
-
-# Save R objects
+readr::write_csv(
+  as.data.frame(miss_class), file.path(DAT, "02_mar_mnar_classification.csv")
+)
 
 mat_imp_uid <- mat_imp
 rownames(mat_imp_uid) <- ann$uniprot_id
@@ -229,10 +214,8 @@ dal$annotation <- merge(
   by = "gene", all.x = TRUE, sort = FALSE
 )
 stopifnot(nrow(dal$annotation) == n_ann)
-# Re-align $annotation rows to $data row order. mat_imp was reordered by
-# gene_order for missForest determinism; merge() preserves left-frame order.
-# Without this match() step the saved DAList has the same set of proteins
-# in $data and $annotation but at different row positions.
+# mat_imp was reordered by gene for missForest determinism, but merge() keeps
+# the left frame's order, so $annotation must be re-matched to $data rows.
 dal$annotation <- dal$annotation[
   match(rownames(dal$data), dal$annotation$uniprot_id), ,
   drop = FALSE
