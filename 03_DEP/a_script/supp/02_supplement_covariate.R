@@ -6,8 +6,8 @@
 #
 #   1. Can supplement enter the model that estimates Aging? Not usefully. No
 #      trial spans both age groups, and each arm is defined by its trial. Two
-#      arm labels do appear in both groups -- Peanut protein and Control, from
-#      the two PPS strata -- and those genuinely are the same intervention in
+#      arm labels do appear in both groups (Peanut protein and Control, from
+#      the two PPS strata), and those genuinely are the same intervention in
 #      both. They carry seven participants between them, one of them a single
 #      older and a single younger control.
 #   2. Does the design matrix say so? Only if the arm is labelled with its
@@ -56,7 +56,7 @@ set.seed(42)
 # and every CSV record, and what a reader cross-references against S10 Table;
 # they read as jargon on a figure, so the panel prints these and the workbook
 # carries both. Each label names the parent trial because the claim the panel
-# has to support is a trial-level one -- Beetroot's placebo and its juice read
+# has to support is a trial-level one: Beetroot's placebo and its juice read
 # as unrelated exposures otherwise.
 NODE_LABELS <- c(
   "Ruple et al." = "Ruple : pooled",
@@ -129,7 +129,8 @@ rank_check <- function(term, label) {
     coding = label,
     columns = ncol(mm),
     rank = qr(mm)$rank,
-    non_estimable = if (is.null(dropped)) "none" else paste(dropped, collapse = "; "),
+    non_estimable =
+      if (is.null(dropped)) "none" else paste(dropped, collapse = "; "),
     verdict = if (is.null(dropped)) {
       "fits silently despite the confound"
     } else {
@@ -308,8 +309,6 @@ write_csv(nore_summary, file.path(OUT, "02_supplement_nore_randomised.csv"))
 # The workbook is a table artifact, so it lands before the reports for the same
 # reason the CSVs do. This is the last script to write 03_DEP_results.xlsx, so
 # it owns the Overview index.
-
-
 wb <- loadWorkbook(XLSX)
 write_sheet(wb, "supplement_by_age", by_age)
 write_sheet(wb, "supplement_design", design_diag)
@@ -361,10 +360,8 @@ message("\nDone -> ", OUT, " and ", RPT)
 pacman::p_load(ggplot2, patchwork)
 
 BLUE <- "#4393C3"
-SAND <- "#F4A582"
 RED <- "#D6604D"
 GREY <- "grey35"
-
 
 # Short forms for panel A's column heads and panel D's row strips. The full
 # names are in panel B's legend; at their length they clip inside a strip and
@@ -409,11 +406,10 @@ base_theme <- theme_minimal(base_size = 9) +
   )
 
 contrast_label <- function(x) str_replace(x, "_", " in ")
-
-# Panel A reads the four fitted models as successive coarsenings of one
-# partition. The leftmost column is the data as recorded, trial by arm, and is
-# not a model: "all arms" pools by supplement label across trials, which is
-# where Placebo from two different trials becomes one ten-person level that
+contrast_factor <- function(x) {
+  factor(contrast_label(x), levels = contrast_label(contrasts_in_order))
+}
+fit_factor <- function(x) factor(x, levels = names(FIT_COLOURS))
 
 # Panel A reads the three fitted models as successive coarsenings of one
 # partition. The leftmost column is the coarsening the robustness check starts
@@ -449,31 +445,28 @@ spread <- function(d) {
     mutate(y = seq(max(SPAN), min(SPAN), length.out = n()))
 }
 
-lvl1 <- base |>
-  group_by(node = pooled_cohort) |>
-  summarise(
-    ord = sum(n),
-    n = sum(n),
-    both_ages = n_distinct(Group) > 1,
-    span = if (n_distinct(Group) > 1) "both" else Group[1],
-    .groups = "drop"
-  ) |>
-  spread()
-
-collapse_level <- function(key) {
-  base |>
-    left_join(select(lvl1, pooled_cohort = node, child_y = y),
-      by = "pooled_cohort"
-    ) |>
+# ord is computed before n is overwritten, so sum(n) sees the per-group counts.
+summarise_nodes <- function(d, key, ord) {
+  d |>
     group_by(node = .data[[key]]) |>
     summarise(
-      ord = mean(child_y),
+      ord = {{ ord }},
       n = sum(n),
       both_ages = n_distinct(Group) > 1,
       span = if (n_distinct(Group) > 1) "both" else Group[1],
       .groups = "drop"
     ) |>
     spread()
+}
+
+lvl1 <- summarise_nodes(base, "pooled_cohort", sum(n))
+
+collapse_level <- function(key) {
+  base |>
+    left_join(select(lvl1, pooled_cohort = node, child_y = y),
+      by = "pooled_cohort"
+    ) |>
+    summarise_nodes(key, mean(child_y))
 }
 
 lvl2 <- collapse_level("control_collapsed")
@@ -569,7 +562,6 @@ p_design <- ggplot() +
     )
   )
 
-
 counts_long <- forced |>
   select(contrast,
     `published (age collapsed)` = published,
@@ -577,12 +569,7 @@ counts_long <- forced |>
     `supplement (control collapsed)` = supplement_forced_control_collapsed
   ) |>
   pivot_longer(-contrast, names_to = "fit", values_to = "n") |>
-  mutate(
-    contrast = factor(contrast_label(contrast),
-      levels = contrast_label(contrasts_in_order)
-    ),
-    fit = factor(fit, levels = names(FIT_COLOURS))
-  )
+  mutate(contrast = contrast_factor(contrast), fit = fit_factor(fit))
 
 p_counts <- ggplot(counts_long, aes(contrast, n, fill = fit)) +
   geom_col(position = position_dodge(width = 0.85), width = 0.78) +
@@ -613,12 +600,7 @@ se_long <- bind_rows(lapply(SHOWN, function(k) {
   )
 })) |>
   filter(!is.na(se)) |>
-  mutate(
-    contrast = factor(contrast_label(contrast),
-      levels = contrast_label(contrasts_in_order)
-    ),
-    fit = factor(fit, levels = names(FIT_COLOURS))
-  )
+  mutate(contrast = contrast_factor(contrast), fit = fit_factor(fit))
 
 # Outliers are suppressed and the axis clipped to the boxes: the quartiles are
 # computed on every protein, and a long tail of high-variance proteins common
@@ -647,20 +629,13 @@ scatter_long <- bind_rows(lapply(c("cohort", "ctrl"), function(k) {
   )
 })) |>
   filter(!is.na(published), !is.na(adjusted)) |>
-  mutate(
-    contrast = factor(contrast_label(contrast),
-      levels = contrast_label(contrasts_in_order)
-    ),
-    fit = factor(fit, levels = names(FIT_COLOURS))
-  )
+  mutate(contrast = contrast_factor(contrast), fit = fit_factor(fit))
 
 rho_labels <- shift |>
   filter(coding %in% FITS[c("cohort", "ctrl")]) |>
   transmute(
-    contrast = factor(contrast_label(contrast),
-      levels = contrast_label(contrasts_in_order)
-    ),
-    fit = factor(coding, levels = names(FIT_COLOURS)),
+    contrast = contrast_factor(contrast),
+    fit = fit_factor(coding),
     label = sprintf("rho == %.3f", spearman_logfc)
   )
 
@@ -697,7 +672,7 @@ pval_long <- bind_rows(lapply(SHOWN, function(k) {
   tibble(fit = unname(FITS[k]), p = fits[[k]]$p[, "Aging"])
 })) |>
   filter(!is.na(p)) |>
-  mutate(fit = factor(fit, levels = names(FIT_COLOURS)))
+  mutate(fit = fit_factor(fit))
 
 p_pvals <- ggplot(pval_long, aes(p, fill = fit)) +
   geom_histogram(

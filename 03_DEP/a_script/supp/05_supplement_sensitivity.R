@@ -13,7 +13,7 @@
 # within the older arm alone.
 
 withr::local_dir(here::here())
-pacman::p_load(withr, dplyr, tidyr, stringr, readxl, limma, vegan, readr)
+pacman::p_load(dplyr, stringr, readxl, limma, vegan, readr)
 
 dal <- readRDS("01_normalization/c_data/03_DAList_normalized.rds")
 dal_imputed <- readRDS("02_imputation/c_data/01_DAList_imputed.rds")
@@ -111,9 +111,8 @@ cat(sprintf(
 cat(sprintf("  smallest adjusted p-value: %.3f\n", min(testable$adj.P.Val)))
 
 # BRJ against PLA within the one parent study that randomised both, so the
-# comparison is not carrying a cohort difference.
-# Arm names come from YvO_meta.xlsx, which spells them out rather than using
-# the phenotype workbook's three-letter codes.
+# comparison carries no cohort difference. Arm names are YvO_meta.xlsx's full
+# spellings, not the phenotype workbook's three-letter codes.
 brj_pla <- paired[
   supp_of %in% c("Beetroot juice", "Placebo") &
     old$parent_study[match(paired, old$subject_key)] == "other"

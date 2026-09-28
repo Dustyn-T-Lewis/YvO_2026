@@ -9,11 +9,11 @@
 # is ORA on the discordant proteins with |log2FC| >= 0.1 in BOTH groups (a
 # real effect in opposite directions); the full discordant set and the
 # direction-split subsets are reported alongside. Universe is every protein
-# with an estimate in both groups; enrichment machinery
-# and dedup parameters match the figure pipeline (fora + EnrichmentMap-style
-# collapse, Jaccard 0.5, set size 10-500).
+# with an estimate in both groups; enrichment machinery and dedup parameters
+# match the figure pipeline (fora + EnrichmentMap-style collapse, Jaccard 0.5,
+# set size 10-500).
 
-pacman::p_load(withr, readr, dplyr, tidyr, tibble, purrr)
+pacman::p_load(readr, dplyr)
 
 withr::local_dir(here::here())
 source("04_Figures/shared/pathway_utils.R")
@@ -26,8 +26,10 @@ both <- dep |>
   filter(!is.na(logFC_Training_Young), !is.na(logFC_Training_Old)) |>
   mutate(
     discordant = sign(logFC_Training_Young) != sign(logFC_Training_Old),
-    real_both = pmin(abs(logFC_Training_Young), abs(logFC_Training_Old)) >= MIN_EFFECT,
-    pattern = if_else(logFC_Training_Young > 0, "Y up / O down", "Y down / O up")
+    real_both =
+      pmin(abs(logFC_Training_Young), abs(logFC_Training_Old)) >= MIN_EFFECT,
+    pattern =
+      if_else(logFC_Training_Young > 0, "Y up / O down", "Y down / O up")
   )
 
 universe <- unique(both$gene)
@@ -62,7 +64,10 @@ ora_on <- function(genes, set_label) {
 
 set.seed(42)
 disc_ora <- bind_rows(
-  ora_on(disc$gene[disc$real_both], sprintf("discordant, both |logFC| >= %.1f", MIN_EFFECT)),
+  ora_on(
+    disc$gene[disc$real_both],
+    sprintf("discordant, both |logFC| >= %.1f", MIN_EFFECT)
+  ),
   ora_on(disc$gene, sprintf("discordant, all %d", nrow(disc))),
   ora_on(
     disc$gene[disc$real_both & disc$pattern == "Y up / O down"],
