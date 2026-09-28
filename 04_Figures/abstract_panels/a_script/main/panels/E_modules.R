@@ -92,4 +92,3 @@ plots <- list(age_plot, train_plot)
 panel_data <- select(auc, panel, contrast, module, tag, auc, perm_p, q_bh, sig)
 
 save_card(plots, "E_modules", WIDTH)
-invisible(plots)

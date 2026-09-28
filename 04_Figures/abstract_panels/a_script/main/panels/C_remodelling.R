@@ -75,4 +75,3 @@ plots <- map(levels(counts$criterion), count_plot)
 panel_data <- select(counts, age, criterion, direction, n)
 
 save_card(plots, "C_remodelling", WIDTH)
-invisible(plots)

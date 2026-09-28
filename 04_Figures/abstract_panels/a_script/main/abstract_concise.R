@@ -7,11 +7,10 @@ source("04_Figures/abstract_panels/a_script/main/panels/_common.R")
 
 assert_style()
 
-# A backup layout: the same results as abstract.R on one row. Each card
-# takes one plot from a script the two-row grid already sources, so nothing
-# here can drift from the main figure except the widths, which are set below
-# rather than read from each script -- a script's WIDTH is tuned for its
-# column in the 2 x 4 grid and means nothing in a row of six.
+# Each card takes one plot from a script the two-row grid already sources, so
+# nothing here can drift from the main figure except the widths, set below
+# rather than read from each script: a script's WIDTH is tuned for its column
+# in the 2 x 4 grid and means nothing in a row of six.
 CARDS <- tribble(
   ~stem, ~which, ~width, ~basis,
   "panel_A_hypertrophy", 1, 2.20,
@@ -59,7 +58,6 @@ invisible(dev.off())
 cells <- CARDS |>
   mutate(
     col = row_number(),
-    row = 1,
     top = 0,
     width = card_w,
     x = cumsum(c(0, head(card_w, -1) + CONCISE_GAP))

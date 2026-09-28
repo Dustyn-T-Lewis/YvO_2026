@@ -82,4 +82,3 @@ plots <- list(glyph)
 panel_data <- select(vl, age, n, delta)
 
 save_card(plots, "A_hypertrophy", WIDTH)
-invisible(plots)
