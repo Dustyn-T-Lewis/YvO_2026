@@ -16,6 +16,8 @@ dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
 
 net           <- readRDS(file.path(DAT, "wgcna/wgcna_network.rds"))
 module_colors <- readRDS(file.path(DAT, "module_colors.rds"))
+# module_colors is unnamed, so protein IDs come from the network's columns.
+protein_ids   <- colnames(readRDS(file.path(DAT, "datExpr.rds")))
 
 message("Supplementary: protein dendrogram & module colors...")
 
@@ -86,7 +88,7 @@ pA <- ggplot() +
         legend.position = "none")
 
 dendro_data <- tibble(
-  uniprot_id    = names(module_colors)[block_genes],
+  uniprot_id    = protein_ids[block_genes],
   unmerged_color = unmerged_cols,
   merged_color   = merged_raw
 )
