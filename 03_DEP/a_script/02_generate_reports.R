@@ -125,8 +125,8 @@ sc <- list_rbind(lapply(contrast_names, \(cname) {
   bind_rows(
     tibble(
       contrast = cname, criterion = "FDR < 0.05",
-      up = sum(res$adj.P.Val < 0.10 & res$logFC > 0, na.rm = TRUE),
-      down = sum(res$adj.P.Val < 0.10 & res$logFC < 0, na.rm = TRUE)
+      up = sum(res$adj.P.Val < 0.05 & res$logFC > 0, na.rm = TRUE),
+      down = sum(res$adj.P.Val < 0.05 & res$logFC < 0, na.rm = TRUE)
     ),
     tibble(
       contrast = cname, criterion = "Π < 0.05",
