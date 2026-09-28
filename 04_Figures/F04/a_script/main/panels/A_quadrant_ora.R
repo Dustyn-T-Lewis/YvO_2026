@@ -1,11 +1,9 @@
 #!/usr/bin/env Rscript
-# Figure 4A: Training Concordance -- FDR-anchored quadrant scatter with
-# flanking per-quadrant ORA bars (top 3 terms each). Primary significance
-# classification is FDR (R1.3); a Pi < 0.05 (Training_Young) marker rings
-# points as secondary context, it never reclassifies a point. Concordance
-# rho is reported on three denominators -- whole proteome, the FDR-134 set,
-# the Pi-significant set -- because R2.2 asked which one the published
-# 61.6% figure came from.
+# Figure 4A: training concordance, a quadrant scatter with flanking
+# per-quadrant ORA bars. Point shape says whether FDR, Pi or both found a
+# protein (R1.3). Concordance rho is reported on three denominators (whole
+# proteome, the FDR set, the Pi set) because R2.2 asked which one the
+# published 61.6% figure came from.
 #
 # Returns the plot with the numbers F04.R prints in its subtitle attached as
 # attr(, "stats").
@@ -21,20 +19,15 @@ source("04_Figures/shared/print_scale_apply.R")
 source("04_Figures/shared/pathway_utils.R")
 pacman::p_load(fgsea, ggrepel, qvalue, purrr)
 
-BASE <- "04_Figures/F04"
-RPT_PNG <- file.path(BASE, "b_reports", "main", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "main", "panels")
-DAT <- file.path(BASE, "c_data")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
+RPT <- "04_Figures/F04/b_reports/main/panels"
+DAT <- "04_Figures/F04/c_data"
+dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(DAT, "panel_A"), recursive = TRUE, showWarnings = FALSE)
-pdf_device <- get_pdf_device()
 
 COMP_RED <- unname(DIR_COLORS["Up"])
 COMP_BLUE <- unname(DIR_COLORS["Down"])
 N_SHOW <- 5
 
-# F04-specific pathway label shortenings (used in the flanking bar panels)
 DISPLAY_LABELS_F04 <- c(
   "Cargo Recognition For Clathrin Mediated Endocytosis" = "Clathrin Endocytosis",
   "The Role Of Gtse1 In G2 M Progression After G2 Checkpoint" = "GTSE1 G2/M Progression",
@@ -54,10 +47,7 @@ DISPLAY_LABELS_F04 <- c(
   "Rac3 Gtpase Cycle" = "RAC3 GTPase Cycle"
 )
 
-# Data
-dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv",
-  show_col_types = FALSE
-)
+dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 imp_path <- "02_imputation/c_data/02_mar_mnar_classification.csv"
 imputation_df <- if (file.exists(imp_path)) {
   read_csv(imp_path, show_col_types = FALSE) |>
@@ -96,23 +86,19 @@ scatter_df <- dep_df |>
       levels = names(SIG_COLORS_F2)
     ),
     is_sig = sig_class != "NS",
-    # Which rule found it, carried on the point shape rather than the ring the
-    # panel used to overlay: the ring said Pi and nothing else, and a shape
-    # says FDR, Pi or both in the same mark.
+    # Which rule found it, carried on the point shape: FDR, Pi or both.
+    fdr_hit = replace_na(adj_TY, 1) < 0.05 | replace_na(adj_TO, 1) < 0.05 |
+      replace_na(adj_Int, 1) < 0.05,
     sig_criterion = factor(
       case_when(
         !is_sig ~ NA_character_,
-        (replace_na(adj_TY, 1) < 0.05 | replace_na(adj_TO, 1) < 0.05 |
-          replace_na(adj_Int, 1) < 0.05) &
-          (replace_na(pi_TY, 1) < 0.05 | replace_na(pi_TO, 1) < 0.05 |
-            replace_na(pi_Int, 1) < 0.05) ~ "FDR + \u03a0",
-        replace_na(adj_TY, 1) < 0.05 | replace_na(adj_TO, 1) < 0.05 |
-          replace_na(adj_Int, 1) < 0.05 ~ "FDR",
+        fdr_hit & (replace_na(pi_TY, 1) < 0.05 | replace_na(pi_TO, 1) < 0.05 |
+          replace_na(pi_Int, 1) < 0.05) ~ "FDR + \u03a0",
+        fdr_hit ~ "FDR",
         .default = "\u03a0"
       ),
       levels = c("FDR", "\u03a0", "FDR + \u03a0")
     ),
-    pi_sig = replace_na(pi_TY, 1) < 0.05,
     quadrant = case_when(
       logFC_TY > 0 & logFC_TO > 0 ~ "Concordant Up",
       logFC_TY < 0 & logFC_TO < 0 ~ "Concordant Down",
@@ -128,9 +114,7 @@ message(sprintf(
 ))
 
 pw_collection <- build_pathway_collection(
-  min_size = 15, max_size = 500,
-  include_goslim = FALSE,
-  exclude_variants = TRUE
+  min_size = 15, include_goslim = FALSE, exclude_variants = TRUE
 )
 
 run_set_ora <- function(genes, set_name) {
@@ -140,8 +124,7 @@ run_set_ora <- function(genes, set_name) {
   res <- tryCatch(
     run_ora_deduplicated(
       genes = genes, universe = universe,
-      pathways = pw_collection, em_cutoff = 0.5,
-      min_size = 15, max_size = 500, padj_cutoff = 1
+      pathways = pw_collection, min_size = 15, padj_cutoff = 1
     ),
     error = function(e) {
       message("  ORA error: ", e$message)
@@ -162,24 +145,12 @@ run_set_ora <- function(genes, set_name) {
 }
 
 message("\n--- Quadrant ORA (threshold-free) ---")
-ora_q1 <- run_set_ora(
-  scatter_df$gene[scatter_df$quadrant == "Concordant Up"],
-  "Concordant Up"
+QUADS <- c(
+  Q1 = "Concordant Up", Q2 = "Discordant (Y Down / O Up)",
+  Q3 = "Concordant Down", Q4 = "Discordant (Y Up / O Down)"
 )
-ora_q2 <- run_set_ora(
-  scatter_df$gene[scatter_df$quadrant == "Discordant (Y Down / O Up)"],
-  "Discordant (Y Down / O Up)"
-)
-ora_q3 <- run_set_ora(
-  scatter_df$gene[scatter_df$quadrant == "Concordant Down"],
-  "Concordant Down"
-)
-ora_q4 <- run_set_ora(
-  scatter_df$gene[scatter_df$quadrant == "Discordant (Y Up / O Down)"],
-  "Discordant (Y Up / O Down)"
-)
-
-all_quad_ora <- bind_rows(ora_q1, ora_q2, ora_q3, ora_q4)
+ora_q <- lapply(QUADS, \(q) run_set_ora(scatter_df$gene[scatter_df$quadrant == q], q))
+all_quad_ora <- bind_rows(ora_q)
 if (nrow(all_quad_ora) > 0) {
   write_csv(all_quad_ora, file.path(DAT, "panel_A", "ora_quadrant.csv"))
 }
@@ -213,42 +184,16 @@ SIG_SHAPES_F2 <- c("FDR" = 21, "\u03a0" = 24, "FDR + \u03a0" = 22)
 ns_df <- filter(scatter_df, sig_class == "NS")
 sig_df <- filter(scatter_df, sig_class != "NS")
 
-q_df <- scatter_df |>
-  mutate(q = case_when(
-    logFC_TY > 0 & logFC_TO > 0 ~ "Q1",
-    logFC_TY < 0 & logFC_TO < 0 ~ "Q3",
-    logFC_TY > 0 & logFC_TO < 0 ~ "Q4",
-    TRUE ~ "Q2"
-  ))
-q_counts <- q_df |>
-  count(q) |>
-  deframe()
-q_sig <- q_df |>
-  filter(sig_class != "NS") |>
-  count(q) |>
-  deframe()
-for (qq in c("Q1", "Q2", "Q3", "Q4")) if (is.na(q_sig[qq])) q_sig[qq] <- 0
+q_fac <- factor(scatter_df$quadrant, levels = QUADS, labels = names(QUADS))
+q_counts <- table(q_fac)
+q_sig <- table(q_fac[scatter_df$sig_class != "NS"])
 
-label_df <- sig_df |>
-  group_by(sig_class) |>
-  arrange(desc(abs(logFC_TY) + abs(logFC_TO))) |>
-  slice_head(n = 5) |>
-  ungroup() |>
-  mutate(
-    label_fill = SIG_LABEL_FILL_F2[as.character(sig_class)],
-    label_text_col = SIG_LABEL_TEXT_F2[as.character(sig_class)]
-  )
-
-txt_gene <- scale_text(BASE_GENE, 190) * 0.70 + 1 # +1pt for print legibility
 txt_quad <- scale_text(BASE_QUADRANT, 190) * 0.88
 
-# Half-bar builder: quadrant bars flank the scatter left/right, top/bottom
-# halves matching each quadrant's screen corner. Left-side bars mirror
-# (scale_x_reverse) so they grow outward from the scatter's edge, same as
-# the original design. Every bar is solid; significance is the star alone.
-# Top margin on the two upper bar plots.
+# Quadrant bars flank the scatter, top/bottom halves matching each quadrant's
+# screen corner. Left-side bars mirror (scale_x_reverse) so they grow outward
+# from the scatter's edge. Significance is the star alone.
 UPPER_DROP_MM <- 1
-
 # Negative top margin pulling the key up under the ORA axis values.
 KEY_LIFT_MM <- -46
 
@@ -370,35 +315,22 @@ make_half_bars <- function(df, fill_color, side, ylim, display_labels = characte
       }
     )
 
-  if (side == "left") {
-    p + scale_x_reverse(
-      limits = c(x_display_max, 0), breaks = brk_fn, expand = expansion(mult = c(0, 0))
-    ) +
-      scale_y_continuous(limits = ylim, expand = c(0, 0)) +
-      coord_cartesian(clip = "off")
+  x_scale <- if (side == "left") {
+    scale_x_reverse(limits = c(x_display_max, 0), breaks = brk_fn, expand = expansion(mult = c(0, 0)))
   } else {
-    p + scale_x_continuous(
-      limits = c(0, x_display_max), breaks = brk_fn, expand = expansion(mult = c(0, 0))
-    ) +
-      scale_y_continuous(limits = ylim, expand = c(0, 0)) +
-      coord_cartesian(clip = "off")
+    scale_x_continuous(limits = c(0, x_display_max), breaks = brk_fn, expand = expansion(mult = c(0, 0)))
   }
+  p + x_scale +
+    scale_y_continuous(limits = ylim, expand = c(0, 0)) +
+    coord_cartesian(clip = "off")
 }
 
-p_ul <- make_half_bars(ora_q2, COMP_BLUE, "left", c(0, 2.8),
-  display_labels = DISPLAY_LABELS_F04
-)
-p_ll <- make_half_bars(ora_q3, COMP_RED, "left", c(-2.8, 0),
-  display_labels = DISPLAY_LABELS_F04
-)
-p_ur <- make_half_bars(ora_q1, COMP_RED, "right", c(0, 2.8),
-  display_labels = DISPLAY_LABELS_F04
-)
-p_lr <- make_half_bars(ora_q4, COMP_BLUE, "right", c(-2.8, 0),
-  display_labels = DISPLAY_LABELS_F04
-)
+p_ul <- make_half_bars(ora_q$Q2, COMP_BLUE, "left", c(0, 2.8), DISPLAY_LABELS_F04)
+p_ll <- make_half_bars(ora_q$Q3, COMP_RED, "left", c(-2.8, 0), DISPLAY_LABELS_F04)
+p_ur <- make_half_bars(ora_q$Q1, COMP_RED, "right", c(0, 2.8), DISPLAY_LABELS_F04)
+p_lr <- make_half_bars(ora_q$Q4, COMP_BLUE, "right", c(-2.8, 0), DISPLAY_LABELS_F04)
 
-# Center-axis tick labels (behind points, at x=0 / y=0)
+# Tick labels drawn on the centre axes, behind the points.
 x_breaks <- seq(-3, 3, 1)
 y_breaks <- seq(-2, 2, 1)
 x_tick_df <- tibble(
@@ -410,23 +342,25 @@ y_tick_df <- tibble(
   label = as.character(y_breaks[y_breaks != 0])
 )
 
+quad_rect <- function(xmin, xmax, ymin, ymax, fill) {
+  annotate("rect",
+    xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+    fill = fill, alpha = 0.55, color = "grey70", linewidth = 0.2
+  )
+}
+quad_label <- function(x, y, label, hjust, vjust, color) {
+  annotate("label",
+    x = x, y = y, label = label, hjust = hjust, vjust = vjust,
+    size = txt_quad, fontface = "bold", color = color,
+    fill = alpha("white", 0.92), label.padding = unit(2.5, "pt"), lineheight = 0.9
+  )
+}
+
 p_scatter <- ggplot(mapping = aes(x = logFC_TY, y = logFC_TO)) +
-  annotate("rect",
-    xmin = 0, xmax = Inf, ymin = 0, ymax = Inf,
-    fill = "#FFE0E0", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = -Inf, xmax = 0, ymin = -Inf, ymax = 0,
-    fill = "#FFE0E0", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = 0, xmax = Inf, ymin = -Inf, ymax = 0,
-    fill = "#DCEEFF", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
-  annotate("rect",
-    xmin = -Inf, xmax = 0, ymin = 0, ymax = Inf,
-    fill = "#DCEEFF", alpha = 0.55, color = "grey70", linewidth = 0.2
-  ) +
+  quad_rect(0, Inf, 0, Inf, "#FFE0E0") +
+  quad_rect(-Inf, 0, -Inf, 0, "#FFE0E0") +
+  quad_rect(0, Inf, -Inf, 0, "#DCEEFF") +
+  quad_rect(-Inf, 0, 0, Inf, "#DCEEFF") +
   geom_hline(yintercept = 0, color = "grey50", linewidth = 0.3) +
   geom_vline(xintercept = 0, color = "grey50", linewidth = 0.3) +
   geom_abline(
@@ -455,37 +389,20 @@ p_scatter <- ggplot(mapping = aes(x = logFC_TY, y = logFC_TO)) +
   ) +
   scale_fill_manual(values = SIG_COLORS_F2, name = "Significance") +
   scale_shape_manual(values = SIG_SHAPES_F2, name = "Criterion") +
-  # Gene labels retired: the panel's claim is distributional -- corner counts,
-  # concordance, quadrant ORA -- and named extremes support none of it. The
-  # flanking bars carry the biology at pathway level, where it has power.
-  # Quadrant labels: title over counts, aligned to the corner
-  annotate("label",
-    x = xlim_range[2], y = ylim_range[2],
-    label = sprintf("Concordant Up\n%s/%s", q_sig["Q1"], q_counts["Q1"]),
-    hjust = 1, vjust = 1, size = txt_quad, fontface = "bold",
-    color = COMP_RED, fill = alpha("white", 0.92),
-    label.padding = unit(2.5, "pt"), lineheight = 0.9
+  # No gene labels: the panel's claim is distributional (corner counts,
+  # concordance, quadrant ORA), and the flanking bars carry the biology at
+  # pathway level, where it has power.
+  quad_label(xlim_range[2], ylim_range[2],
+    sprintf("Concordant Up\n%s/%s", q_sig["Q1"], q_counts["Q1"]), 1, 1, COMP_RED
   ) +
-  annotate("label",
-    x = xlim_range[1], y = ylim_range[1],
-    label = sprintf("%s/%s\nConcordant Down", q_sig["Q3"], q_counts["Q3"]),
-    hjust = 0, vjust = 0, size = txt_quad, fontface = "bold",
-    color = COMP_RED, fill = alpha("white", 0.92),
-    label.padding = unit(2.5, "pt"), lineheight = 0.9
+  quad_label(xlim_range[1], ylim_range[1],
+    sprintf("%s/%s\nConcordant Down", q_sig["Q3"], q_counts["Q3"]), 0, 0, COMP_RED
   ) +
-  annotate("label",
-    x = xlim_range[1], y = ylim_range[2],
-    label = sprintf("Discordant\n(Y down, O up)  %s/%s", q_sig["Q2"], q_counts["Q2"]),
-    hjust = 0, vjust = 1, size = txt_quad, fontface = "bold",
-    color = COMP_BLUE, fill = alpha("white", 0.92),
-    label.padding = unit(2.5, "pt"), lineheight = 0.9
+  quad_label(xlim_range[1], ylim_range[2],
+    sprintf("Discordant\n(Y down, O up)  %s/%s", q_sig["Q2"], q_counts["Q2"]), 0, 1, COMP_BLUE
   ) +
-  annotate("label",
-    x = xlim_range[2], y = ylim_range[1],
-    label = sprintf("%s/%s  (Y up, O down)\nDiscordant", q_sig["Q4"], q_counts["Q4"]),
-    hjust = 1, vjust = 0, size = txt_quad, fontface = "bold",
-    color = COMP_BLUE, fill = alpha("white", 0.92),
-    label.padding = unit(2.5, "pt"), lineheight = 0.9
+  quad_label(xlim_range[2], ylim_range[1],
+    sprintf("%s/%s  (Y up, O down)\nDiscordant", q_sig["Q4"], q_counts["Q4"]), 1, 0, COMP_BLUE
   ) +
   annotate("text",
     x = xlim_range[2] - 0.05, y = -0.22,
@@ -513,7 +430,6 @@ p_scatter <- ggplot(mapping = aes(x = logFC_TY, y = logFC_TO)) +
     legend.position = "none"
   )
 
-# Custom Significance key
 # Two channels, so two runs of glyphs: contrast by fill, then criterion by
 # shape drawn in a neutral grey so the shape is the only thing that varies.
 key_lvls <- c("Sig Both", "Interaction", "Sig Young only", "Sig Old only")
@@ -566,10 +482,8 @@ n_total <- nrow(scatter_df)
 n_sig <- sum(scatter_df$is_sig)
 n_enrich <- if (nrow(all_quad_ora) > 0) sum(all_quad_ora$significant) else 0L
 r_spear <- cor(scatter_df$logFC_TY, scatter_df$logFC_TO,
-  use = "complete.obs",
-  method = "spearman"
+  use = "complete.obs", method = "spearman"
 )
-
 
 # Storey's pi1 on the older-adult p-values of the younger-adult responders
 # (Storey & Tibshirani 2003, PNAS 100:9440). A count of older-adult DEPs
@@ -586,17 +500,9 @@ pi1_replication <- 1 - qvalue::pi0est(
   lambda = seq(0.05, 0.5, 0.05)
 )$pi0
 
-# Left/right flanking-bar layout, same as the original design: scatter
-# centered, ORA bars flank it left (top=Discordant Y↓O↑, bottom=Concordant
-# Down) and right (top=Concordant Up, bottom=Discordant Y↑O↓), key strip
-# spans the full width below.
+# Scatter centred over two rows, ORA bars in the four corners, key full width.
 design <- c(
-  area(1, 1), # p_ul (top-left ORA bars)
-  area(1, 2, 2, 2), # p_scatter (rows 1-2, center)
-  area(1, 3), # p_ur (top-right ORA bars)
-  area(2, 1), # p_ll (bottom-left ORA bars)
-  area(2, 3), # p_lr (bottom-right ORA bars)
-  area(3, 1, 3, 3) # key spans full width below scatter, centered
+  area(1, 1), area(1, 2, 2, 2), area(1, 3), area(2, 1), area(2, 3), area(3, 1, 3, 3)
 )
 
 composite <- p_ul + p_scatter + p_ur + p_ll + p_lr + p_key +
@@ -635,11 +541,11 @@ composite <- p_ul + p_scatter + p_ur + p_ll + p_lr + p_key +
 
 COMP_W <- 200
 COMP_H <- 130
-ggsave(file.path(RPT_PNG, "A_quadrant_ora.png"), composite,
+ggsave(file.path(RPT, "A_quadrant_ora.png"), composite,
   width = COMP_W, height = COMP_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "A_quadrant_ora.pdf"), composite,
-  width = COMP_W, height = COMP_H, units = "mm", device = pdf_device
+ggsave(file.path(RPT, "A_quadrant_ora.pdf"), composite,
+  width = COMP_W, height = COMP_H, units = "mm", device = get_pdf_device()
 )
 
 message("\nF04 Panel A composite done")

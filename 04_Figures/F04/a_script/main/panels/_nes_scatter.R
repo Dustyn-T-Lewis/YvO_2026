@@ -1,8 +1,7 @@
 # Pathway NES scatter config, shared by panels D and E: the label shortenings,
 # the engine config builder and the label nudges.
 
-PNL_PNG <- "04_Figures/F04/b_reports/main/panels"
-PNL_PDF <- PNL_PNG
+PNL <- "04_Figures/F04/b_reports/main/panels"
 DAT <- "04_Figures/F04/c_data"
 
 PATHWAY_LABELS <- c(
@@ -40,7 +39,7 @@ nes_scatter_cfg <- function(x, y, title, x_lab, y_lab, metric, interp,
     axis_x_label = x_lab, axis_y_label = y_lab,
     subtitle_metric = metric, subtitle_interpretation = interp,
     ref_slope = slope, panel_w = 120,
-    rpt_png = PNL_PNG, rpt_pdf = PNL_PDF, dat = DAT,
+    rpt_png = PNL, rpt_pdf = PNL, dat = DAT,
     sig_colors = colors,
     sig_draw_order = draw_order, quadrant_defs = quadrants,
     display_overrides = PATHWAY_LABELS, label_nudges = nudges,
@@ -50,27 +49,22 @@ nes_scatter_cfg <- function(x, y, title, x_lab, y_lab, metric, interp,
 
 # Empty until a render proves otherwise: box geometry drove the old nudges and
 # the names are no longer boxed, so every one of them was re-derived from zero.
-NUDGE_D <- tibble::tibble(
+NUDGE_D <- NUDGE_E <- tibble::tibble(
   pathway = character(), nudge_x = numeric(), nudge_y = numeric()
 )
-
-NUDGE_E <- NUDGE_D
 
 # The engine writes fixed file names, and D and E both run it, so each panel
 # moves its outputs to its own names before the other can overwrite them.
 rename_nes_outputs <- function(name, csv) {
   for (ext in c("png", "pdf")) {
     file.rename(
-      file.path(PNL_PNG, paste0("MAIN_panel_D_nes_scatter.", ext)),
-      file.path(PNL_PNG, paste0(name, ".", ext))
+      file.path(PNL, paste0("MAIN_panel_D_nes_scatter.", ext)),
+      file.path(PNL, paste0(name, ".", ext))
     )
   }
   file.rename(
-    file.path(PNL_PNG, "MAIN_panel_D_legend.png"),
-    file.path(PNL_PNG, paste0(substr(name, 1, 1), "_legend.png"))
+    file.path(PNL, "MAIN_panel_D_legend.png"),
+    file.path(PNL, paste0(substr(name, 1, 1), "_legend.png"))
   )
-  file.rename(
-    file.path(DAT, "panel_D", "nes_scatter.csv"),
-    file.path(DAT, "panel_D", csv)
-  )
+  file.rename(file.path(DAT, "panel_D", "nes_scatter.csv"), file.path(DAT, "panel_D", csv))
 }

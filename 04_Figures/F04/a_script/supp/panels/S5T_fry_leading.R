@@ -3,9 +3,7 @@
 #
 # Diagnostic for main panel F, the barcode: which Pi-selected Training(Young)
 # proteins sit furthest out in the Training(Old) ranking that panel F tests
-# them against. It used to read a "panel_C_fry_driving" sheet written by
-# panel_C_fry.R, which was retired with F05 on 2026-08-26, so it now computes
-# the same quantity straight from the DEP table.
+# them against, computed straight from the DEP table.
 
 setwd(here::here())
 
@@ -14,11 +12,9 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-pdf_device <- get_pdf_device()
-
-BASE <- "04_Figures/F04"
-DAT <- file.path(BASE, "c_data", "panel_supp")
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
+DAT <- "04_Figures/F04/c_data/panel_supp"
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+for (d in c(DAT, RPT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 driving_df <- readr::read_csv(DEP_RESULTS, show_col_types = FALSE) |>
   dplyr::filter(
@@ -58,18 +54,13 @@ pS_fry_lead <- ggplot(top_df, aes(x = t_test, y = gene, color = dir_label)) +
   ) +
   FIG_THEME
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-
 PW <- 89
 PH <- 70
-ggsave(file.path(RPT_PNG, "S5T_fry_leading.png"), pS_fry_lead,
+ggsave(file.path(RPT, "S5T_fry_leading.png"), pS_fry_lead,
   width = PW, height = PH, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "S5T_fry_leading.pdf"), pS_fry_lead,
-  width = PW, height = PH, units = "mm", device = pdf_device
+ggsave(file.path(RPT, "S5T_fry_leading.pdf"), pS_fry_lead,
+  width = PW, height = PH, units = "mm", device = get_pdf_device()
 )
 
 message("SUPP Panel E (fry leading edge) done")

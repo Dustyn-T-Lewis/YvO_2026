@@ -18,9 +18,7 @@ if (!dir.exists(file.path(DAT, "panel_A"))) {
 for (f in c(
   "S5T_enrichment_heatmap.R", "S5T_rrho2_aging.R", "S5T_ora_dedup.R",
   "S5T_threshold_sens.R", "S5T_fry_leading.R", "S5T_cat_depth.R"
-)) {
-  source_panel(file.path(PANELS, f))
-}
+)) source_panel(file.path(PANELS, f))
 
 message("F04 supplementary workbook")
 enrichment_blunting_df <- read.csv(file.path(DAT, "panel_supp", "enrichment_blunting.csv"),
@@ -115,12 +113,7 @@ build_workbook(
   sheet_specs = f04_specs
 )
 cleanup_after_workbook(f04_specs,
-  extra_subdirs = c(
-    file.path(DAT, "panel_A"),
-    file.path(DAT, "panel_D"),
-    file.path(DAT, "panel_E"),
-    file.path(DAT, "panel_supp")
-  )
+  extra_subdirs = file.path(DAT, c("panel_A", "panel_D", "panel_E", "panel_supp"))
 )
 
 remaining <- list.files(DAT, pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)

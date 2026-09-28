@@ -12,11 +12,9 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-pdf_device <- get_pdf_device()
-
-BASE <- "04_Figures/F04"
-DAT <- file.path(BASE, "c_data", "panel_supp")
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
+DAT <- "04_Figures/F04/c_data/panel_supp"
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+for (d in c(DAT, RPT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 dep <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 
@@ -92,18 +90,13 @@ pS_conc_mag <- ggplot(bin_df, aes(x = factor(bin), y = pct)) +
 
 write_csv(bin_df, file.path(DAT, "SUPP_concordance_magnitude.csv"))
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-
 PW <- 89
 PH <- 70
-ggsave(file.path(RPT_PNG, "S5a_C_concordance_magnitude.png"), pS_conc_mag,
+ggsave(file.path(RPT, "S5a_C_concordance_magnitude.png"), pS_conc_mag,
   width = PW, height = PH, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "S5a_C_concordance_magnitude.pdf"), pS_conc_mag,
-  width = PW, height = PH, units = "mm", device = pdf_device
+ggsave(file.path(RPT, "S5a_C_concordance_magnitude.pdf"), pS_conc_mag,
+  width = PW, height = PH, units = "mm", device = get_pdf_device()
 )
 
 message(sprintf(

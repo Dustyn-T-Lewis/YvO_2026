@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
-# S5a Figure A: Spearman Rho Bootstrap
-# Diagnostic for main Panels A & D: shows Spearman rho between Training_Young and
-# Training_Old logFC is robust to resampling (1000 bootstrap replicates).
+# S5a Figure A: diagnostic for main panels A and D, showing Spearman rho between
+# Training_Young and Training_Old logFC is robust to resampling (1000 replicates).
 
 setwd(here::here())
 
@@ -10,16 +9,13 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-pdf_device <- get_pdf_device()
-
 pacman::p_load(boot)
 
-BASE <- "04_Figures/F04"
-DAT  <- file.path(BASE, "c_data", "panel_supp")
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
+DAT <- "04_Figures/F04/c_data/panel_supp"
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+for (d in c(DAT, RPT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv",
-                   show_col_types = FALSE)
+dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 
 boot_df <- dep_df |>
   transmute(logFC_TY = logFC_Training_Young,
@@ -29,7 +25,6 @@ boot_df <- dep_df |>
 n_prot <- nrow(boot_df)
 obs_rho <- cor(boot_df$logFC_TY, boot_df$logFC_TO, method = "spearman")
 
-# Bootstrap
 rho_stat <- function(data, idx) {
   d <- data[idx, ]
   cor(d$logFC_TY, d$logFC_TO, method = "spearman")
@@ -64,16 +59,11 @@ pS_rho_boot <- ggplot(tibble(rho = rho_vals), aes(x = rho)) +
        x = "Spearman rho", y = "Count") +
   FIG_THEME
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-
 PW <- 89; PH <- 70
-ggsave(file.path(RPT_PNG, "S5a_A_rho_bootstrap.png"), pS_rho_boot,
+ggsave(file.path(RPT, "S5a_A_rho_bootstrap.png"), pS_rho_boot,
        width = PW, height = PH, units = "mm", dpi = 300)
-ggsave(file.path(RPT_PDF, "S5a_A_rho_bootstrap.pdf"), pS_rho_boot,
-       width = PW, height = PH, units = "mm", device = pdf_device)
+ggsave(file.path(RPT, "S5a_A_rho_bootstrap.pdf"), pS_rho_boot,
+       width = PW, height = PH, units = "mm", device = get_pdf_device())
 
 message("SUPP Panel B (rho bootstrap) done")
 

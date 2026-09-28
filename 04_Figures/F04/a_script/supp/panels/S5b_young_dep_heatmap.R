@@ -24,15 +24,9 @@ source("04_Figures/shared/pathway_utils.R")
 
 pacman::p_load(ComplexHeatmap, circlize, gridExtra)
 
-BASE <- "04_Figures/F04"
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-DAT <- file.path(BASE, "c_data", "panel_supp")
-for (d in c(RPT_PNG, RPT_PDF, DAT)) {
-  dir.create(d, recursive = TRUE, showWarnings = FALSE)
-}
-
-pdf_device <- get_pdf_device()
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+DAT <- "04_Figures/F04/c_data/panel_supp"
+for (d in c(RPT, DAT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 dep <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 
@@ -49,11 +43,13 @@ paired_subj <- paired_subj[order(!grepl("^Y", paired_subj), paired_subj)]
 
 young_dep <- dep |>
   filter(!is.na(adj.P.Val_Training_Young), adj.P.Val_Training_Young < 0.05) |>
-  mutate(response = if_else(
-    sign(logFC_Training_Young) == sign(logFC_Training_Old),
-    "Concordant", "Discordant"
-  )) |>
-  mutate(direction = if_else(logFC_Training_Young > 0, "Up", "Down")) |>
+  mutate(
+    response = if_else(
+      sign(logFC_Training_Young) == sign(logFC_Training_Old),
+      "Concordant", "Discordant"
+    ),
+    direction = if_else(logFC_Training_Young > 0, "Up", "Down")
+  ) |>
   arrange(factor(direction, levels = c("Up", "Down")), desc(logFC_Training_Young))
 
 delta <- vapply(
@@ -69,10 +65,7 @@ row_split <- factor(young_dep$direction, levels = c("Up", "Down"))
 
 cap <- unname(quantile(abs(delta), 0.98, na.rm = TRUE))
 col_fun <- colorRamp2(c(-cap, 0, cap), c("#4393C3", "white", "#D6604D"))
-lfc_cap <- max(abs(c(
-  young_dep$logFC_Training_Young,
-  young_dep$logFC_Training_Old
-)))
+lfc_cap <- max(abs(c(young_dep$logFC_Training_Young, young_dep$logFC_Training_Old)))
 lfc_fun <- colorRamp2(c(-lfc_cap, 0, lfc_cap), c("#4393C3", "white", "#D6604D"))
 
 CONC_COLORS <- c(Concordant = "#5AAE61", Discordant = "#9970AB")
@@ -127,9 +120,7 @@ ht <- Heatmap(
 
 n_conc <- sum(young_dep$response == "Concordant")
 n_disc <- sum(young_dep$response == "Discordant")
-rho <- cor(young_dep$logFC_Training_Young, young_dep$logFC_Training_Old,
-  method = "spearman"
-)
+rho <- cor(young_dep$logFC_Training_Young, young_dep$logFC_Training_Old, method = "spearman")
 
 fig_w_mm <- 320
 fig_h_mm <- max(180, 1.9 * nrow(delta) + 60)
@@ -147,11 +138,7 @@ g_ht <- grid.grabExpr(draw(ht,
   padding = unit(c(2, 4, 2, 14), "mm")
 ))
 
-pw_list <- build_pathway_collection(
-  min_size = 10, max_size = 500,
-  include_goslim = FALSE,
-  exclude_variants = TRUE
-)
+pw_list <- build_pathway_collection(include_goslim = FALSE, exclude_variants = TRUE)
 universe <- unique(dep$gene[!is.na(dep$gene)])
 
 # The flow panel needs pw_list and universe, and contributes the right-hand
@@ -163,7 +150,7 @@ write_composite <- function() {
   grid.arrange(g_ht, g_bars, ncol = 2, widths = c(2.1, 1), top = title_grob)
 }
 
-png(file.path(RPT_PNG, "S5b_young_dep_heatmap.png"),
+png(file.path(RPT, "S5b_young_dep_heatmap.png"),
   width = fig_w_mm, height = fig_h_mm, units = "mm", res = 300
 )
 p <- write_composite()
@@ -171,7 +158,7 @@ dev.off()
 
 pdf_dev <- get_pdf_device()
 if (is.character(pdf_dev)) pdf_dev <- match.fun(pdf_dev)
-pdf_dev(file.path(RPT_PDF, "S5b_young_dep_heatmap.pdf"),
+pdf_dev(file.path(RPT, "S5b_young_dep_heatmap.pdf"),
   width = fig_w_mm / 25.4, height = fig_h_mm / 25.4
 )
 write_composite()
@@ -180,8 +167,7 @@ dev.off()
 set.seed(42)
 ora_conc <- run_ora_deduplicated(
   genes = young_dep$gene[young_dep$response == "Concordant"],
-  universe = universe, pathways = pw_list,
-  em_cutoff = 0.5, min_size = 10, max_size = 500
+  universe = universe, pathways = pw_list
 )
 
 # The 25 discordant proteins are too few for over-representation testing, so
