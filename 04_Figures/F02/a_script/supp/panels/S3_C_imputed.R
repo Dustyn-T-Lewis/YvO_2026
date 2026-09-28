@@ -6,22 +6,18 @@ setwd(here::here())
 source("04_Figures/F02/a_script/supp/panels/_supp.R", local = TRUE)
 PE_W <- 110
 PE_H <- 55
-RPT_PNG <- "04_Figures/F02/b_reports/supp/panels"
-RPT_PDF <- "04_Figures/F02/b_reports/supp/panels"
-DAT_DIR <- "04_Figures/F02/c_data"
 
 IMP_XLSX <- "02_imputation/c_data/02_imputation.xlsx"
 dal_imp_e <- readRDS("02_imputation/c_data/01_DAList_imputed.rds")
 
-imp_mat_e <- as.matrix(dal_imp_e$data)
-imp_gene <- dal_imp_e$annotation$gene
+imp_mat <- as.matrix(dal_imp_e$data)
 
 ann_cols <- c("uniprot_id", "protein", "gene", "description")
-samp_names <- colnames(imp_mat_e)
+samp_names <- colnames(imp_mat)
 
 imp_df <- bind_cols(
   as_tibble(dal_imp_e$annotation) |> select(all_of(ann_cols)),
-  as_tibble(imp_mat_e)
+  as_tibble(imp_mat)
 )
 
 meta <- as_tibble(dal_imp_e$metadata) |>
@@ -33,7 +29,6 @@ meta <- as_tibble(dal_imp_e$metadata) |>
     subject = sub("_(Pre|Post)$", "", Col_ID)
   )
 
-imp_mat <- imp_mat_e
 n_proteins <- nrow(imp_mat)
 
 mask_df <- as.data.frame(read_excel(IMP_XLSX, sheet = "imputation_mask"))
@@ -43,7 +38,6 @@ rownames(mask_mat) <- mask_df$gene
 mnar_df <- as.data.frame(read_excel(IMP_XLSX, sheet = "mar_mnar_classification"))
 mnar_genes <- mnar_df$gene[mnar_df$classification == "MNAR"]
 
-pdf_device <- get_pdf_device()
 subjects <- unique(meta$subject)
 
 lfc_list <- lapply(subjects, function(s) {
@@ -112,18 +106,13 @@ group_summary <- subj_summary |>
   )
 
 wt <- wilcox.test(median_lfc ~ age, data = subj_summary)
-n1 <- sum(subj_summary$age == "Young")
-n2 <- sum(subj_summary$age == "Old")
-r_rb <- 1 - 2 * wt$statistic / (n1 * n2)
 
 mean_pct_imp <- mean(subj_summary$pct_imputed)
-mean_pct_mnar <- mean(subj_summary$pct_mnar)
 subtitle_text <- sprintf(
   "Per-subject \u0394log\u2082FC (Post \u2212 Pre) | %s proteins | %.0f%% imputed | Wilcoxon age %s",
   format(n_proteins, big.mark = ","), mean_pct_imp, fmt_p(wt$p.value)
 )
 
-# Per-age midpoints for inside-plot labels
 n_young_subj <- sum(subj_summary$age == "Young")
 n_old_subj <- sum(subj_summary$age == "Old")
 age_label_df <- data.frame(
@@ -176,20 +165,20 @@ write.csv(
       iqr_lfc, q25, q75, n_proteins,
       n_imputed_lfc, pct_imputed, n_mnar_lfc, pct_mnar
     ),
-  file.path(DAT_DIR, "SUPP_panel_C_imputed.csv"),
+  file.path(DAT, "SUPP_panel_C_imputed.csv"),
   row.names = FALSE
 )
 
 write.csv(group_summary,
-  file.path(DAT_DIR, "SUPP_panel_C_wilcoxon.csv"),
+  file.path(DAT, "SUPP_panel_C_wilcoxon.csv"),
   row.names = FALSE
 )
 
-ggsave(file.path(RPT_PNG, "S3_C_imputed.png"), pC,
+ggsave(file.path(PNL, "S3_C_imputed.png"), pC,
   width = PE_W, height = PE_H, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "S3_C_imputed.pdf"), pC,
-  width = PE_W, height = PE_H, units = "mm", device = pdf_device
+ggsave(file.path(PNL, "S3_C_imputed.pdf"), pC,
+  width = PE_W, height = PE_H, units = "mm", device = pdf_dev
 )
 
 invisible(pC)

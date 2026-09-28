@@ -24,27 +24,38 @@ pC <- strip_for_composite(pC)
 RPT <- "04_Figures/F02/b_reports/supp"
 pdf_dev <- get_pdf_device()
 
-COMP_W <- 178; COMP_H <- 115
+COMP_W <- 178
+COMP_H <- 115
 txt <- composite_text_sizes(COMP_W)
 
-# pA12/pA3 from _supp_A (CV scatter), pB from _supp_B (CV violin), pC from _supp_C (imputed)
 pSA_full <- (pA12 | pA3) + plot_layout(widths = c(2, 1))
 composite <- (wrap_elements(pSA_full) / (pB | pC)) +
   plot_layout(heights = c(1, 0.7))
 
-Y_TOP <- 0.985; Y_BOT <- 0.500
-composite <- ggdraw(composite) +
-  draw_label("A", x = 0.01, y = Y_TOP, size = txt$tag, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pSA_title, x = 0.04, y = Y_TOP, size = txt$title, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("B", x = 0.01, y = Y_BOT, size = txt$tag, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pSB_title, x = 0.04, y = Y_BOT, size = txt$title, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("C", x = 0.52, y = Y_BOT, size = txt$tag, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label(pSC_title, x = 0.55, y = Y_BOT, size = txt$title, fontface = "bold", hjust = 0, vjust = 1)
+Y_TOP <- 0.985
+Y_BOT <- 0.500
+add_head <- function(canvas, tag, title, tag_x, ttl_x, y) {
+  canvas +
+    draw_label(tag,
+      x = tag_x, y = y, size = txt$tag,
+      fontface = "bold", hjust = 0, vjust = 1
+    ) +
+    draw_label(title,
+      x = ttl_x, y = y, size = txt$title,
+      fontface = "bold", hjust = 0, vjust = 1
+    )
+}
+composite <- ggdraw(composite) |>
+  add_head("A", pSA_title, 0.01, 0.04, Y_TOP) |>
+  add_head("B", pSB_title, 0.01, 0.04, Y_BOT) |>
+  add_head("C", pSC_title, 0.52, 0.55, Y_BOT)
 
 ggsave(file.path(RPT, "S3.pdf"), composite,
-       width = COMP_W, height = COMP_H, units = "mm", device = pdf_dev)
+  width = COMP_W, height = COMP_H, units = "mm", device = pdf_dev
+)
 ggsave(file.path(RPT, "S3.png"), composite,
-       width = COMP_W, height = COMP_H, units = "mm", dpi = 300)
+  width = COMP_W, height = COMP_H, units = "mm", dpi = 300
+)
 
 caption_supp(composite, "S3", COMP_W, COMP_H, RPT)
 

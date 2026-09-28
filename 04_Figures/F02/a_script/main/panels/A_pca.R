@@ -99,10 +99,10 @@ pA <- ggplot(pca_df, aes(PC1, PC2, color = group, shape = group)) +
   )
 
 write.csv(var_ci, file.path(DAT, "panel_A_pca_variance_ci.csv"), row.names = FALSE)
-ggsave(file.path(PNL_PNG, "A_pca.png"), pA,
+ggsave(file.path(PNL, "A_pca.png"), pA,
   width = PC_W, height = PC_H, units = "mm", dpi = 300
 )
-ggsave(file.path(PNL_PDF, "A_pca.pdf"), pA,
+ggsave(file.path(PNL, "A_pca.pdf"), pA,
   width = PC_W, height = PC_H, units = "mm", device = pdf_dev
 )
 
