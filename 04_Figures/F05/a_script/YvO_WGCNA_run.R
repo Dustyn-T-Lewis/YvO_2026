@@ -60,7 +60,8 @@ if (!gsg$allOK) {
 # WGCNA needs its own cor()
 cor <- WGCNA::cor
 
-powers <- 1:20
+# c() stores a plain vector; a bare 1:20 serialises differently in the RDS.
+powers <- c(1:20)
 sft <- pickSoftThreshold(datExpr,
   powerVector = powers,
   networkType = WGCNA_NETWORK_TYPE, verbose = 2
