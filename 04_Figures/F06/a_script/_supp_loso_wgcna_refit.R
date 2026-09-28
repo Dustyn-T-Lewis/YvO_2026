@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# F06 Supplementary: Full WGCNA-refit LOSO sensitivity
+# F06 Supplementary: full WGCNA-refit LOSO sensitivity.
 #
 # Strongest sensitivity for module-definition circularity. For each of
 # 32 subjects, remove their 2 samples from datExpr, refit the WGCNA network
@@ -16,14 +16,13 @@ pacman::p_load(tidyverse, WGCNA, pROC)
 allowWGCNAThreads()
 set.seed(42)
 cor_orig <- cor
-cor <- WGCNA::cor                       # WGCNA dispatch quirk for cor()
+cor <- WGCNA::cor # WGCNA dispatch quirk for cor()
 on.exit(assign("cor", cor_orig, envir = .GlobalEnv), add = TRUE)
 
 BASE    <- "04_Figures/F06"
 DAT_OUT <- file.path(BASE, "c_data", "loso_auc")
 dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
 
-# Inputs
 F05_SUPP  <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot("F05 must run first: missing F05_data.xlsx" =
   file.exists(F05_SUPP))
@@ -32,7 +31,6 @@ mod_full  <- readRDS("04_Figures/F05/c_data/module_colors.rds")
 me_pre    <- readRDS("04_Figures/F05/c_data/me_pre.rds")
 me_post   <- readRDS("04_Figures/F05/c_data/me_post.rds")
 subj_age  <- read_sheet_df(F05_SUPP, "metadata_subj_age")
-pheno     <- read_sheet_df(F05_SUPP, "metadata_pheno_wide")
 
 in_sample_csv  <- file.path(BASE, "c_data", "module_grid", "module_grid_summary.csv")
 in_sample_xlsx <- file.path(BASE, "c_data", "F06_data.xlsx")
@@ -48,27 +46,15 @@ names(mod_full) <- colnames(datExpr)
 common_subj  <- intersect(rownames(me_pre), rownames(me_post))
 MODULES      <- c("turquoise","blue","brown","yellow","green","red","black","pink")
 
-# The cells the main figure draws; see _panel_selection.R.
+# The cells the main figure draws; see _panel_selection.R. Only Age and
+# Pre vs Post (Young/Old) rows ever come back.
 source("04_Figures/F06/a_script/_panel_selection.R")
 cells <- main_panel_cells(
   in_sample |> filter(!is.na(perm_p), !is.na(auc), module %in% MODULES)
 )
 
-# Outcome vectors (matching _supp_module_grid.R)
 age_bin <- ifelse(subj_age$age[match(common_subj, subj_age$subject_key)] == "Old", 1L, 0L)
 
-pheno_s <- pheno[match(common_subj, pheno$subject_key), ]
-ok_vl <- !is.na(pheno_s$delta_VL)
-resid_vl <- rep(NA_real_, length(common_subj))
-resid_vl[ok_vl] <- residuals(lm(pheno_s$delta_VL[ok_vl] ~ age_bin[ok_vl]))
-vl_bin <- ifelse(resid_vl > median(resid_vl, na.rm = TRUE), 1L, 0L)
-
-ok_lbm <- !is.na(pheno_s$LBM_Pre)
-resid_lbm <- rep(NA_real_, length(common_subj))
-resid_lbm[ok_lbm] <- residuals(lm(pheno_s$LBM_Pre[ok_lbm] ~ age_bin[ok_lbm]))
-lbm_bin <- ifelse(resid_lbm > median(resid_lbm, na.rm = TRUE), 1L, 0L)
-
-# Helpers
 match_modules <- function(mod_train, mod_full) {
   train_lvls <- setdiff(unique(mod_train), "grey")
   full_lvls  <- setdiff(unique(mod_full),  "grey")
@@ -140,7 +126,6 @@ refit_fold <- function(hold_subj, datExpr_full, mod_full_named, soft_power = 12L
   list(projs = projs, jaccard_summary = mm)
 }
 
-# Run LOSO over all subjects
 n_subj <- length(common_subj)
 per_fold <- vector("list", n_subj)
 stability <- vector("list", n_subj)
@@ -157,21 +142,14 @@ for (i in seq_len(n_subj)) {
 message(sprintf("Done. Total elapsed: %.1f min",
                 as.numeric(Sys.time() - t0, units = "mins")))
 
-# Aggregate per-pair LOSO AUCs
 subj_pred <- function(module) {
-  rows <- list()
-  for (i in seq_len(n_subj)) {
+  map_dfr(seq_len(n_subj), function(i) {
     p <- per_fold[[i]][[module]]
-    if (is.null(p)) next
-    nm <- p$me_hold_names
-    for (k in seq_along(nm)) {
-      tp <- sub(".*_(Pre|Post)$", "\\1", nm[k])
-      rows[[length(rows)+1]] <- tibble(subject = common_subj[i], timepoint = tp,
-                                        me = p$me_hold[k])
-    }
-  }
-  if (length(rows) == 0) return(tibble())
-  bind_rows(rows)
+    if (is.null(p)) return(NULL)
+    tibble(subject = common_subj[i],
+           timepoint = sub(".*_(Pre|Post)$", "\\1", p$me_hold_names),
+           me = p$me_hold)
+  })
 }
 
 results <- list()
@@ -191,31 +169,13 @@ for (i in seq_len(nrow(cells))) {
     df <- df |> filter(!is.na(Combined))
     if (length(unique(df$y)) < 2) next
     r <- suppressMessages(roc(df$y, df$Combined, quiet = TRUE, direction = "auto"))
-  } else if (row_name == "\u0394VL-responder") {
-    df <- tibble(subject = common_subj) |> left_join(wide, by = "subject") |>
-      mutate(y = vl_bin)
-    df <- df |> filter(!is.na(Pre), !is.na(y))
-    if (length(unique(df$y)) < 2) next
-    r <- suppressMessages(roc(df$y, df$Pre, quiet = TRUE, direction = "auto"))
-  } else if (row_name == "LBM (High vs Low)") {
-    df <- tibble(subject = common_subj) |> left_join(wide, by = "subject") |>
-      mutate(y = lbm_bin)
-    df <- df |> filter(!is.na(Pre), !is.na(y))
-    if (length(unique(df$y)) < 2) next
-    r <- suppressMessages(roc(df$y, df$Pre, quiet = TRUE, direction = "auto"))
-  } else if (row_name %in% c("Pre vs Post", "Pre vs Post (Young)", "Pre vs Post (Old)")) {
-    df <- pred |> mutate(y = ifelse(timepoint == "Post", 1L, 0L))
-    if (row_name == "Pre vs Post (Young)") {
-      y_subj <- common_subj[age_bin == 0]
-      df <- df |> filter(subject %in% y_subj)
-    } else if (row_name == "Pre vs Post (Old)") {
-      o_subj <- common_subj[age_bin == 1]
-      df <- df |> filter(subject %in% o_subj)
-    }
-    df <- df |> filter(!is.na(me))
+  } else {
+    stratum <- common_subj[age_bin == if (row_name == "Pre vs Post (Old)") 1 else 0]
+    df <- pred |> mutate(y = ifelse(timepoint == "Post", 1L, 0L)) |>
+      filter(subject %in% stratum, !is.na(me))
     if (length(unique(df$y)) < 2) next
     r <- suppressMessages(roc(df$y, df$me, quiet = TRUE, direction = "auto"))
-  } else { next }
+  }
 
   ci <- as.numeric(ci.auc(r))
   results[[length(results)+1]] <- tibble(

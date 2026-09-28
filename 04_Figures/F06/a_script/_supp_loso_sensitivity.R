@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# F06 Supplementary: LOSO sensitivity for per-module univariate ROC AUCs
+# F06 Supplementary: LOSO sensitivity for per-module univariate ROC AUCs.
 #
 # Addresses eigengene-projection optimism (not module-definition circularity).
 # For each cell the main figure draws, leave one subject out, refit the module's
@@ -14,18 +14,15 @@ BASE    <- "04_Figures/F06"
 DAT_OUT <- file.path(BASE, "c_data", "loso_auc")
 dir.create(DAT_OUT, recursive = TRUE, showWarnings = FALSE)
 
-# Inputs
 F05_SUPP  <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot("F05 must run first: missing F05_data.xlsx" =
   file.exists(F05_SUPP))
 datExpr   <- readRDS("04_Figures/F05/c_data/datExpr.rds")
 mod_cols  <- readRDS("04_Figures/F05/c_data/module_colors.rds")
 me_pre    <- readRDS("04_Figures/F05/c_data/me_pre.rds")
-me_post   <- readRDS("04_Figures/F05/c_data/me_post.rds")
 subj_age  <- read_sheet_df(F05_SUPP, "metadata_subj_age")
-pheno     <- read_sheet_df(F05_SUPP, "metadata_pheno_wide")
 
-# In-sample AUCs: prefer CSV (if S7_A_module_grid.R just ran), else xlsx
+# In-sample AUCs: the CSV if S7_A_module_grid.R just ran, else the workbook.
 in_sample_csv  <- file.path(BASE, "c_data", "module_grid", "module_grid_summary.csv")
 in_sample_xlsx <- file.path(BASE, "c_data", "F06_data.xlsx")
 if (file.exists(in_sample_csv)) {
@@ -37,34 +34,20 @@ if (file.exists(in_sample_csv)) {
 sample_ids   <- rownames(datExpr)
 subject_keys <- sub("_(Pre|Post)$", "", sample_ids)
 common_subj  <- rownames(me_pre)
-MODULES      <- c("turquoise","blue","brown","yellow","green","red","black","pink")
 
 stopifnot(all(common_subj %in% subject_keys))
 
-# The cells the main figure draws, not a separate ranking of the same 48.
-# This table is read as the sensitivity check on the figure, so it has to
-# cover the same cells.
+# The cells the main figure draws, not a separate ranking of the same 48:
+# this table is read as the sensitivity check on the figure. main_panel_cells()
+# only ever returns the Age and Pre vs Post (Young/Old) rows.
 source("04_Figures/F06/a_script/_panel_selection.R")
 cells <- main_panel_cells(in_sample |> filter(!is.na(perm_p), !is.na(auc)))
 
 message("Main-panel (row, module) pairs carried into LOSO:")
 print(cells |> dplyr::select(row, module, auc, perm_p, q_bh))
 
-# Outcome vectors (mirror _supp_module_grid.R)
 age_bin <- ifelse(subj_age$age[match(common_subj, subj_age$subject_key)] == "Old", 1, 0)
 
-pheno_s <- pheno[match(common_subj, pheno$subject_key), ]
-ok_vl <- !is.na(pheno_s$delta_VL)
-resid_vl <- rep(NA_real_, length(common_subj))
-resid_vl[ok_vl] <- residuals(lm(pheno_s$delta_VL[ok_vl] ~ age_bin[ok_vl]))
-vl_bin <- ifelse(resid_vl > median(resid_vl, na.rm = TRUE), 1L, 0L)
-
-ok_lbm <- !is.na(pheno_s$LBM_Pre)
-resid_lbm <- rep(NA_real_, length(common_subj))
-resid_lbm[ok_lbm] <- residuals(lm(pheno_s$LBM_Pre[ok_lbm] ~ age_bin[ok_lbm]))
-lbm_bin <- ifelse(resid_lbm > median(resid_lbm, na.rm = TRUE), 1L, 0L)
-
-# LOSO projection helper
 loso_me <- function(full_mat, train_rows, holdout_rows) {
   Xtr <- scale(full_mat[train_rows, , drop = FALSE])
   center <- attr(Xtr, "scaled:center")
@@ -92,7 +75,6 @@ X_post_sub <- datExpr[idx_post, , drop = FALSE]
 X_comb_sub <- (X_pre_sub + X_post_sub) / 2
 rownames(X_pre_sub) <- rownames(X_post_sub) <- rownames(X_comb_sub) <- common_subj
 
-# Per-pair LOSO
 results <- list()
 
 set.seed(42)
@@ -105,26 +87,21 @@ for (i in seq_len(nrow(cells))) {
   }
 
   if (row == "Age") {
-    X_sub <- X_comb_sub[, mp, drop = FALSE]; y <- age_bin; ok <- rep(TRUE, length(y))
-    paired <- FALSE
-  } else if (row == "\u0394VL-responder") {
-    X_sub <- X_pre_sub[, mp, drop = FALSE]; y <- vl_bin; ok <- !is.na(y)
-    paired <- FALSE
-  } else if (row == "LBM (High vs Low)") {
-    X_sub <- X_pre_sub[, mp, drop = FALSE]; y <- lbm_bin; ok <- !is.na(y)
-    paired <- FALSE
-  } else if (row == "Pre vs Post") {
-    paired <- TRUE; age_mask <- rep(TRUE, length(common_subj))
-  } else if (row == "Pre vs Post (Young)") {
-    paired <- TRUE; age_mask <- age_bin == 0
-  } else if (row == "Pre vs Post (Old)") {
-    paired <- TRUE; age_mask <- age_bin == 1
+    y_vec <- age_bin
+    Xu    <- X_comb_sub[, mp, drop = FALSE]
+    preds <- rep(NA_real_, length(y_vec))
+    for (k in seq_along(y_vec)) {
+      preds[k] <- loso_me(Xu, setdiff(seq_along(y_vec), k), k)
+    }
+    preds_ok <- !is.na(preds)
+    if (length(unique(y_vec[preds_ok])) < 2) {
+      message(sprintf("[skip] %s / %s -- held-out labels collapse", row, mod)); next
+    }
+    r <- suppressMessages(roc(y_vec[preds_ok], preds[preds_ok],
+                               quiet = TRUE, direction = "auto"))
+    n_subj <- sum(preds_ok)
   } else {
-    message(sprintf("[skip] %s -- unrecognised row", row)); next
-  }
-
-  if (paired) {
-    subj_use <- common_subj[age_mask]
+    subj_use <- common_subj[age_bin == if (row == "Pre vs Post (Old)") 1 else 0]
     Xp_full  <- X_pre_sub[subj_use,  mp, drop = FALSE]
     Xq_full  <- X_post_sub[subj_use, mp, drop = FALSE]
     X_pool <- rbind(Xp_full, Xq_full)
@@ -139,40 +116,17 @@ for (i in seq_len(nrow(cells))) {
     preds_ok <- !is.na(preds)
     r <- suppressMessages(roc(tp_lab[preds_ok], preds[preds_ok],
                                quiet = TRUE, direction = "auto"))
-    ci <- as.numeric(ci.auc(r))
-    results[[length(results)+1]] <- tibble(
-      row = row, module = mod,
-      n_subj  = length(unique(sid)),
-      n_obs   = sum(preds_ok),
-      auc_insample = cells$auc[i],
-      auc_loso     = as.numeric(auc(r)),
-      ci_lo_loso   = ci[1], ci_hi_loso = ci[3],
-      drop = cells$auc[i] - as.numeric(auc(r)))
-  } else {
-    idx <- which(ok)
-    preds <- rep(NA_real_, length(idx))
-    y_vec <- y[idx]
-    Xu    <- X_sub[idx, , drop = FALSE]
-    for (k in seq_along(idx)) {
-      hold <- k; train <- setdiff(seq_along(idx), k)
-      preds[k] <- loso_me(Xu, train, hold)
-    }
-    preds_ok <- !is.na(preds)
-    if (length(unique(y_vec[preds_ok])) < 2) {
-      message(sprintf("[skip] %s / %s -- held-out labels collapse", row, mod)); next
-    }
-    r <- suppressMessages(roc(y_vec[preds_ok], preds[preds_ok],
-                               quiet = TRUE, direction = "auto"))
-    ci <- as.numeric(ci.auc(r))
-    results[[length(results)+1]] <- tibble(
-      row = row, module = mod,
-      n_subj  = sum(preds_ok),
-      n_obs   = sum(preds_ok),
-      auc_insample = cells$auc[i],
-      auc_loso     = as.numeric(auc(r)),
-      ci_lo_loso   = ci[1], ci_hi_loso = ci[3],
-      drop = cells$auc[i] - as.numeric(auc(r)))
+    n_subj <- length(unique(sid))
   }
+  ci <- as.numeric(ci.auc(r))
+  results[[length(results)+1]] <- tibble(
+    row = row, module = mod,
+    n_subj  = n_subj,
+    n_obs   = sum(preds_ok),
+    auc_insample = cells$auc[i],
+    auc_loso     = as.numeric(auc(r)),
+    ci_lo_loso   = ci[1], ci_hi_loso = ci[3],
+    drop = cells$auc[i] - as.numeric(auc(r)))
 }
 
 loso_df <- bind_rows(results) |>

@@ -17,18 +17,12 @@ if (!all(file.exists(needed))) {
 
 # Sourced into this session in their original order. They share its
 # environment on purpose: _supp_loso_wgcna_refit.R swaps cor() for WGCNA's and
-# restores it through the global environment.
-# Writes classifier_pilot_*.csv
+# restores it through the global environment. They write classifier_pilot_*,
+# panel_A_*, loso_auc/loso_auc_summary and (about 255 s) loso_wgcna_refit_*.
 source("04_Figures/F06/a_script/_supp_prepare_roc.R")
-# Writes panel_A_*.csv
 source("04_Figures/F06/a_script/_supp_multivariate.R")
-# Writes loso_auc/loso_auc_summary.csv
 source("04_Figures/F06/a_script/_supp_loso_sensitivity.R")
-# About 255 s; writes loso_auc/loso_wgcna_refit_*.csv
 source("04_Figures/F06/a_script/_supp_loso_wgcna_refit.R")
-
-# Restore the path _supp_multivariate.R points at F05's c_data.
-DAT <- "04_Figures/F06/c_data"
 
 f07 <- function(p) file.path(DAT, p)
 
@@ -52,20 +46,7 @@ build_workbook(
   title = "S7 Table \u2014 module discrimination and phenotype coupling",
   description = "Phenotype-prediction outputs: univariate module-outcome ROCs, multivariate classifiers, LOSO cross-validation, age-stratified module-phenotype coupling, and per-module Jaccard stability.",
   overview_df = data.frame(
-    Sheet = c(
-      "module_grid_summary",
-      "module_grid_curves",
-      "panel_A_classifier_auc",
-      "panel_A_feature_stability",
-      "panel_A_permutation",
-      "panel_A_roc_curves",
-      "classifier_pilot_summary",
-      "classifier_pilot_curves",
-      "panel_B_full_screen",
-      "loso_auc_summary",
-      "loso_wgcna_refit_summary",
-      "loso_wgcna_refit_mod_stability"
-    ),
+    Sheet = vapply(f07_specs, `[[`, "", "name"),
     Description = c(
       "Per-module univariate ROC summary: AUC, permutation p, BH q for each module-outcome pair",
       "Per-module ROC curves: TPR/FPR coordinates for plotting",
@@ -88,7 +69,6 @@ cleanup_after_workbook(f07_specs,
   extra_subdirs = c(f07("loso_auc"), f07("module_grid"))
 )
 
-# Final cleanup: remove any leftover CSVs
 remaining <- list.files(DAT, pattern = "\\.csv$",
                         recursive = TRUE, full.names = TRUE)
 if (length(remaining)) {

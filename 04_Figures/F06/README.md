@@ -4,7 +4,7 @@ Draws Figure 6 (module ROCs and the module-phenotype coupling grid) and S7 Figur
 
 ## Reads
 
-- `04_Figures/F05/c_data/F05_data.xlsx`, sheets `MEs`, `me_pre`, `me_post`, `delta_me`, `metadata_subj_age`, `metadata_pheno_wide`, `common_subj`, `WGCNA_mod_bio_labels` and `WGCNA_module_assignments`
+- `04_Figures/F05/c_data/F05_data.xlsx`, sheets `me_pre`, `me_post`, `delta_me`, `metadata_subj_age`, `metadata_pheno_wide`, `common_subj`, `WGCNA_mod_bio_labels` and `WGCNA_module_assignments`
 - `04_Figures/F05/c_data/datExpr.rds`, `module_colors.rds`, `me_pre.rds` and `me_post.rds`
 - `02_imputation/c_data/01_imputed.csv`
 - `03_DEP/c_data/03_combined_results.csv`

@@ -32,7 +32,6 @@ read_panel <- function(file) {
        aspect = dim(img)[2] / dim(img)[1])   # width/height
 }
 
-# Page 1 panels (A + B, aspect-matched)
 pA <- read_panel("S7_A_module_grid.png")
 pB <- read_panel("S7_B_full_sweep.png")
 
@@ -58,7 +57,6 @@ page1_final <- ggdraw(page1 & theme(plot.margin = margin(2, 2, 2, 2))) +
   draw_label("B", x = TAG_X_B, y = TAG_Y, size = TAG_SZ,
              fontface = "bold", hjust = 0, vjust = 1)
 
-# Write outputs
 graphics.off()
 pdf_device <- get_raster_pdf_device()
 
