@@ -30,11 +30,8 @@ pheno_wide <- read_sheet_df(F05_SUPP, "metadata_pheno_wide")
 subj_age <- read_sheet_df(F05_SUPP, "metadata_subj_age")
 common_subj <- read_vector_sheet(F05_SUPP, "common_subj")
 
-pdf_device <- get_pdf_device()
-
 message("Panel B: 3x2 grid, top 6 cells of the module x phenotype screen...")
 
-# Outcome + predictor labels
 # Spelled out because T1/T2/DL are storage names, not things a reader knows:
 # T1/T2 are Type I / Type II fibre cross-sectional area, DL is deadlift 1RM.
 outcome_nice <- c(
@@ -63,7 +60,6 @@ get_x <- function(x_source, mod) {
   as.numeric(src[common_subj, mod])
 }
 
-# Helpers
 fmt_p <- function(p) {
   if (is.na(p)) {
     return("n/a")
@@ -86,9 +82,7 @@ sig_mark <- function(p) {
   }
 }
 
-# Full screening + BH correction audit
-MODULES_SCREEN <- grep("^ME", colnames(delta_me), value = TRUE)
-MODULES_SCREEN <- setdiff(MODULES_SCREEN, "MEgrey")
+MODULES_SCREEN <- setdiff(grep("^ME", colnames(delta_me), value = TRUE), "MEgrey")
 SOURCES <- c("delta_ME", "baseline")
 OUTCOMES <- names(outcome_nice)
 
@@ -173,16 +167,15 @@ screen_stat <- function(x_source, mod, out, grp) {
 }
 
 build_hero_mini <- function(x_source, module, outcome) {
-  mod <- module
-  x <- get_x(x_source, mod)
+  x <- get_x(x_source, module)
   y <- pheno_wide[[outcome]][match(common_subj, pheno_wide$subject_key)]
   age <- subj_age$age[match(common_subj, subj_age$subject_key)]
 
   d <- tibble(x = x, y = y, age = factor(age, levels = c("Young", "Old"))) |>
     filter(!is.na(x), !is.na(y))
 
-  cY <- screen_stat(x_source, mod, outcome, "Young")
-  cO <- screen_stat(x_source, mod, outcome, "Old")
+  cY <- screen_stat(x_source, module, outcome, "Young")
+  cO <- screen_stat(x_source, module, outcome, "Old")
 
   # q is on every line because every cell in this screen has q = 0.94: the
   # panel has to say out loud that none of it survives BH correction.
@@ -202,7 +195,7 @@ build_hero_mini <- function(x_source, module, outcome) {
   y_stat <- stat_line("Y", cY)
   o_stat <- stat_line("O", cO)
 
-  mod_hex <- module_fill(mod)
+  mod_hex <- module_fill(module)
   # Pre and Pre-Post, the vocabulary panels A and B already use, rather than
   # "baseline" and a bare delta. The y axis carries its own delta, so the delta
   # here names what it is a change in.
@@ -217,7 +210,7 @@ build_hero_mini <- function(x_source, module, outcome) {
   # short outcome token; the spelled-out version stays on the y axis.
   title <- sprintf(
     "%s %s vs %s",
-    x_prefix, pretty_mod(mod), unname(outcome_short[outcome])
+    x_prefix, pretty_mod(module), unname(outcome_short[outcome])
   )
 
   stat_label <- sprintf(
@@ -294,12 +287,8 @@ hero_plots <- pmap(HERO_PICKS, build_hero_mini)
 
 GRID_NCOL <- 3L # 6 picks across a 210 mm canvas: 3 wide keeps cells legible
 
-# Remove x-axis title from all but the bottom row
-for (i in seq_along(hero_plots)) {
-  if (i <= length(hero_plots) - GRID_NCOL) {
-    hero_plots[[i]] <- hero_plots[[i]] +
-      theme(axis.title.x = element_blank())
-  }
+for (i in head(seq_along(hero_plots), -GRID_NCOL)) {
+  hero_plots[[i]] <- hero_plots[[i]] + theme(axis.title.x = element_blank())
 }
 
 # Naming the BH family matters: Figure 5 corrects the same raw p within a

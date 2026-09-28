@@ -48,12 +48,10 @@ outcome_nice <- c(delta_VL = "\u0394VL", delta_LBM = "\u0394LBM",
                   delta_DL = "\u0394DL", delta_T1 = "\u0394T1",
                   delta_T2 = "\u0394T2")
 
-MODULES <- grep("^ME", colnames(delta_me), value = TRUE)
-MODULES <- setdiff(MODULES, "MEgrey")
 # Stable order by WGCNA convention
 mod_order <- c("MEturquoise","MEblue","MEbrown","MEyellow","MEgreen",
                "MEred","MEblack","MEpink","MEmagenta","MEpurple")
-MODULES <- mod_order[mod_order %in% MODULES]
+MODULES <- mod_order[mod_order %in% setdiff(colnames(delta_me), "MEgrey")]
 
 pretty_mod <- function(m) {
   short <- gsub("^ME", "", m)
@@ -80,7 +78,7 @@ hero_names <- screen |>
   pull(label) |>
   paste(collapse = ", ")
 
-# Build one cell: scatter + border from Young-stratum p_raw / p_bh
+# Border from the Young stratum's p_raw / p_bh.
 build_cell <- function(source, module, outcome) {
   src_mat <- if (source == "baseline") me_pre else delta_me
   x <- as.numeric(src_mat[common_subj, module])
@@ -88,10 +86,12 @@ build_cell <- function(source, module, outcome) {
   d <- tibble(x = x, y = y, age = factor(age_vec, levels = c("Young","Old"))) |>
     filter(!is.na(x), !is.na(y))
 
-  rY <- screen |> filter(source == !!source, module == !!module,
-                          outcome == !!outcome, stratum == "Young")
-  rO <- screen |> filter(source == !!source, module == !!module,
-                          outcome == !!outcome, stratum == "Old")
+  stratum_row <- function(grp) {
+    screen |> filter(source == !!source, module == !!module,
+                     outcome == !!outcome, stratum == grp)
+  }
+  rY <- stratum_row("Young")
+  rO <- stratum_row("Old")
 
   y_r <- if (nrow(rY) == 1) sprintf("Y %+.2f", rY$r) else "Y n/a"
   o_r <- if (nrow(rO) == 1) sprintf("O %+.2f", rO$r) else "O n/a"
@@ -105,9 +105,7 @@ build_cell <- function(source, module, outcome) {
     TRUE            ~ "ns")
   border_color <- ifelse(sig == "ns", "grey85", "black")
   border_lty   <- ifelse(sig == "p<.05", "dashed", "solid")
-  border_lw    <- case_when(sig == "q<.05" ~ 1.6,
-                            sig == "p<.05" ~ 1.6,
-                            TRUE           ~ 0.25)
+  border_lw    <- ifelse(sig == "ns", 0.25, 1.6)
 
   ggplot(d, aes(x = x, y = y, color = age)) +
     geom_smooth(data = filter(d, age == "Young"),

@@ -11,11 +11,9 @@ source("04_Figures/F06/a_script/_loocv.R")
 OUT <- "04_Figures/F06/c_data"
 dir.create(OUT, recursive = TRUE, showWarnings = FALSE)
 
-# Load data
 F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot("run 04_Figures/F05/a_script/F05_data.R first: missing F05_data.xlsx" =
   file.exists(F05_SUPP))
-MEs     <- read_matrix_sheet(F05_SUPP, "MEs",     "sample_id")
 me_pre  <- read_matrix_sheet(F05_SUPP, "me_pre",  "subject_key")
 me_post <- read_matrix_sheet(F05_SUPP, "me_post", "subject_key")
 subj_age<- read_sheet_df(F05_SUPP, "metadata_subj_age")
@@ -26,9 +24,7 @@ mods    <- read_sheet_df(F05_SUPP, "WGCNA_module_assignments")
 dep <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 imp <- read_csv("02_imputation/c_data/01_imputed.csv",   show_col_types = FALSE)
 
-# Labels
 true_age <- ifelse(subj_age$age[match(common_subj, subj_age$subject_key)] == "Old", 1, 0)
-n_subj   <- length(common_subj)
 
 eval_clf <- function(name, labels, X, k_range, n_perm = 200) {
   message(sprintf("  [%s] n_feat=%d, n_obs=%d", name, ncol(X), nrow(X)))
@@ -44,7 +40,6 @@ eval_clf <- function(name, labels, X, k_range, n_perm = 200) {
        k_med=k_use, fpr=1-roc_obj$specificities, tpr=roc_obj$sensitivities)
 }
 
-# Build feature matrices
 sample_cols <- setdiff(colnames(imp), c("protein","uniprot_id","gene","description"))
 X_prot_all <- t(as.matrix(imp[, sample_cols]))
 rownames(X_prot_all) <- sample_cols
@@ -83,7 +78,6 @@ make_responder <- function(y_raw, age_bin) {
 resp_vl  <- make_responder(pheno_subj$delta_VL,  pheno_subj$age_bin)
 resp_lbm <- make_responder(pheno_subj$delta_LBM, pheno_subj$age_bin)
 
-# Run classifiers
 set.seed(42)
 results <- list()
 
@@ -139,25 +133,22 @@ fit_10fold_perm <- function(X, y, n_perm = 200, seed = 42) {
     idx <- which(y == cls)
     folds[idx] <- sample(rep(1:10, length.out = length(idx)))
   }
-  probs <- numeric(length(y))
-  for (f in 1:10) {
-    tr  <- folds != f
-    fit <- tryCatch(suppressWarnings(glm(y~., binomial,
-      data=cbind(y=y[tr], as.data.frame(X[tr,])))), error=function(e) NULL)
-    if (!is.null(fit)) probs[!tr] <- predict(fit, type="response",
-      newdata=as.data.frame(X[!tr,]))
-  }
-  roc_obj <- roc(y, probs, quiet=TRUE)
-  null_aucs <- numeric(n_perm)
-  for (p in seq_len(n_perm)) {
-    ys <- sample(y); pr <- numeric(length(ys))
+  cv_probs <- function(yv) {
+    pr <- numeric(length(yv))
     for (f in 1:10) {
       tr  <- folds != f
       fit <- tryCatch(suppressWarnings(glm(y~., binomial,
-        data=cbind(y=ys[tr], as.data.frame(X[tr,])))), error=function(e) NULL)
+        data=cbind(y=yv[tr], as.data.frame(X[tr,])))), error=function(e) NULL)
       if (!is.null(fit)) pr[!tr] <- predict(fit, type="response",
         newdata=as.data.frame(X[!tr,]))
     }
+    pr
+  }
+  probs <- cv_probs(y)
+  roc_obj <- roc(y, probs, quiet=TRUE)
+  null_aucs <- numeric(n_perm)
+  for (p in seq_len(n_perm)) {
+    ys <- sample(y); pr <- cv_probs(ys)
     null_aucs[p] <- tryCatch(as.numeric(auc(roc(ys, pr, quiet=TRUE))),
                               error=function(e) 0.5)
   }
@@ -196,7 +187,6 @@ if (nrow(rev_df) > 30 && length(unique(rev_df$reversed)) == 2) {
   results$rev_vs_exa <- c(list(name = "Reversed|prot_features"), cv7)
 }
 
-# Summary table
 summ <- map_dfr(results, function(r) {
   tibble(classifier=r$name, n=r$n, n_pos=r$n_pos, n_neg=r$n_neg,
          k_med=r$k_med, auc=r$auc, ci_lo=r$ci_lo, ci_hi=r$ci_hi,

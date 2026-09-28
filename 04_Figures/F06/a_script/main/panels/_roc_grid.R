@@ -53,9 +53,13 @@ build_cell <- function(rr, i, n) {
   ci_line <- sprintf("[%.2f, %.2f]", rr$ci_lo, rr$ci_hi)
   p_line <- if (rr$perm_p < 0.001) "p < .001" else sprintf("p = %.3f", rr$perm_p)
   q_line <- if (is.na(rr$q_bh)) "q = NA" else if (rr$q_bh < 0.001) "q < .001" else sprintf("q = %.3f", rr$q_bh)
-  ctx_line <- rr$cell_label
+  axis01 <- list(limits = c(0, 1), breaks = c(0, 1), labels = c("0", "1"), expand = c(0, 0))
+  axis_title <- function(m) element_text(size = 5, face = "bold", color = "grey25", margin = m)
+  axis_text <- function(show) {
+    if (show) element_text(size = FIG_AXIS_TEXT, color = "grey30") else element_blank()
+  }
 
-  g <- ggplot(dd, aes(fpr, tpr)) +
+  ggplot(dd, aes(fpr, tpr)) +
     geom_ribbon(aes(ymin = 0, ymax = tpr), fill = col, alpha = 0.32) +
     geom_abline(
       slope = 1, intercept = 0, linetype = "dashed",
@@ -70,24 +74,15 @@ build_cell <- function(rr, i, n) {
       linewidth = 0.2, label.padding = unit(3, "pt"),
       label.r = unit(3, "pt")
     ) +
-    # Context title centered at bottom of plot (inside, with white background)
     annotate("label",
-      x = 0.50, y = 0.03, label = ctx_line,
+      x = 0.50, y = 0.03, label = rr$cell_label,
       hjust = 0.5, vjust = 0, size = 3.1, fontface = "bold.italic",
       color = "grey15", fill = scales::alpha("white", 0.82),
       linewidth = 0, label.padding = unit(1.5, "pt"),
       label.r = unit(3, "pt")
     ) +
-    scale_x_continuous(
-      limits = c(0, 1),
-      breaks = c(0, 1), labels = c("0", "1"),
-      expand = c(0, 0)
-    ) +
-    scale_y_continuous(
-      limits = c(0, 1),
-      breaks = c(0, 1), labels = c("0", "1"),
-      expand = c(0, 0)
-    ) +
+    do.call(scale_x_continuous, axis01) +
+    do.call(scale_y_continuous, axis01) +
     coord_cartesian(clip = "off") +
     labs(
       x = if (show_x) "1 \u2212 Specificity" else NULL,
@@ -101,31 +96,14 @@ build_cell <- function(rr, i, n) {
         linewidth = rr$border_lw,
         linetype = rr$border_lty
       ),
-      axis.title.x = element_text(
-        size = 5, face = "bold",
-        color = "grey25",
-        margin = margin(t = -2)
-      ),
-      axis.title.y = element_text(
-        size = 5, face = "bold",
-        color = "grey25",
-        margin = margin(r = -2)
-      ),
-      axis.text.x = if (show_x) {
-        element_text(size = FIG_AXIS_TEXT, color = "grey30")
-      } else {
-        element_blank()
-      },
-      axis.text.y = if (show_y) {
-        element_text(size = FIG_AXIS_TEXT, color = "grey30")
-      } else {
-        element_blank()
-      },
+      axis.title.x = axis_title(margin(t = -2)),
+      axis.title.y = axis_title(margin(r = -2)),
+      axis.text.x = axis_text(show_x),
+      axis.text.y = axis_text(show_y),
       axis.ticks = element_line(color = "grey40", linewidth = 0.3),
       axis.line = element_blank(),
-      plot.margin = margin(0, 0, 8, 0)
-    ) # bottom margin for context title
-  g
+      plot.margin = margin(0, 0, 8, 0) # room for the context label
+    )
 }
 
 build_grid <- function(df) {
@@ -134,7 +112,6 @@ build_grid <- function(df) {
   wrap_plots(cells, ncol = GRID_NCOL) &
     theme(plot.margin = margin(0, 0, 8, 0))
 }
-
 
 # One key for both panels, listing every module either of them draws, in
 # canonical order. Data-driven, so it can neither show a module that is absent

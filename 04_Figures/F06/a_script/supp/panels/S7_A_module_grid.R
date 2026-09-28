@@ -24,7 +24,6 @@ F05_SUPP <- "04_Figures/F05/c_data/F05_data.xlsx"
 stopifnot("run 04_Figures/F05/a_script/F05_data.R first: missing F05_data.xlsx" =
   file.exists(F05_SUPP))
 
-MEs     <- read_matrix_sheet(F05_SUPP, "MEs",     "sample_id")
 me_pre  <- read_matrix_sheet(F05_SUPP, "me_pre",  "subject_key")
 me_post <- read_matrix_sheet(F05_SUPP, "me_post", "subject_key")
 subj_age<- read_sheet_df(F05_SUPP, "metadata_subj_age")
@@ -34,27 +33,21 @@ common_subj <- read_vector_sheet(F05_SUPP, "common_subj")
 MODULES <- c("turquoise","blue","brown","yellow","green","red","black","pink")
 ME_cols <- paste0("ME", MODULES)
 
-# Outcome vectors
 age_bin <- ifelse(subj_age$age[match(common_subj, subj_age$subject_key)] == "Old", 1, 0)
+me_pre_s <- as.matrix(me_pre[common_subj, ME_cols])
+me_comb  <- (me_pre_s + as.matrix(me_post[common_subj, ME_cols])) / 2
 
-# Combined ME = (Pre + Post)/2 per subject
-me_comb <- (as.matrix(me_pre[common_subj, ME_cols]) +
-            as.matrix(me_post[common_subj, ME_cols])) / 2
-
-# delta-VL responder: age-residualize, median split
+# Responder splits: age-residualise, then split at the median.
 pheno_s <- pheno[match(common_subj, pheno$subject_key), ]
-ok_vl <- !is.na(pheno_s$delta_VL)
-resid_vl <- rep(NA_real_, length(common_subj))
-resid_vl[ok_vl] <- residuals(lm(pheno_s$delta_VL[ok_vl] ~ age_bin[ok_vl]))
-vl_bin <- ifelse(resid_vl > median(resid_vl, na.rm = TRUE), 1, 0)
+age_resid_high <- function(v) {
+  ok <- !is.na(v)
+  res <- rep(NA_real_, length(common_subj))
+  res[ok] <- residuals(lm(v[ok] ~ age_bin[ok]))
+  res > median(res, na.rm = TRUE)
+}
+vl_bin  <- ifelse(age_resid_high(pheno_s$delta_VL), 1, 0)
+lbm_bin <- ifelse(age_resid_high(pheno_s$LBM_Pre), 1L, 0L)
 
-# Pre vs Post pooled (paired): stack Pre then Post for common_subj
-me_pre_s  <- as.matrix(me_pre[common_subj, ME_cols])
-me_post_s <- as.matrix(me_post[common_subj, ME_cols])
-tp_bin <- c(rep(0, length(common_subj)), rep(1, length(common_subj)))  # 0=Pre, 1=Post
-subj_id <- c(common_subj, common_subj)
-
-# AUC + permutation p
 uni_auc <- function(y, x) {
   ok <- !is.na(y) & !is.na(x)
   if (length(unique(y[ok])) < 2) return(list(auc = NA, ci_lo = NA, ci_hi = NA, roc = NULL))
@@ -89,100 +82,50 @@ perm_p_paired <- function(tp, subj, x, obs_auc, n_perm = 1000) {
   (sum(nulls >= max(obs_auc, 1 - obs_auc)) + 1) / (n_perm + 1)
 }
 
-set.seed(42)
 rows <- list()
 curves <- list()
-
-message("Row 1: Age ~ Combined ME ...")
-for (j in seq_along(MODULES)) {
-  mod <- MODULES[j]; x <- me_comb[, ME_cols[j]]
-  r <- uni_auc(age_bin, x)
-  p <- perm_p_unpaired(age_bin, x, r$auc)
-  rows[[length(rows)+1]] <- tibble(row="Age", module=mod, n=length(age_bin),
-    n_pos=sum(age_bin==1), n_neg=sum(age_bin==0),
+record <- function(label, mod, y, r, p) {
+  rows[[length(rows)+1]] <<- tibble(row=label, module=mod, n=length(y),
+    n_pos=sum(y==1), n_neg=sum(y==0),
     auc=r$auc, ci_lo=r$ci_lo, ci_hi=r$ci_hi, perm_p=p)
-  curves[[length(curves)+1]] <- tibble(row="Age", module=mod,
+  curves[[length(curves)+1]] <<- tibble(row=label, module=mod,
     fpr=1 - r$roc$specificities, tpr=r$roc$sensitivities)
 }
 
-message("Row 2: delta-VL responder ~ Pre ME ...")
-for (j in seq_along(MODULES)) {
-  mod <- MODULES[j]; x <- me_pre_s[, ME_cols[j]]
-  ok <- !is.na(vl_bin)
-  r <- uni_auc(vl_bin[ok], x[ok])
-  p <- if (!is.na(r$auc)) perm_p_unpaired(vl_bin[ok], x[ok], r$auc) else NA
-  rows[[length(rows)+1]] <- tibble(row="\u0394VL-responder", module=mod, n=sum(ok),
-    n_pos=sum(vl_bin[ok]==1), n_neg=sum(vl_bin[ok]==0),
-    auc=r$auc, ci_lo=r$ci_lo, ci_hi=r$ci_hi, perm_p=p)
-  curves[[length(curves)+1]] <- tibble(row="\u0394VL-responder", module=mod,
-    fpr=1 - r$roc$specificities, tpr=r$roc$sensitivities)
+# One subject-level outcome against one ME per module; subjects with no
+# outcome are dropped and a single-class outcome is not permuted.
+unpaired_rows <- function(label, y, X) {
+  message(label, " ...")
+  ok <- !is.na(y)
+  for (j in seq_along(MODULES)) {
+    x <- X[, ME_cols[j]]
+    r <- uni_auc(y[ok], x[ok])
+    p <- if (!is.na(r$auc)) perm_p_unpaired(y[ok], x[ok], r$auc) else NA
+    record(label, MODULES[j], y[ok], r, p)
+  }
 }
 
-message("Row 3: Pre vs Post (pooled, paired) ~ raw ME ...")
-me_pooled <- rbind(me_pre_s, me_post_s)
-for (j in seq_along(MODULES)) {
-  mod <- MODULES[j]; x <- me_pooled[, ME_cols[j]]
-  r <- uni_auc(tp_bin, x)
-  p <- perm_p_paired(tp_bin, subj_id, x, r$auc)
-  rows[[length(rows)+1]] <- tibble(row="Pre vs Post", module=mod, n=length(tp_bin),
-    n_pos=sum(tp_bin==1), n_neg=sum(tp_bin==0),
-    auc=r$auc, ci_lo=r$ci_lo, ci_hi=r$ci_hi, perm_p=p)
-  curves[[length(curves)+1]] <- tibble(row="Pre vs Post", module=mod,
-    fpr=1 - r$roc$specificities, tpr=r$roc$sensitivities)
+# Pre stacked over Post for the given subjects, permuted within subject.
+paired_rows <- function(label, subj) {
+  message(label, " ...")
+  pool <- rbind(as.matrix(me_pre[subj, ME_cols]), as.matrix(me_post[subj, ME_cols]))
+  tp   <- c(rep(0, length(subj)), rep(1, length(subj)))
+  for (j in seq_along(MODULES)) {
+    x <- pool[, ME_cols[j]]
+    r <- uni_auc(tp, x)
+    p <- perm_p_paired(tp, c(subj, subj), x, r$auc)
+    record(label, MODULES[j], tp, r, p)
+  }
 }
 
-message("Row 4: Pre vs Post (YOUNG only) ~ raw ME ...")
-young_subj <- common_subj[age_bin == 0]
-y_pre  <- as.matrix(me_pre[young_subj,  ME_cols])
-y_post <- as.matrix(me_post[young_subj, ME_cols])
-y_pool <- rbind(y_pre, y_post)
-y_tp   <- c(rep(0, length(young_subj)), rep(1, length(young_subj)))
-y_sid  <- c(young_subj, young_subj)
-for (j in seq_along(MODULES)) {
-  mod <- MODULES[j]; x <- y_pool[, ME_cols[j]]
-  r <- uni_auc(y_tp, x)
-  p <- perm_p_paired(y_tp, y_sid, x, r$auc)
-  rows[[length(rows)+1]] <- tibble(row="Pre vs Post (Young)", module=mod,
-    n=length(y_tp), n_pos=sum(y_tp==1), n_neg=sum(y_tp==0),
-    auc=r$auc, ci_lo=r$ci_lo, ci_hi=r$ci_hi, perm_p=p)
-  curves[[length(curves)+1]] <- tibble(row="Pre vs Post (Young)", module=mod,
-    fpr=1 - r$roc$specificities, tpr=r$roc$sensitivities)
-}
-
-message("Row 5: Pre vs Post (OLD only) ~ raw ME ...")
-old_subj <- common_subj[age_bin == 1]
-o_pre  <- as.matrix(me_pre[old_subj,  ME_cols])
-o_post <- as.matrix(me_post[old_subj, ME_cols])
-o_pool <- rbind(o_pre, o_post)
-o_tp   <- c(rep(0, length(old_subj)), rep(1, length(old_subj)))
-o_sid  <- c(old_subj, old_subj)
-for (j in seq_along(MODULES)) {
-  mod <- MODULES[j]; x <- o_pool[, ME_cols[j]]
-  r <- uni_auc(o_tp, x)
-  p <- perm_p_paired(o_tp, o_sid, x, r$auc)
-  rows[[length(rows)+1]] <- tibble(row="Pre vs Post (Old)", module=mod,
-    n=length(o_tp), n_pos=sum(o_tp==1), n_neg=sum(o_tp==0),
-    auc=r$auc, ci_lo=r$ci_lo, ci_hi=r$ci_hi, perm_p=p)
-  curves[[length(curves)+1]] <- tibble(row="Pre vs Post (Old)", module=mod,
-    fpr=1 - r$roc$specificities, tpr=r$roc$sensitivities)
-}
-
-message("Row 6: High vs Low baseline LBM (age-residualized) ~ Pre ME ...")
-ok_lbm <- !is.na(pheno_s$LBM_Pre)
-resid_lbm <- rep(NA_real_, length(common_subj))
-resid_lbm[ok_lbm] <- residuals(lm(pheno_s$LBM_Pre[ok_lbm] ~ age_bin[ok_lbm]))
-lbm_bin <- ifelse(resid_lbm > median(resid_lbm, na.rm = TRUE), 1L, 0L)
-for (j in seq_along(MODULES)) {
-  mod <- MODULES[j]; x <- me_pre_s[, ME_cols[j]]
-  ok <- !is.na(lbm_bin)
-  r <- uni_auc(lbm_bin[ok], x[ok])
-  p <- if (!is.na(r$auc)) perm_p_unpaired(lbm_bin[ok], x[ok], r$auc) else NA
-  rows[[length(rows)+1]] <- tibble(row="LBM (High vs Low)", module=mod, n=sum(ok),
-    n_pos=sum(lbm_bin[ok]==1), n_neg=sum(lbm_bin[ok]==0),
-    auc=r$auc, ci_lo=r$ci_lo, ci_hi=r$ci_hi, perm_p=p)
-  curves[[length(curves)+1]] <- tibble(row="LBM (High vs Low)", module=mod,
-    fpr=1 - r$roc$specificities, tpr=r$roc$sensitivities)
-}
+# Row order is the permutation order: changing it changes every p after it.
+set.seed(42)
+unpaired_rows("Age", age_bin, me_comb)
+unpaired_rows("\u0394VL-responder", vl_bin, me_pre_s)
+paired_rows("Pre vs Post", common_subj)
+paired_rows("Pre vs Post (Young)", common_subj[age_bin == 0])
+paired_rows("Pre vs Post (Old)", common_subj[age_bin == 1])
+unpaired_rows("LBM (High vs Low)", lbm_bin, me_pre_s)
 
 summ <- bind_rows(rows) |>
   mutate(q_bh = p.adjust(perm_p, method = "BH"),
@@ -193,9 +136,7 @@ summ <- bind_rows(rows) |>
            TRUE               ~ "ns"),
          border_color = ifelse(sig == "ns", "grey80", "black"),
          border_lty   = ifelse(sig == "p<.05", "dashed", "solid"),
-         border_lw    = case_when(sig == "q<.05" ~ 2.4,
-                                  sig == "p<.05" ~ 2.4,
-                                  TRUE           ~ 0.3))
+         border_lw    = ifelse(sig == "ns", 0.3, 2.4))
 curves_df <- bind_rows(curves)
 
 write_csv(summ,      file.path(DAT_OUT, "module_grid_summary.csv"))
@@ -265,7 +206,6 @@ module_row_label <- function(mod) {
     theme(plot.margin = margin(2, 2, 2, 2))
 }
 
-# Outcome column definitions: internal row_name + header top/bot
 OUTCOMES <- list(
   list(key="Age",                 top="Age (Y vs O)",      bot="Combined ME"),
   list(key="\u0394VL-responder",  top="\u0394 VL responder", bot="Pre ME"),
