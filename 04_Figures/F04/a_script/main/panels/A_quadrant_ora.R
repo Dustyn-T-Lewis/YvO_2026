@@ -521,7 +521,7 @@ composite <- p_ul + p_scatter + p_ur + p_ll + p_lr + p_key +
     title = "Training Concordance: Quadrant ORA",
     subtitle = sprintf(
       paste0(
-        "Threshold-free ORA (hypergeometric) | N = %d | %d DEPs (FDR < 0.05) | %d enriched (FDR < 0.05) | ○ = Π < 0.05 (Training Young)\n",
+        "Threshold-free ORA (hypergeometric) | N = %d | %d DEPs (FDR < 0.05) | %d enriched (FDR < 0.05)\n",
         "Concordance ρ: %.2f all %d · %.2f the %d FDR-significant ",
         "· %.2f the %d Π-significant (Training-in-Young) | ",
         "pi1 = %.2f of them non-null in Training (Old)"
