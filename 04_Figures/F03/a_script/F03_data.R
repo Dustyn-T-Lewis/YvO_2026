@@ -11,19 +11,13 @@ if (!dir.exists(file.path(DAT, "panel_A"))) {
   stop("no panel CSVs in ", DAT, "; run F03.R, S4a.R and S4b.R first")
 }
 
-#
-# The four per-contrast limma tables used to be copied in here as MAIN_<ctr>.
-# They are S10 Table's Aging, Training_Young, Training_Old and Interaction
-# sheets byte for byte, so the package was shipping 8,424 rows x 15 columns
-# twice and a reader had no way to tell which copy was authoritative. S10 Table
-# is the record; this workbook carries what the figure draws.
+# The per-contrast limma tables are not copied here: S10 Table already carries
+# them byte for byte and is the record. This workbook holds what the figure draws.
 
 f03_specs <- list()
 for (tag in c("A", "B", "C", "D")) {
   ring_path <- file.path(DAT, paste0("panel_", tag), "ring_terms.csv")
-  if (file.exists(ring_path)) {
-    f03_specs <- c(f03_specs, list(list(name = paste0("RING_", tag), path = ring_path)))
-  }
+  if (file.exists(ring_path)) f03_specs <- c(f03_specs, list(list(name = paste0("RING_", tag), path = ring_path)))
 }
 # Excel sheet names cap at 31 chars; "SIGHEAT_<file_stub>_cluster_classification"
 # blows past that, so short codes stand in for the file_stub.
@@ -37,12 +31,8 @@ for (p in list.files(file.path(DAT, "sig_heatmaps"), pattern = "\\.csv$", full.n
   stub <- sub("_(groups|cluster_classification)$", "", base)
   f03_specs <- c(f03_specs, list(list(name = paste0(sig_stub_codes[[stub]], suffix), path = p)))
 }
-supp_csvs <- list.files(file.path(DAT, "supp"), pattern = "\\.csv$", full.names = TRUE)
-for (p in supp_csvs) {
-  f03_specs <- c(f03_specs, list(list(
-    name = paste0("SUPP_", tools::file_path_sans_ext(basename(p))),
-    path = p
-  )))
+for (p in list.files(file.path(DAT, "supp"), pattern = "\\.csv$", full.names = TRUE)) {
+  f03_specs <- c(f03_specs, list(list(name = paste0("SUPP_", tools::file_path_sans_ext(basename(p))), path = p)))
 }
 
 # Keyed by sheet name, not built positionally: the heatmap and supp sheets come
@@ -82,12 +72,8 @@ build_workbook(
   ),
   sheet_specs = f03_specs
 )
-cleanup_after_workbook(f03_specs,
-  extra_subdirs = c(
-    file.path(DAT, "panel_A"), file.path(DAT, "panel_B"),
-    file.path(DAT, "panel_C"), file.path(DAT, "panel_D"),
-    file.path(DAT, "sig_heatmaps"), file.path(DAT, "supp")
-  )
-)
+cleanup_after_workbook(f03_specs, extra_subdirs = file.path(
+  DAT, c(paste0("panel_", c("A", "B", "C", "D")), "sig_heatmaps", "supp")
+))
 
 message("F03 complete")
