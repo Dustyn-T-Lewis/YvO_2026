@@ -93,14 +93,15 @@ record <- function(label, mod, y, r, p) {
 }
 
 # One subject-level outcome against one ME per module; subjects with no
-# outcome are dropped and a single-class outcome is not permuted.
-unpaired_rows <- function(label, y, X) {
+# outcome are dropped. A single-class outcome is not permuted, except in the
+# Age row, which always draws its permutations.
+unpaired_rows <- function(label, y, X, always_perm = FALSE) {
   message(label, " ...")
   ok <- !is.na(y)
   for (j in seq_along(MODULES)) {
     x <- X[, ME_cols[j]]
     r <- uni_auc(y[ok], x[ok])
-    p <- if (!is.na(r$auc)) perm_p_unpaired(y[ok], x[ok], r$auc) else NA
+    p <- if (always_perm || !is.na(r$auc)) perm_p_unpaired(y[ok], x[ok], r$auc) else NA
     record(label, MODULES[j], y[ok], r, p)
   }
 }
@@ -120,7 +121,7 @@ paired_rows <- function(label, subj) {
 
 # Row order is the permutation order: changing it changes every p after it.
 set.seed(42)
-unpaired_rows("Age", age_bin, me_comb)
+unpaired_rows("Age", age_bin, me_comb, always_perm = TRUE)
 unpaired_rows("\u0394VL-responder", vl_bin, me_pre_s)
 paired_rows("Pre vs Post", common_subj)
 paired_rows("Pre vs Post (Young)", common_subj[age_bin == 0])
