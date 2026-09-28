@@ -16,18 +16,12 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-pdf_device <- get_pdf_device()
+DAT <- "04_Figures/F04/c_data/panel_supp"
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+for (d in c(DAT, RPT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-BASE <- "04_Figures/F04"
-DAT <- file.path(BASE, "c_data", "panel_supp")
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
-
-draws <- read_csv("03_DEP/c_data/03_reversal_null_draws.csv",
-  show_col_types = FALSE
-)
-est <- read_csv("03_DEP/c_data/03_reversal_aging_fdr.csv",
-  show_col_types = FALSE
-)
+draws <- read_csv("03_DEP/c_data/03_reversal_null_draws.csv", show_col_types = FALSE)
+est <- read_csv("03_DEP/c_data/03_reversal_aging_fdr.csv", show_col_types = FALSE)
 
 pick <- function(pattern) est$r[grepl(pattern, est$estimator)][1]
 obs_r <- pick("^Group-mean axes")
@@ -78,18 +72,13 @@ pS_coupling <- ggplot(plot_df, aes(r, fill = source)) +
   FIG_THEME +
   theme(legend.position = "bottom")
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-
 PW <- 89
 PH <- 70
-ggsave(file.path(RPT_PNG, "S5a_D_coupling_null.png"), pS_coupling,
+ggsave(file.path(RPT, "S5a_D_coupling_null.png"), pS_coupling,
   width = PW, height = PH, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "S5a_D_coupling_null.pdf"), pS_coupling,
-  width = PW, height = PH, units = "mm", device = pdf_device
+ggsave(file.path(RPT, "S5a_D_coupling_null.pdf"), pS_coupling,
+  width = PW, height = PH, units = "mm", device = get_pdf_device()
 )
 
 message(sprintf(

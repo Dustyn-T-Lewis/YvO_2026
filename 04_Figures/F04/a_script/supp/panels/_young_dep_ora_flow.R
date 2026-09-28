@@ -29,10 +29,7 @@ short_term <- function(x) {
 ora_direction <- function(dir_label) {
   genes <- young_dep$gene[young_dep$direction == dir_label]
   set.seed(42)
-  run_ora_deduplicated(
-    genes = genes, universe = universe, pathways = pw_list,
-    em_cutoff = 0.5, min_size = 10, max_size = 500
-  ) |>
+  run_ora_deduplicated(genes = genes, universe = universe, pathways = pw_list) |>
     filter(dedup_status == "kept", padj < 0.05) |>
     arrange(padj) |>
     head(N_TERMS) |>

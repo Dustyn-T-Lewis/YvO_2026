@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# S5 Table, sheet SUPP_cat_depth: corner enrichment against list depth (CAT curve)
-# Diagnostic for main Panel B: the corner hypergeometric reads one point off
+# S5 Table, sheet SUPP_cat_depth: corner enrichment against list depth (CAT
+# curve), a diagnostic for main panel B: the corner hypergeometric reads one point off
 # this curve, at TOP_FRAC = 0.10 in shared/comparison_panels/panel_E_rrho2.R.
 # Drawing every depth shows what that one number cannot: the enrichment halves
 # between the top 10% and the top 25%, and is gone by half the proteome, where
@@ -16,17 +16,13 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-pdf_device <- get_pdf_device()
-
-BASE <- "04_Figures/F04"
-DAT <- file.path(BASE, "c_data", "panel_supp")
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
+DAT <- "04_Figures/F04/c_data/panel_supp"
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+for (d in c(DAT, RPT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 TOP_FRAC <- 0.10
 
-cat_dep <- read_csv("03_DEP/c_data/03_combined_results.csv",
-  show_col_types = FALSE
-) |>
+cat_dep <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE) |>
   select(ty = t_Training_Young, to = t_Training_Old) |>
   filter(!is.na(ty), !is.na(to))
 
@@ -137,18 +133,13 @@ write_csv(
   file.path(DAT, "SUPP_cat_depth.csv")
 )
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-
 PW_CAT <- 89
 PH_CAT <- 70
-ggsave(file.path(RPT_PNG, "S5T_cat_depth.png"), pS_cat,
+ggsave(file.path(RPT, "S5T_cat_depth.png"), pS_cat,
   width = PW_CAT, height = PH_CAT, units = "mm", dpi = 300
 )
-ggsave(file.path(RPT_PDF, "S5T_cat_depth.pdf"), pS_cat,
-  width = PW_CAT, height = PH_CAT, units = "mm", device = pdf_device
+ggsave(file.path(RPT, "S5T_cat_depth.pdf"), pS_cat,
+  width = PW_CAT, height = PH_CAT, units = "mm", device = get_pdf_device()
 )
 
 message(sprintf(

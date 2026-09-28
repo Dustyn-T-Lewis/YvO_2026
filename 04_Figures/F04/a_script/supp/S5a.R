@@ -9,8 +9,6 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 
 source("04_Figures/shared/style.R")
 
-pdf_device <- get_pdf_device()
-
 PANELS <- "04_Figures/F04/a_script/supp/panels"
 RPT <- "04_Figures/F04/b_reports/supp"
 
@@ -51,31 +49,32 @@ pS_coupling <- pS_coupling + axis_fix +
 fig <- (pS_rho_boot | pS_goslim) / (pS_conc_mag | pS_coupling) +
   plot_layout(heights = c(1, 1.05), guides = "keep")
 
-X_A <- 0.020
-X_B <- 0.510
-X_C <- 0.020
-X_D <- 0.510
 X_TTL <- 0.022
 SUB_OFFSET <- 0.017
-Y_TOP <- 0.991
 # The bottom row's header is drawn into the panels' 30 pt top margin. At
 # 0.505 the subtitle's descenders landed on the panel border; 0.518 centres
 # the band in the margin instead.
-Y_BOT <- 0.518
-
-composite_final <- ggdraw(fig) +
-  draw_label("A", x = X_A, y = Y_TOP, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("Spearman \u03c1 Bootstrap", x = X_A + X_TTL, y = Y_TOP, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("1000 replicates, 95% CI", x = X_A + X_TTL, y = Y_TOP - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_label("B", x = X_B, y = Y_TOP, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("GO Slim Distribution", x = X_B + X_TTL, y = Y_TOP, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("Proteins per GO Slim category by quadrant", x = X_B + X_TTL, y = Y_TOP - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_label("C", x = X_C, y = Y_BOT, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("Concordance by Effect Magnitude", x = X_C + X_TTL, y = Y_BOT, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("Sign agreement across quintiles of min(|log2FC|)", x = X_C + X_TTL, y = Y_BOT - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40") +
-  draw_label("D", x = X_D, y = Y_BOT, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("Shared-Baseline Coupling", x = X_D + X_TTL, y = Y_BOT, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
-  draw_label("Observed r against a null that preserves the coupling", x = X_D + X_TTL, y = Y_BOT - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40")
+hdr <- data.frame(
+  tag = c("A", "B", "C", "D"),
+  x = c(0.020, 0.510, 0.020, 0.510),
+  y = c(0.991, 0.991, 0.518, 0.518),
+  title = c(
+    "Spearman \u03c1 Bootstrap", "GO Slim Distribution",
+    "Concordance by Effect Magnitude", "Shared-Baseline Coupling"
+  ),
+  sub = c(
+    "1000 replicates, 95% CI", "Proteins per GO Slim category by quadrant",
+    "Sign agreement across quintiles of min(|log2FC|)",
+    "Observed r against a null that preserves the coupling"
+  )
+)
+composite_final <- ggdraw(fig)
+for (i in seq_len(nrow(hdr))) {
+  composite_final <- with(hdr[i, ], composite_final +
+    draw_label(tag, x = x, y = y, size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
+    draw_label(title, x = x + X_TTL, y = y, size = TTL_SZ, fontface = "bold", hjust = 0, vjust = 1) +
+    draw_label(sub, x = x + X_TTL, y = y - SUB_OFFSET, size = SUB_SZ, fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40"))
+}
 
 legend_df <- data.frame(
   x = 1:3,
@@ -108,7 +107,7 @@ composite_final <- composite_final +
   draw_plot(legend_grob, x = 0.08, y = -0.006, width = 0.45, height = 0.060)
 
 ggsave(file.path(RPT, "S5a.pdf"), composite_final,
-  width = COMP_W, height = COMP_H, units = "mm", device = pdf_device
+  width = COMP_W, height = COMP_H, units = "mm", device = get_pdf_device()
 )
 ggsave(file.path(RPT, "S5a.png"), composite_final,
   width = COMP_W, height = COMP_H, units = "mm", dpi = 300

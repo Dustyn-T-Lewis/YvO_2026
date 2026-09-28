@@ -15,7 +15,6 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-BASE <- "04_Figures/F04"
 cfg <- list(
   fig_id = "F04 supp",
   descriptive = TRUE,
@@ -51,9 +50,9 @@ cfg <- list(
     UD = "Reversed_AgingUp_TrainingDown", UD_slug = "reversed_a_up",
     DU = "Reversed_AgingDown_TrainingUp", DU_slug = "reversed_a_down"
   ),
-  rpt_png = file.path(BASE, "b_reports", "supp", "panels"),
-  rpt_pdf = file.path(BASE, "b_reports", "supp", "panels"),
-  dat = file.path(BASE, "c_data", "panel_supp"),
+  rpt_png = "04_Figures/F04/b_reports/supp/panels",
+  rpt_pdf = "04_Figures/F04/b_reports/supp/panels",
+  dat = "04_Figures/F04/c_data/panel_supp",
   supp = NULL
 )
 source("04_Figures/shared/comparison_panels/panel_E_rrho2.R", local = TRUE)

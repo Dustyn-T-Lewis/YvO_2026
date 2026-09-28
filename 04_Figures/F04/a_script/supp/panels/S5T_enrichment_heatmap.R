@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
-# S5 Table, sheet SUPP_enrichment_blunting: Pathway Enrichment: Training Blunting
-# ComplexHeatmap showing pathway-level blunting split by response pattern
-# Method: fGSEA on GO:BP + Reactome + Hallmark + KEGG_REF, reduced via
+# S5 Table, sheet SUPP_enrichment_blunting: pathway-level training blunting,
+# split by response pattern. fGSEA on GO:BP + Reactome + Hallmark + KEGG_REF, reduced via
 # collapsePathways(). Jaccard dedup is off because collapsePathways suffices.
 
 setwd(here::here())
@@ -13,42 +12,25 @@ source("04_Figures/shared/pathway_utils.R")
 
 pacman::p_load(ComplexHeatmap, circlize, gridExtra)
 
-BASE    <- "04_Figures/F04"
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-DAT     <- file.path(BASE, "c_data")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+DAT <- "04_Figures/F04/c_data"
+dir.create(RPT, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(DAT, "panel_supp"), recursive = TRUE, showWarnings = FALSE)
 
-pdf_device <- get_pdf_device()
-
-dep <- read_csv("03_DEP/c_data/03_combined_results.csv",
-                show_col_types = FALSE)
+dep <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 
 contrasts <- c("Training_Young", "Training_Old", "Interaction")
 stats_list <- setNames(lapply(contrasts, function(ctr) {
-  col <- paste0("t_", ctr)
-  s <- setNames(dep[[col]], dep$gene)
+  s <- setNames(dep[[paste0("t_", ctr)]], dep$gene)
   s[!is.na(s)]
 }), contrasts)
 
-#Build pathway collection (no VARIANT, no WP)
 pw_list <- build_pathway_collection(
-  min_size = 15, max_size = 500,
-  include_goslim = FALSE,
-  exclude_variants = TRUE
+  min_size = 15, include_goslim = FALSE, exclude_variants = TRUE
 )
 
 set.seed(42)
-ep <- run_enrichment_pipeline(
-  stats_list     = stats_list,
-  pw_list        = pw_list,
-  jaccard_cutoff = 1,
-  nperm          = 10000,
-  min_size       = 15,
-  max_size       = 500
-)
+ep <- run_enrichment_pipeline(stats_list, pw_list, jaccard_cutoff = 1)
 
 long_df   <- ep$long_df
 sig_union <- ep$sig_union
@@ -113,7 +95,6 @@ for (p in pattern_levels) {
   message(sprintf("  %s: %d", p, sum(pattern_df$pattern == p)))
 }
 
-#Two-panel layout: Blunted (left) | Shared + Age-resistant + Interaction (right)
 n_pw <- nrow(pattern_df)
 left_df  <- pattern_df |> filter(pattern == "Blunted")
 right_df <- pattern_df |> filter(pattern %in% c("Shared", "Age-resistant", "Interaction only"))
@@ -146,7 +127,6 @@ make_layer_fun <- function(sig_mat, val_mat) {
   }
 }
 
-# Left panel: Blunted
 nes_L <- as.matrix(left_df[, nes_cols]); colnames(nes_L) <- col_labs
 sig_L <- as.matrix(left_df[, sig_cols])
 
@@ -164,7 +144,6 @@ ht_L <- Heatmap(
   width = unit(55, "mm")
 )
 
-# Right panel: Shared + Age-resistant + Interaction only
 nes_R <- as.matrix(right_df[, nes_cols]); colnames(nes_R) <- col_labs
 sig_R <- as.matrix(right_df[, sig_cols])
 pat_R <- factor(right_df$pattern, levels = right_levels)
@@ -207,12 +186,12 @@ title_grob <- textGrob(
   gp = gpar(fontsize = 12, fontface = "bold")
 )
 
-png(file.path(RPT_PNG, "S5T_enrichment_heatmap.png"),
+png(file.path(RPT, "S5T_enrichment_heatmap.png"),
     width = fig_w_mm, height = fig_h_mm, units = "mm", res = 300)
 p <- grid.arrange(g_L, g_R, ncol = 2, widths = c(1, 1.2), top = title_grob)
 dev.off()
 
-pdf(file.path(RPT_PDF, "S5T_enrichment_heatmap.pdf"),
+pdf(file.path(RPT, "S5T_enrichment_heatmap.pdf"),
     width = fig_w_mm / 25.4, height = fig_h_mm / 25.4)
 grid.arrange(g_L, g_R, ncol = 2, widths = c(1, 1.2), top = title_grob)
 dev.off()
@@ -240,6 +219,6 @@ export_df <- long_df |>
 write_csv(export_df, file.path(DAT, "panel_supp", "enrichment_blunting.csv"))
 
 message(sprintf("F04 supplementary enrichment done: %d pathways, saved to %s",
-                n_pw, RPT_PNG))
+                n_pw, RPT))
 
 invisible(p)

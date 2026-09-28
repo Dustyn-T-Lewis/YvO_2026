@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
-# S5 Table, sheet SUPP_threshold_sens: Threshold Sensitivity
-# Diagnostic for main Panel B: shows concordance pattern is stable across
-# significance thresholds (Pi < 0.05, FDR < 0.05, FDR < 0.10, nominal p < 0.05).
+# S5 Table, sheet SUPP_threshold_sens: diagnostic for main panel B, showing the
+# concordance pattern is stable across significance thresholds (Pi < 0.05, FDR < 0.05, FDR < 0.10, nominal p < 0.05).
 
 setwd(here::here())
 
@@ -10,14 +9,11 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-pdf_device <- get_pdf_device()
+DAT <- "04_Figures/F04/c_data/panel_supp"
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+for (d in c(DAT, RPT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-BASE <- "04_Figures/F04"
-DAT  <- file.path(BASE, "c_data", "panel_supp")
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
-
-dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv",
-                   show_col_types = FALSE)
+dep_df <- read_csv("03_DEP/c_data/03_combined_results.csv", show_col_types = FALSE)
 
 base_df <- dep_df |>
   transmute(gene,
@@ -31,7 +27,6 @@ base_df <- dep_df |>
             nom_TO     = P.Value_Training_Old) |>
   filter(!is.na(logFC_TY), !is.na(logFC_TO))
 
-# Quadrant assignment
 assign_quad <- function(lfc_ty, lfc_to) {
   case_when(
     lfc_ty > 0 & lfc_to > 0 ~ "Concordant Up",
@@ -39,7 +34,6 @@ assign_quad <- function(lfc_ty, lfc_to) {
     TRUE                     ~ "Discordant")
 }
 
-# Threshold sweep
 thresholds <- list(
   "Π < 0.05"      = function(d) d |> filter(pi_TY < 0.05 | pi_TO < 0.05),
   "FDR < 0.05"     = function(d) d |> filter(fdr_TY < 0.05 | fdr_TO < 0.05),
@@ -47,18 +41,14 @@ thresholds <- list(
   "Nom. p < 0.05" = function(d) d |> filter(nom_TY < 0.05 | nom_TO < 0.05)
 )
 
-results <- list()
-for (thr_name in names(thresholds)) {
-  sig_sub <- thresholds[[thr_name]](base_df)
-  sig_sub <- sig_sub |> mutate(quadrant = assign_quad(logFC_TY, logFC_TO))
-
+sens_df <- bind_rows(lapply(names(thresholds), \(thr_name) {
+  sig_sub <- thresholds[[thr_name]](base_df) |>
+    mutate(quadrant = assign_quad(logFC_TY, logFC_TO))
   counts <- sig_sub |> count(quadrant, name = "n")
   counts$threshold <- thr_name
-  counts$n_total   <- nrow(sig_sub)
-  results[[length(results) + 1]] <- counts
-}
-
-sens_df <- bind_rows(results) |>
+  counts$n_total <- nrow(sig_sub)
+  counts
+})) |>
   mutate(threshold = factor(threshold, levels = names(thresholds)),
          quadrant  = factor(quadrant, levels = c("Concordant Up",
                                                   "Concordant Down",
@@ -82,16 +72,11 @@ pS_thresh <- ggplot(sens_df, aes(x = threshold, y = n, fill = quadrant)) +
        x = NULL, y = "Significant proteins") +
   FIG_THEME
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-
 PW <- 89; PH <- 70
-ggsave(file.path(RPT_PNG, "S5T_threshold_sens.png"), pS_thresh,
+ggsave(file.path(RPT, "S5T_threshold_sens.png"), pS_thresh,
        width = PW, height = PH, units = "mm", dpi = 300)
-ggsave(file.path(RPT_PDF, "S5T_threshold_sens.pdf"), pS_thresh,
-       width = PW, height = PH, units = "mm", device = pdf_device)
+ggsave(file.path(RPT, "S5T_threshold_sens.pdf"), pS_thresh,
+       width = PW, height = PH, units = "mm", device = get_pdf_device())
 
 message("SUPP Panel C (threshold sensitivity) done")
 

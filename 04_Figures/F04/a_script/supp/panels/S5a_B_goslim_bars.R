@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
-# S5a Figure B: GO Slim Category Distribution
-# Diagnostic for main Panel B: quantitative GO Slim category breakdown by
-# concordance quadrant (Concordant Up / Concordant Down / Discordant).
+# S5a Figure B: diagnostic for main panel B, the GO Slim category breakdown by
+# concordance quadrant.
 
 setwd(here::here())
 
@@ -10,19 +9,13 @@ pacman::p_load(dplyr, tidyr, tibble, stringr, readr, ggplot2, patchwork, cowplot
 source("04_Figures/shared/style.R")
 source("04_Figures/shared/pathway_utils.R")
 
-pdf_device <- get_pdf_device()
-
 source("04_Figures/shared/go_slim_categories.R")
 pacman::p_load(readxl)
 
-BASE <- "04_Figures/F04"
-DAT  <- file.path(BASE, "c_data", "panel_supp")
-dir.create(DAT, recursive = TRUE, showWarnings = FALSE)
+DAT <- "04_Figures/F04/c_data/panel_supp"
+RPT <- "04_Figures/F04/b_reports/supp/panels"
+for (d in c(DAT, RPT)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-# Quadrant membership comes straight from the DEP table. It used to be read
-# from a "panel_B_pattern_class" sheet written by panel_B_pattern_heatmap.R,
-# which was retired on 2026-08-26; the read had a fallback, so it never errored,
-# it just failed silently on every run and recomputed exactly this.
 pattern_df <- read_csv(DEP_RESULTS, show_col_types = FALSE) |>
   filter(!is.na(logFC_Training_Young), !is.na(logFC_Training_Old)) |>
   filter(
@@ -36,16 +29,10 @@ pattern_df <- read_csv(DEP_RESULTS, show_col_types = FALSE) |>
   )) |>
   as.data.frame()
 
-fg_genes <- pattern_df$gene
-
-slim_result <- assign_go_slim_consolidated(fg_genes = fg_genes, all_genes = fg_genes)
-
-pattern_quad <- transmute(pattern_df, gene, quadrant)
-slim_merged <- slim_result |>
-  left_join(pattern_quad, by = "gene") |>
+slim_merged <- assign_go_slim_consolidated(fg_genes = pattern_df$gene, all_genes = pattern_df$gene) |>
+  left_join(transmute(pattern_df, gene, quadrant), by = "gene") |>
   filter(!is.na(quadrant), !is.na(consolidated))
 
-# Summarise per category x quadrant
 cat_quad <- slim_merged |>
   count(consolidated, quadrant, name = "n") |>
   mutate(quadrant = factor(quadrant,
@@ -78,16 +65,11 @@ pS_goslim <- ggplot(cat_quad, aes(x = n, y = consolidated, fill = quadrant)) +
        x = "Protein count", y = NULL) +
   FIG_THEME
 
-RPT_PNG <- file.path(BASE, "b_reports", "supp", "panels")
-RPT_PDF <- file.path(BASE, "b_reports", "supp", "panels")
-dir.create(RPT_PNG, recursive = TRUE, showWarnings = FALSE)
-dir.create(RPT_PDF, recursive = TRUE, showWarnings = FALSE)
-
 PW <- 89; PH <- 70
-ggsave(file.path(RPT_PNG, "S5a_B_goslim_bars.png"), pS_goslim,
+ggsave(file.path(RPT, "S5a_B_goslim_bars.png"), pS_goslim,
        width = PW, height = PH, units = "mm", dpi = 300)
-ggsave(file.path(RPT_PDF, "S5a_B_goslim_bars.pdf"), pS_goslim,
-       width = PW, height = PH, units = "mm", device = pdf_device)
+ggsave(file.path(RPT, "S5a_B_goslim_bars.pdf"), pS_goslim,
+       width = PW, height = PH, units = "mm", device = get_pdf_device())
 
 message("SUPP Panel D (GO Slim bars) done")
 

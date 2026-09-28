@@ -40,10 +40,6 @@ message("F04 composite: sourcing panels")
 
 panel_a <- source_panel(file.path(PANELS, "A_quadrant_ora.R"))
 a_stats <- attr(panel_a, "stats")
-n_total_A <- a_stats$n_total
-r_spear <- a_stats$r_spear
-conc_fdr <- a_stats$conc_fdr
-conc_pi <- a_stats$conc_pi
 panel_a <- panel_a +
   plot_annotation(
     title = NULL, subtitle = NULL,
@@ -55,26 +51,20 @@ panel_a <- panel_a +
   theme(legend.position = "none")
 
 panel_b <- source_panel(file.path(PANELS, "B_rrho2.R"))
-sweep_txt <- attr(panel_b, "sweep_txt")
 
 panel_c <- source_panel(file.path(PANELS, "C_trajectory.R"))
 
 pD <- source_panel(file.path(PANELS, "D_nes_concordance.R"))
 nes_legend <- cowplot::get_plot_component(pD, "guide-box-bottom", return_all = FALSE)
 panel_d <- pD + theme(legend.position = "none")
-rho_D <- attr(pD, "stats")$rho
-frac_D <- attr(pD, "stats")$frac
 
 pE <- source_panel(file.path(PANELS, "E_nes_reversal.R"))
 panel_e <- pE + theme(legend.position = "none")
-rho_E <- attr(pE, "stats")$rho
-frac_E <- attr(pE, "stats")$frac
 
 panel_f <- source_panel(file.path(PANELS, "F_fry_barcode.R"))
 
 COMP_W <- 460
 COMP_H <- 320
-PRINT_SCALE <- COMP_W / 178
 # The panels leave print_scale_apply.R's mutated FIG_* globals behind them, and
 # composite_text_sizes multiplies by the canvas factor itself, so the constants
 # have to be back at their style.R values or the titles scale twice. The panels
@@ -83,9 +73,6 @@ source("04_Figures/shared/style.R")
 # Authored at 460 mm and shrunk to the 178 mm print width, so the type scales
 # up by the same factor to land at the shared 7 pt on the page.
 f04_txt <- composite_text_sizes(COMP_W, 178)
-TAG_SZ <- f04_txt$tag
-TTL_SZ <- f04_txt$title
-SUB_SZ <- f04_txt$subtitle
 
 ttl <- c(
   A = "Training Concordance",
@@ -102,14 +89,14 @@ sub <- c(
     # draw_label does not wrap and the eight-column box clips past about 80
     # characters. The fitted slopes live on the lines themselves instead.
     "N = %d, ρ %.2f | FDR %d: %.0f%% dir, ρ %.2f | Π %d: %.0f%%, ρ %.2f",
-    n_total_A, r_spear,
-    conc_fdr$n, 100 * conc_fdr$agree, conc_fdr$rho,
-    conc_pi$n, 100 * conc_pi$agree, conc_pi$rho
+    a_stats$n_total, a_stats$r_spear,
+    a_stats$conc_fdr$n, 100 * a_stats$conc_fdr$agree, a_stats$conc_fdr$rho,
+    a_stats$conc_pi$n, 100 * a_stats$conc_pi$agree, a_stats$conc_pi$rho
   ),
-  B = sweep_txt,
+  B = attr(panel_b, "sweep_txt"),
   C = "% young magnitude lost",
-  D = sprintf("ρ = %.2f | %.0f%% concordant | no shared group mean", rho_D, frac_D * 100),
-  E = sprintf("ρ = %.2f | %.0f%% reversed | pathway level only", rho_E, frac_E * 100),
+  D = with(attr(pD, "stats"), sprintf("ρ = %.2f | %.0f%% concordant | no shared group mean", rho, frac * 100)),
+  E = with(attr(pE, "stats"), sprintf("ρ = %.2f | %.0f%% reversed | pathway level only", rho, frac * 100)),
   # draw_label does not wrap, and the six-column box runs out at about 54
   # characters, so the age wording is the short form here.
   F = "fry rotation test: younger sets in the older ranking"
@@ -166,13 +153,13 @@ SUB_OFFSET <- 0.019
 composite_final <- Reduce(
   function(p, k) {
     p +
-      draw_label(k, x = X_TAG[[k]], y = Y_TAG[[k]], size = TAG_SZ, fontface = "bold", hjust = 0, vjust = 1) +
+      draw_label(k, x = X_TAG[[k]], y = Y_TAG[[k]], size = f04_txt$tag, fontface = "bold", hjust = 0, vjust = 1) +
       draw_label(ttl[[k]],
-        x = X_TAG[[k]] + X_TTL, y = Y_TAG[[k]], size = TTL_SZ,
+        x = X_TAG[[k]] + X_TTL, y = Y_TAG[[k]], size = f04_txt$title,
         fontface = "bold", hjust = 0, vjust = 1
       ) +
       draw_label(sub[[k]],
-        x = X_TAG[[k]] + X_TTL, y = Y_TAG[[k]] - SUB_OFFSET, size = SUB_SZ,
+        x = X_TAG[[k]] + X_TTL, y = Y_TAG[[k]] - SUB_OFFSET, size = f04_txt$subtitle,
         fontface = "bold.italic", hjust = 0, vjust = 1, colour = "grey40"
       )
   },
