@@ -166,7 +166,7 @@ notes <- tibble::tribble(
   "Values", "Mean +/- SD throughout.",
   "Fat-to-lean", "DXA fat mass divided by DXA lean body mass. Used in place of percent body fat because the NORE trial recorded body mass only at baseline, so a percent-of-weight measure after training would rest on a derived denominator for 11 of the 32 participants.",
   "Missing data", "Fibre cross-sectional areas and deadlift 1RM are incomplete in the parent trials. The per-variable n in Table 1B counts participants with both timepoints.",
-  "Participant ids", "Participant is the proteomics sample label. Parent_ID is the participant number inside the parent trial workbook, at 00_input/parent_meta/<Parent_trial>.xlsx.",
+  "Participant ids", "Participant is the proteomics sample label. Parent_ID is the participant number in the parent trial; 00_input/parent_trials.csv lists each trial's arms and participant counts.",
   "Source", "00_input/YvO_meta.xlsx, via 04_Figures/F01/a_script/04_phenotype_table.R.",
   "Abbreviations", "DXA, dual-energy x-ray absorptiometry; LBM, lean body mass; VL, vastus lateralis; fCSA, fibre cross-sectional area; 1RM, one-repetition maximum; BMI, body mass index."
 )

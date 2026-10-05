@@ -1,0 +1,10 @@
+parent_trial,age_group,arm,n_participants
+EAA,Young,Essential amino acids,3
+EAA,Young,Placebo,5
+EAA,Young,Whey protein,6
+NORE,Old,Beetroot juice,6
+NORE,Old,Placebo,5
+PPS_older,Old,Control,1
+PPS_older,Old,Peanut protein,3
+PPS_younger,Young,Control,1
+PPS_younger,Young,Peanut protein,2

@@ -9,7 +9,7 @@ Source data. No script writes here.
 - `YvO_pheno_calc.xlsx`: phenotypes as a formatted report. Read by `01_normalize.R`, which drops summary rows and stops unless 32 participants remain, and `03_DEP/a_script/supp/05`.
 - `HPA_skeletal_muscle_annotations.tsv`: Human Protein Atlas annotations for the tissue filter. Read by `01_normalize.R` and `F05/a_script/supp/panels/S6_C_compartment.R`.
 - `wgcna_reference_modules.csv`: module assignments from the submitted analysis, used by `F05/a_script/YvO_WGCNA_run.R` only to keep module colours stable.
-- `parent_meta/NORE.xlsx`, `EAA.xlsx`, `PPS_older.xlsx`, `PPS_younger.xlsx`: parent trial records for Table 1, read by F01.
+- `parent_trials.csv`: one row per parent trial and arm, with its age group and number of participants. `YvO_meta.xlsx` links each participant to a trial through `parent_study` and `parent_id`. The parent trials' own records stay with their study teams.
 
 `Subject_ID` is not unique (ten values are shared by two participants), so scripts group samples by the `Col_ID` prefix, `sub("_(Pre|Post)$", "", Col_ID)`.
 
