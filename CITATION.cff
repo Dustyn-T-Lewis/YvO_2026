@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this code, cite it as below."
 title: "YvO_2026: skeletal muscle proteome response to resistance training in younger and older adults"
 type: software
-version: "2.3"
+version: "2.4"
 authors:
   - family-names: Lewis
     given-names: Dustyn
