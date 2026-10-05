@@ -41,7 +41,8 @@ steps <- c(
   file.path("04_Figures/F06/a_script", c("main/F06.R", "supp/S7.R", "F06_data.R")),
   file.path("04_Figures/F00/a_script", c("supp/S1a.R", "supp/S1b.R", "F00_data.R")),
   "04_Figures/abstract_panels/a_script/main/abstract.R",
-  "04_Figures/abstract_panels/a_script/main/abstract_concise.R"
+  "04_Figures/abstract_panels/a_script/main/abstract_concise.R",
+  "04_Figures/build_supplementary.R"
 )
 
 missing <- steps[!file.exists(steps)]

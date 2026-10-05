@@ -20,6 +20,7 @@ Rscript run_all.R                                                    # every ste
   F01 to F06       Figures 1 to 6; the directory number is the figure number
   abstract_panels  the graphical abstract
   shared/          code the figure scripts source
+Supplementary/     the manuscript files under their journal names, copied by the last step
 ```
 
 Every stage and figure directory has a `README.md`, `a_script/` for code, `b_reports/` for renders and `c_data/` for tables. Figure directories split code and renders into `main/` and `supp/`, each with a `panels/` folder of one script or render per panel; every panel script also runs on its own. Composites are named after the manuscript item they draw. Each supplementary figure also gets `<item>_Figure.pdf`, the official file, with its legend from `04_Figures/shared/supp_legends.txt`. Files starting with `_` are only sourced.
@@ -33,6 +34,8 @@ Git tracks the cited renders and workbooks and each stage's tables; a run rewrit
 `run_all.R` runs each step as a separate `Rscript` and logs to `.runlogs/`. A full run takes about 22 minutes on an Apple silicon Mac, mostly `F05_data.R`, `F06_data.R` and the effect-size bootstrap in `03_DEP/a_script/supp/01`.
 
 ## Manuscript items
+
+`Supplementary/` holds every file below under the name the manuscript uses: `Figures_1-6/Figure_1.pdf` to `Figure_6.pdf`, `Supplementary_Figures/S1a_Figure.pdf` to `S9_Figure.pdf` (each with its legend), and `Supplementary_Tables/S1_Table.xlsx` to `S10_Table.xlsx`. `04_Figures/build_supplementary.R` copies them there at the end of every run.
 
 | Item | Directory | File |
 |---|---|---|
