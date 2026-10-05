@@ -19,6 +19,7 @@ abstract: >-
   contrasts: aging, training in younger adults, training in older adults, and
   the age by training interaction. The code runs from the raw intensity
   workbook to every figure and supplementary table of the revised manuscript.
+  The vendored GSimp source in 02_imputation is GPL-3; everything else is MIT.
 keywords:
   - proteomics
   - skeletal muscle
