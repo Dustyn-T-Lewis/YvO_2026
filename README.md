@@ -4,7 +4,7 @@ Analysis code for the skeletal muscle proteome response to resistance training i
 
 ```sh
 git clone --depth 1 https://github.com/Dustyn-T-Lewis/YvO_2026.git   # 74 MB; a full clone carries 1.5 GB of history
-Rscript setup.R      # once after cloning
+Rscript -e 'renv::restore()'   # once: installs the pinned packages
 Rscript run_all.R    # every step, each in its own R session
 ```
 
@@ -28,7 +28,7 @@ Git tracks the cited renders and workbooks and each stage's tables; a run rewrit
 
 ## Reproducing
 
-`setup.R` runs `renv::restore()`, installing each package at its `renv.lock` version, including proteoDA, RRHO2 and DreamAI from GitHub.
+`renv::restore()` installs each package at its `renv.lock` version, including proteoDA, RRHO2 and DreamAI from GitHub; `.Rprofile` activates renv on start-up.
 
 `run_all.R` runs each step as a separate `Rscript` and logs to `.runlogs/`. A full run takes about 22 minutes on an Apple silicon Mac, mostly `F05_data.R`, `F06_data.R` and the effect-size bootstrap in `03_DEP/a_script/supp/01`.
 
