@@ -72,15 +72,6 @@ Git tracks the cited renders and workbooks and each stage's tables; a run rewrit
 
 Each figure has a PNG beside its PDF, and each supplementary figure a PDF without its legend. S8 and S9 Figures are numbered after S7, not by stage, so citations to S6 Figure and S10 Table kept their numbers.
 
-## Known limitations
-
-- `F05/a_script/YvO_WGCNA_run.R:85` reads `sft$fitIndices$slope` by position, not by power. It is right only because `powers` is `1:20`.
-- The scale-free slope at power 12 is -2.43 (R-squared 0.877), outside the commented -1 to -2 range. The check warns only above -1, so it passes silently.
-- `F02/a_script/main/panels/A_pca.R:30` blocks PERMANOVA permutations by subject. No permutation changes a subject's age group, so the age p-value is not a permutation test; its R-squared still describes the data.
-- `F06/a_script/_supp_prepare_roc.R` uses 200 permutations, so a reported p of 0.005 is the floor.
-- `cor <- WGCNA::cor` is set in `YvO_WGCNA_run.R` and `supp/panels/S6_D_bicor.R` and never restored; no later code calls bare `cor()`.
-- `shared/print_scale_apply.R` changes `style.R`'s size globals and does not restore them; see `04_Figures/shared/README.md`.
-
 ## Citation
 
 Zenodo concept DOI [10.5281/zenodo.19886624](https://doi.org/10.5281/zenodo.19886624); see `CITATION.cff`. MIT licensed (`LICENSE`), except the vendored GPL-3 GSimp source in `02_imputation/a_script/benchmark/methods/gsimp_source/`.
