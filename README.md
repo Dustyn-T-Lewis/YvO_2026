@@ -3,6 +3,7 @@
 Analysis code for the skeletal muscle proteome response to resistance training in younger and older adults: vastus lateralis biopsies from 32 participants before and after training, 64 samples, quantified by DIA mass spectrometry. Without the two consensus outliers, `Y_S05_Pre` and `Y_S07_Post`, the matrix is 2,106 proteins by 62 samples. limma's four contrasts, Aging, Training_Young, Training_Old and Interaction, give 278, 135, 0 and 1 proteins at FDR < 0.05.
 
 ```sh
+git clone --depth 1 https://github.com/Dustyn-T-Lewis/YvO_2026.git   # 74 MB; a full clone carries 1.5 GB of history
 Rscript setup.R      # once after cloning
 Rscript run_all.R    # every step, each in its own R session
 ```
